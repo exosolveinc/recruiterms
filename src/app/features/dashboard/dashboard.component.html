@@ -1,0 +1,462 @@
+<div class="dashboard">
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <span class="logo-icon">💼</span>
+            <span class="logo-text">Job Tracker</span>
+        </div>
+        <div class="header-right">
+            <button class="btn-nav" (click)="goToResumes()">📄 Resumes</button>
+            <button class="btn-nav" (click)="goToAnalyzer()">🎯 Analyzer</button>
+            <span class="user-email">{{ profile?.full_name || profile?.id }}</span>
+            <button class="btn-logout" (click)="logout()">Logout</button>
+        </div>
+
+    </header>
+
+    <main class="main-content">
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon blue">📋</div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.applied }}</span>
+                    <span class="stat-label">Applied</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon orange">🎯</div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.interviews }}</span>
+                    <span class="stat-label">Interviews</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">🎉</div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.offers }}</span>
+                    <span class="stat-label">Offers</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple">📈</div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ stats.interviewRate }}%</span>
+                    <span class="stat-label">Interview Rate</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Job Extractor -->
+        <div class="extractor-card">
+            <div class="extractor-header">
+                <div class="extractor-icon">✨</div>
+                <div>
+                    <h2>AI Job Extractor</h2>
+                    <p>Paste a job description and AI will extract the details</p>
+                </div>
+            </div>
+
+            <div class="extractor-form">
+                <div class="form-row">
+                    <!-- Resume Selector -->
+                    <div class="form-group resume-select">
+                        <select [(ngModel)]="selectedResumeId" [disabled]="uploadingResume">
+                            <option value="" disabled>Select resume...</option>
+                            <option *ngFor="let resume of resumes" [value]="resume.id">
+                                {{ resume.candidate_name || resume.file_name }}
+                            </option>
+                        </select>
+
+                        <!-- Delete Resume Button -->
+                        <button class="delete-resume-btn" *ngIf="selectedResumeId && resumes.length > 0"
+                            (click)="deleteSelectedResume()" title="Delete selected resume"
+                            [disabled]="uploadingResume">
+                            🗑️
+                        </button>
+
+                        <!-- Upload Button -->
+                        <label class="upload-label" [class.uploading]="uploadingResume">
+                            <span *ngIf="!uploadingResume">📤</span>
+                            <span *ngIf="uploadingResume" class="spinner-small"></span>
+                            <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event)" hidden />
+                        </label>
+                    </div>
+
+                    <!-- Platform -->
+                    <div class="form-group platform-select">
+                        <select [(ngModel)]="platform">
+                            <option value="LinkedIn">LinkedIn</option>
+                            <option value="Indeed">Indeed</option>
+                            <option value="Glassdoor">Glassdoor</option>
+                            <option value="Dice">Dice</option>
+                            <option value="Company Website">Company Website</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Job URL -->
+                    <div class="form-group url-input">
+                        <input type="url" [(ngModel)]="jobUrl" placeholder="Job URL (optional)" />
+                    </div>
+                </div>
+
+                <!-- Job Description -->
+                <div class="form-group">
+                    <textarea [(ngModel)]="jobDescription"
+                        placeholder="Paste the full job description here... The AI will extract company, title, skills, salary, and more."
+                        rows="5"></textarea>
+                </div>
+
+                <!-- Error -->
+                <div class="error-message" *ngIf="extractError">
+                    {{ extractError }}
+                </div>
+
+                <!-- Extract Button -->
+                <button class="btn-extract" (click)="extractAndSave()"
+                    [disabled]="extracting || (!jobDescription && !jobUrl)">
+                    <span *ngIf="!extracting">Extract & Save →</span>
+                    <span *ngIf="extracting" class="loading-text">
+                        <span class="spinner-small"></span>
+                        Analyzing...
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Applications Table -->
+        <div class="applications-section">
+            <div class="section-header">
+                <h2>Applications ({{ filteredApplications.length }})</h2>
+                <div class="search-box">
+                    <input type="text" [(ngModel)]="searchTerm" placeholder="Search jobs..." />
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" *ngIf="applications.length === 0">
+                <div class="empty-icon">📋</div>
+                <p>No applications yet. Extract your first job above!</p>
+            </div>
+
+            <!-- Table -->
+            <div class="table-container" *ngIf="filteredApplications.length > 0">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-date">DATE</th>
+                            <th class="col-company">COMPANY</th>
+                            <th class="col-title">TITLE</th>
+                            <th class="col-location">LOCATION</th>
+                            <th class="col-pay">PAY</th>
+                            <th class="col-skills">SKILLS</th>
+                            <th class="col-match">MATCH</th>
+                            <th class="col-resume">RESUME</th>
+                            <th class="col-status">STATUS</th>
+                            <th class="col-actions">ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let app of filteredApplications">
+                            <!-- Date -->
+                            <td class="date-cell">
+                                <span class="date-value">{{ formatDate(app.applied_at) }}</span>
+                            </td>
+
+                            <!-- Company -->
+                            <td class="company-cell">
+                                <div class="company-info">
+                                    <span class="company-name">{{ app.company_name || '—' }}</span>
+                                </div>
+                                <span class="platform-tag" *ngIf="app.platform">{{ app.platform }}</span>
+                            </td>
+
+                            <!-- Title -->
+                            <td class="title-cell">
+                                <div class="title-info">
+                                    <span class="job-title">{{ app.job_title || '—' }}</span>
+                                    <span class="job-level" *ngIf="app.experience_level">({{ app.experience_level
+                                        }})</span>
+                                </div>
+                            </td>
+
+                            <!-- Location -->
+                            <td class="location-cell">
+                                <div class="location-info">
+                                    <span class="location-text">{{ app.location || '—' }}</span>
+                                    <span class="work-type-badge" *ngIf="app.work_type"
+                                        [class.remote]="app.work_type === 'Remote'"
+                                        [class.hybrid]="app.work_type === 'Hybrid'"
+                                        [class.onsite]="app.work_type === 'Onsite'">
+                                        {{ app.work_type | uppercase }}
+                                    </span>
+                                </div>
+                            </td>
+
+                            <!-- Pay -->
+                            <td class="pay-cell">
+                                <ng-container *ngIf="app.salary_min || app.salary_max; else noPay">
+                                    <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
+                                </ng-container>
+                                <ng-template #noPay>
+                                    <span class="no-data">Not listed</span>
+                                </ng-template>
+                            </td>
+
+                            <!-- Skills -->
+                            <td class="skills-cell">
+                                <ng-container
+                                    *ngIf="app.required_skills && app.required_skills.length > 0; else noSkills">
+                                    <div class="skills-container">
+                                        <span class="skill-tag" *ngFor="let skill of getSkills(app)">
+                                            {{ skill }}
+                                        </span>
+                                        <span class="skills-more" *ngIf="hasMoreSkills(app)">
+                                            +{{ getMoreSkillsCount(app) }}
+                                        </span>
+                                    </div>
+                                </ng-container>
+                                <ng-template #noSkills>
+                                    <span class="no-data">—</span>
+                                </ng-template>
+                            </td>
+
+                            <!-- Match Score -->
+                            <td class="match-cell">
+                                <div class="match-score" *ngIf="app.match_score"
+                                    [class]="getMatchClass(app.match_score)">
+                                    {{ app.match_score }}%
+                                </div>
+                                <span class="no-data" *ngIf="!app.match_score">—</span>
+                            </td>
+
+                            <!-- Resume -->
+                            <td class="resume-cell">
+                                <ng-container *ngIf="app.resume_id; else noResume">
+                                    <ng-container *ngIf="getResumeForApp(app) as resume; else loadingResume">
+                                        <div class="resume-info">
+                                            <span class="resume-name" [title]="resume.file_name || ''">
+                                                {{ getResumeName(resume) }}
+                                            </span>
+                                            <div class="resume-actions">
+                                                <button class="resume-btn view" (click)="viewResume(resume)"
+                                                    title="View extracted data">
+                                                    👁️
+                                                </button>
+                                                <button class="resume-btn open" (click)="openResumeFile(resume)"
+                                                    title="Open in new tab">
+                                                    🔗
+                                                </button>
+                                                <button class="resume-btn download" (click)="downloadResume(resume)"
+                                                    title="Download">
+                                                    ⬇️
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </ng-container>
+                                    <ng-template #loadingResume>
+                                        <span class="loading-resume">Loading...</span>
+                                    </ng-template>
+                                </ng-container>
+                                <ng-template #noResume>
+                                    <span class="no-data">No resume</span>
+                                </ng-template>
+                            </td>
+
+                            <!-- Status -->
+                            <td class="status-cell">
+                                <select [ngModel]="app.status" (ngModelChange)="updateStatus(app, $event)"
+                                    [class]="'status-select status-' + app.status">
+                                    <option value="applied">Applied</option>
+                                    <option value="screening">Screening</option>
+                                    <option value="interviewing">Interview</option>
+                                    <option value="offer">Offer</option>
+                                    <option value="accepted">Accepted</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="withdrawn">Withdrawn</option>
+                                </select>
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="actions-cell">
+                                <button class="action-btn success" title="Move to next stage"
+                                    (click)="progressApplication(app)" *ngIf="canProgress(app)">
+                                    ✓
+                                </button>
+                                <button class="action-btn danger" (click)="deleteApplication(app)"
+                                    title="Remove application">
+                                    ✕
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- No Results -->
+            <div class="no-results" *ngIf="applications.length > 0 && filteredApplications.length === 0">
+                <p>No applications match your search.</p>
+            </div>
+        </div>
+
+        <!-- Resume Preview Modal -->
+        <div class="modal-overlay" *ngIf="showResumeModal" (click)="closeResumeModal()">
+            <div class="modal resume-modal" (click)="$event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>📄 {{ selectedResumeForView?.candidate_name || selectedResumeForView?.file_name }}</h3>
+                    <button class="close-btn" (click)="closeResumeModal()">✕</button>
+                </div>
+                <div class="modal-body" *ngIf="selectedResumeForView">
+                    <!-- Candidate Info -->
+                    <div class="resume-section">
+                        <h4>Contact Information</h4>
+                        <div class="resume-grid">
+                            <div class="resume-field" *ngIf="selectedResumeForView.candidate_name">
+                                <span class="field-label">Name</span>
+                                <span class="field-value">{{ selectedResumeForView.candidate_name }}</span>
+                            </div>
+                            <div class="resume-field" *ngIf="selectedResumeForView.candidate_email">
+                                <span class="field-label">Email</span>
+                                <span class="field-value">{{ selectedResumeForView.candidate_email }}</span>
+                            </div>
+                            <div class="resume-field" *ngIf="selectedResumeForView.candidate_phone">
+                                <span class="field-label">Phone</span>
+                                <span class="field-value">{{ selectedResumeForView.candidate_phone }}</span>
+                            </div>
+                            <div class="resume-field" *ngIf="selectedResumeForView.candidate_location">
+                                <span class="field-label">Location</span>
+                                <span class="field-value">{{ selectedResumeForView.candidate_location }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Professional Info -->
+                    <div class="resume-section">
+                        <h4>Professional Summary</h4>
+                        <div class="resume-grid">
+                            <div class="resume-field" *ngIf="selectedResumeForView.current_title">
+                                <span class="field-label">Current Title</span>
+                                <span class="field-value">{{ selectedResumeForView.current_title }}</span>
+                            </div>
+                            <div class="resume-field" *ngIf="selectedResumeForView.current_company">
+                                <span class="field-label">Company</span>
+                                <span class="field-value">{{ selectedResumeForView.current_company }}</span>
+                            </div>
+                            <div class="resume-field" *ngIf="selectedResumeForView.years_of_experience">
+                                <span class="field-label">Experience</span>
+                                <span class="field-value">{{ selectedResumeForView.years_of_experience }} years</span>
+                            </div>
+                            <div class="resume-field" *ngIf="selectedResumeForView.experience_level">
+                                <span class="field-label">Level</span>
+                                <span class="field-value">{{ selectedResumeForView.experience_level }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Skills -->
+                    <div class="resume-section" *ngIf="selectedResumeForView.skills?.length">
+                        <h4>Skills</h4>
+                        <div class="resume-skills">
+                            <span class="skill-badge" *ngFor="let skill of selectedResumeForView.skills"
+                                [class.expert]="skill.proficiency === 'Expert'"
+                                [class.advanced]="skill.proficiency === 'Advanced'">
+                                {{ skill.name }}
+                                <span class="proficiency" *ngIf="skill.proficiency">{{ skill.proficiency }}</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Education -->
+                    <div class="resume-section" *ngIf="selectedResumeForView.education?.length">
+                        <h4>Education</h4>
+                        <div class="education-list">
+                            <div class="education-item" *ngFor="let edu of selectedResumeForView.education">
+                                <span class="degree">{{ edu.degree }}</span>
+                                <span class="institution">{{ edu.institution }} <span *ngIf="edu.year">· {{ edu.year
+                                        }}</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Work History -->
+                    <div class="resume-section" *ngIf="selectedResumeForView.work_history?.length">
+                        <h4>Work History</h4>
+                        <div class="work-list">
+                            <div class="work-item" *ngFor="let work of selectedResumeForView.work_history">
+                                <div class="work-header">
+                                    <span class="work-title">{{ work.title }}</span>
+                                    <span class="work-company">{{ work.company }}</span>
+                                </div>
+                                <span class="work-dates">{{ work.start }} - {{ work.end || 'Present' }}</span>
+                                <p class="work-desc" *ngIf="work.description">{{ work.description }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Info -->
+                    <div class="resume-section file-section">
+                        <h4>File</h4>
+                        <div class="file-info">
+                            <span class="file-name">{{ selectedResumeForView.file_name }}</span>
+                            <span class="file-type">{{ selectedResumeForView.file_type }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" (click)="closeResumeModal()">Close</button>
+                    <button class="btn-primary" (click)="downloadResume(selectedResumeForView!)">
+                        ⬇️ Download Resume
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Match Modal -->
+    <div class="modal-overlay" *ngIf="showMatchModal" (click)="cancelApplication()">
+        <div class="modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h3>⚠️ Low Match Score</h3>
+                <button class="close-btn" (click)="cancelApplication()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="match-score-display">
+                    <div class="score-circle" [class.low]="matchResult!.score < 50">
+                        {{ matchResult?.score }}%
+                    </div>
+                    <p>Match with your resume</p>
+                </div>
+
+                <div class="match-details" *ngIf="matchResult">
+                    <div class="match-section" *ngIf="matchResult.matching.length">
+                        <h4>✓ Matching Skills</h4>
+                        <div class="skill-tags success">
+                            <span *ngFor="let skill of matchResult.matching">{{ skill }}</span>
+                        </div>
+                    </div>
+                    <div class="match-section" *ngIf="matchResult.missing.length">
+                        <h4>✗ Missing Skills</h4>
+                        <div class="skill-tags danger">
+                            <span *ngFor="let skill of matchResult.missing">{{ skill }}</span>
+                        </div>
+                    </div>
+                    <div class="suggestions" *ngIf="matchResult.suggestions.length">
+                        <h4>💡 Suggestions</h4>
+                        <ul>
+                            <li *ngFor="let suggestion of matchResult.suggestions">{{ suggestion }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" (click)="cancelApplication()">
+                    Select Different Resume
+                </button>
+                <button class="btn-primary" (click)="continueWithLowMatch()">
+                    Continue Anyway
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

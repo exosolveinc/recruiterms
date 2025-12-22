@@ -40,3 +40,9 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+
+.vscode/extensions.json
+package-lock.json
+.vscode/settings.json
+supabase/.gitignore

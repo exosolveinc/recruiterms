@@ -1,0 +1,123 @@
+<div class="jobs-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <a routerLink="/dashboard" class="back-link">← Back to Dashboard</a>
+      <h1>Extracted Jobs</h1>
+      <p>{{ filteredJobs.length }} jobs found</p>
+    </div>
+    <div class="header-right">
+      <a routerLink="/jobs/extract" class="btn-primary">
+        <span>✨</span> Extract New Job
+      </a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        placeholder="Search jobs or companies..."
+        [(ngModel)]="searchTerm"
+        (input)="applyFilters()"
+      />
+    </div>
+
+    <div class="filter-group">
+      <select [(ngModel)]="statusFilter" (change)="applyFilters()">
+        <option value="all">All Status</option>
+        <option value="new">New</option>
+        <option value="reviewing">Reviewing</option>
+        <option value="applied">Applied</option>
+        <option value="interviewing">Interviewing</option>
+        <option value="offered">Offered</option>
+        <option value="rejected">Rejected</option>
+        <option value="archived">Archived</option>
+      </select>
+
+      <select [(ngModel)]="platformFilter" (change)="applyFilters()">
+        <option value="all">All Platforms</option>
+        <option *ngFor="let platform of platforms" [value]="platform">
+          {{ platform }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="loading-spinner"></div>
+    <p>Loading jobs...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-alert" *ngIf="error">
+    {{ error }}
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredJobs.length === 0">
+    <span class="empty-icon">📋</span>
+    <h3>No jobs found</h3>
+    <p *ngIf="jobs.length === 0">Extract your first job to get started</p>
+    <p *ngIf="jobs.length > 0">Try adjusting your filters</p>
+    <a routerLink="/jobs/extract" class="btn-primary" *ngIf="jobs.length === 0">
+      Extract Your First Job
+    </a>
+  </div>
+
+  <!-- Jobs Grid -->
+  <div class="jobs-grid" *ngIf="!loading && filteredJobs.length > 0">
+    <div class="job-card" *ngFor="let job of filteredJobs" [routerLink]="['/jobs', job.id]">
+      <div class="job-card-header">
+        <span class="platform-badge" *ngIf="job.platform">{{ job.platform }}</span>
+        <span class="status-badge" [ngClass]="getStatusClass(job.status)">
+          {{ job.status }}
+        </span>
+      </div>
+
+      <div class="job-card-body">
+        <h3>{{ job.job_title || 'Untitled Position' }}</h3>
+        <p class="company">{{ job.company_name || 'Unknown Company' }}</p>
+        
+        <div class="job-meta">
+          <span class="meta-item" *ngIf="job.location">
+            📍 {{ job.location }}
+          </span>
+          <span class="meta-item" *ngIf="job.work_type">
+            🏠 {{ job.work_type }}
+          </span>
+        </div>
+
+        <div class="job-salary" *ngIf="job.salary_min || job.salary_max">
+          💰 {{ formatSalary(job) }}
+        </div>
+
+        <div class="job-skills" *ngIf="job.required_skills?.length">
+          <span 
+            class="skill-tag" 
+            *ngFor="let skill of job.required_skills.slice(0, 3)"
+          >
+            {{ skill.skill }}
+          </span>
+          <span class="skill-more" *ngIf="job.required_skills.length > 3">
+            +{{ job.required_skills.length - 3 }} more
+          </span>
+        </div>
+      </div>
+
+      <div class="job-card-footer">
+        <div class="match-score" *ngIf="job.match_score">
+          <span class="score-label">Match</span>
+          <span class="score-value">{{ job.match_score | number:'1.0-0' }}%</span>
+        </div>
+        <span class="date">{{ job.created_at | date:'mediumDate' }}</span>
+        <button class="btn-delete" (click)="deleteJob(job, $event)" title="Delete">
+          🗑️
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

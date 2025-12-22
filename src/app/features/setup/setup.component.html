@@ -1,0 +1,84 @@
+<div class="setup-container">
+  <!-- Loading/Checking State -->
+  <div class="loading-screen" *ngIf="checking">
+    <div class="spinner"></div>
+    <p>Checking your account...</p>
+  </div>
+
+  <div class="setup-card" *ngIf="!checking">
+    <div class="setup-header">
+      <div class="logo">
+        <span class="logo-icon">💼</span>
+        <span class="logo-text">Job Tracker</span>
+      </div>
+      <h1>Welcome!</h1>
+    </div>
+
+    <!-- Has Pending Invitation -->
+    <div class="invitation-section" *ngIf="hasInvitation && invitation">
+      <div class="invitation-card">
+        <div class="invitation-icon">🎉</div>
+        <h2>You've been invited!</h2>
+        <p>
+          You have a pending invitation to join 
+          <strong>{{ invitation.organization_name }}</strong>
+          as a <strong>{{ invitation.role | titlecase }}</strong>
+        </p>
+        
+        <button 
+          class="btn-primary btn-accept" 
+          (click)="acceptInvitation()" 
+          [disabled]="loading"
+        >
+          <span *ngIf="!loading">✓ Accept Invitation</span>
+          <span *ngIf="loading">
+            <span class="spinner-small"></span>
+            Joining...
+          </span>
+        </button>
+      </div>
+
+      <div class="divider">
+        <span>or create your own</span>
+      </div>
+    </div>
+
+    <!-- Create Organization Form -->
+    <form [formGroup]="setupForm" (ngSubmit)="onSubmit()">
+      <p class="description" *ngIf="!hasInvitation">
+        Create your organization to start tracking job applications
+      </p>
+
+      <div class="form-group">
+        <label for="organizationName">Organization Name</label>
+        <input 
+          type="text" 
+          id="organizationName" 
+          formControlName="organizationName"
+          placeholder="e.g., My Recruiting Agency"
+          [class.error]="setupForm.get('organizationName')?.invalid && setupForm.get('organizationName')?.touched"
+        />
+        <span class="error-text" 
+              *ngIf="setupForm.get('organizationName')?.invalid && setupForm.get('organizationName')?.touched">
+          Organization name is required (min 2 characters)
+        </span>
+      </div>
+
+      <div class="error-message" *ngIf="error">
+        {{ error }}
+      </div>
+
+      <button type="submit" class="btn-primary" [disabled]="loading || setupForm.invalid">
+        <span *ngIf="!loading">Create Organization →</span>
+        <span *ngIf="loading">
+          <span class="spinner-small"></span>
+          Creating...
+        </span>
+      </button>
+    </form>
+
+    <div class="setup-footer">
+      <p>You can invite team members after setup</p>
+    </div>
+  </div>
+</div>

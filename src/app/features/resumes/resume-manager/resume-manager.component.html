@@ -1,0 +1,315 @@
+<div class="resume-manager">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <button class="btn-back" (click)="goToDashboard()">← Back</button>
+      <div class="logo">
+        <span class="logo-icon">📄</span>
+        <span class="logo-text">Resume Manager</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="user-name">{{ profile?.full_name || profile?.email }}</span>
+      <button class="btn-logout" (click)="logout()">Logout</button>
+    </div>
+  </header>
+
+  <!-- Loading -->
+  <div class="loading-screen" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading resumes...</p>
+  </div>
+
+  <main class="main-content" *ngIf="!loading">
+    <!-- Upload Section -->
+    <div class="upload-section">
+      <div class="upload-card">
+        <div class="upload-icon">📤</div>
+        <h2>Upload New Resume</h2>
+        <p>Supported formats: PDF, DOCX</p>
+        <label class="upload-btn" [class.uploading]="uploading">
+          <span *ngIf="!uploading">Choose File</span>
+          <span *ngIf="uploading" class="loading-text">
+            <span class="spinner-small"></span>
+            Uploading & Extracting...
+          </span>
+          <input 
+            type="file" 
+            accept=".pdf,.docx" 
+            (change)="onFileSelected($event)" 
+            hidden 
+            [disabled]="uploading"
+          />
+        </label>
+      </div>
+    </div>
+
+    <!-- Resumes Grid -->
+    <div class="resumes-section">
+      <div class="section-header">
+        <h2>Your Resumes ({{ resumes.length }})</h2>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="resumes.length === 0">
+        <div class="empty-icon">📋</div>
+        <p>No resumes uploaded yet</p>
+        <span>Upload your first resume to get started</span>
+      </div>
+
+      <!-- Resume Cards -->
+      <div class="resumes-grid" *ngIf="resumes.length > 0">
+        <div 
+          class="resume-card" 
+          *ngFor="let resume of resumes"
+          [class.primary]="resume.is_primary"
+        >
+          <!-- Primary Badge -->
+          <div class="primary-badge" *ngIf="resume.is_primary">
+            ⭐ Primary
+          </div>
+
+          <!-- Card Header -->
+          <div class="card-header">
+            <div class="file-icon">📄</div>
+            <div class="file-info">
+              <h3>{{ getDisplayName(resume) }}</h3>
+              <span class="file-name">{{ resume.file_name }}</span>
+            </div>
+          </div>
+
+          <!-- Extraction Status -->
+          <div class="extraction-status" [class]="getStatusClass(resume.extraction_status)">
+            <span class="status-dot"></span>
+            {{ getStatusText(resume.extraction_status) }}
+          </div>
+
+          <!-- Quick Info -->
+          <div class="quick-info" *ngIf="resume.extraction_status === 'completed'">
+            <div class="info-row" *ngIf="resume.candidate_name">
+              <span class="info-label">Name:</span>
+              <span class="info-value">{{ resume.candidate_name }}</span>
+            </div>
+            <div class="info-row" *ngIf="resume.current_title">
+              <span class="info-label">Title:</span>
+              <span class="info-value">{{ resume.current_title }}</span>
+            </div>
+            <div class="info-row" *ngIf="resume.years_of_experience">
+              <span class="info-label">Experience:</span>
+              <span class="info-value">{{ resume.years_of_experience }} years</span>
+            </div>
+            <div class="skills-preview" *ngIf="resume.skills?.length">
+              <span class="skill-tag" *ngFor="let skill of resume.skills.slice(0, 3)">
+                {{ skill.name }}
+              </span>
+              <span class="more-skills" *ngIf="resume.skills.length > 3">
+                +{{ resume.skills.length - 3 }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Date -->
+          <div class="card-date">
+            Uploaded {{ formatDate(resume.created_at) }}
+          </div>
+
+          <!-- Actions -->
+          <div class="card-actions">
+            <button class="action-btn view" (click)="viewResume(resume)" title="View Details">
+              👁️
+            </button>
+            <button class="action-btn analyze" (click)="goToAnalyzer(resume)" title="Analyze Against Job">
+              🎯
+            </button>
+            <button class="action-btn download" (click)="downloadFile(resume)" title="Download">
+              ⬇️
+            </button>
+            <button 
+              class="action-btn primary" 
+              (click)="setPrimary(resume)" 
+              title="Set as Primary"
+              *ngIf="!resume.is_primary"
+            >
+              ⭐
+            </button>
+            <button class="action-btn delete" (click)="confirmDelete(resume)" title="Delete">
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Resume Detail Modal -->
+  <div class="modal-overlay" *ngIf="showResumeModal" (click)="closeModal()">
+    <div class="modal resume-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span *ngIf="!editingLabel">{{ getDisplayName(selectedResume!) }}</span>
+          <input 
+            *ngIf="editingLabel"
+            type="text" 
+            [(ngModel)]="newLabel" 
+            class="label-input"
+            placeholder="Enter label..."
+          />
+          <button 
+            class="btn-edit-label" 
+            *ngIf="!editingLabel" 
+            (click)="startEditLabel()"
+            title="Edit label"
+          >
+            ✏️
+          </button>
+          <button 
+            class="btn-save-label" 
+            *ngIf="editingLabel" 
+            (click)="saveLabel()"
+          >
+            ✓
+          </button>
+          <button 
+            class="btn-cancel-label" 
+            *ngIf="editingLabel" 
+            (click)="cancelEditLabel()"
+          >
+            ✕
+          </button>
+        </div>
+        <button class="close-btn" (click)="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-body" *ngIf="selectedResume">
+        <!-- Contact Info -->
+        <div class="detail-section">
+          <h4>Contact Information</h4>
+          <div class="detail-grid">
+            <div class="detail-item" *ngIf="selectedResume.candidate_name">
+              <span class="label">Name</span>
+              <span class="value">{{ selectedResume.candidate_name }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedResume.candidate_email">
+              <span class="label">Email</span>
+              <span class="value">{{ selectedResume.candidate_email }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedResume.candidate_phone">
+              <span class="label">Phone</span>
+              <span class="value">{{ selectedResume.candidate_phone }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedResume.candidate_location">
+              <span class="label">Location</span>
+              <span class="value">{{ selectedResume.candidate_location }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Professional Info -->
+        <div class="detail-section">
+          <h4>Professional Summary</h4>
+          <div class="detail-grid">
+            <div class="detail-item" *ngIf="selectedResume.current_title">
+              <span class="label">Current Title</span>
+              <span class="value">{{ selectedResume.current_title }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedResume.current_company">
+              <span class="label">Company</span>
+              <span class="value">{{ selectedResume.current_company }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedResume.years_of_experience">
+              <span class="label">Experience</span>
+              <span class="value">{{ selectedResume.years_of_experience }} years</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedResume.experience_level">
+              <span class="label">Level</span>
+              <span class="value">{{ selectedResume.experience_level }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skills -->
+        <div class="detail-section" *ngIf="selectedResume.skills?.length">
+          <h4>Skills</h4>
+          <div class="skills-list">
+            <span 
+              class="skill-badge" 
+              *ngFor="let skill of selectedResume.skills"
+              [class.expert]="skill.proficiency === 'Expert'"
+              [class.advanced]="skill.proficiency === 'Advanced'"
+            >
+              {{ skill.name }}
+              <small *ngIf="skill.proficiency">{{ skill.proficiency }}</small>
+            </span>
+          </div>
+        </div>
+
+        <!-- Education -->
+        <div class="detail-section" *ngIf="selectedResume.education?.length">
+          <h4>Education</h4>
+          <div class="education-list">
+            <div class="education-item" *ngFor="let edu of selectedResume.education">
+              <span class="degree">{{ edu.degree }}</span>
+              <span class="institution">{{ edu.institution }} <span *ngIf="edu.year">· {{ edu.year }}</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Work History -->
+        <div class="detail-section" *ngIf="selectedResume.work_history?.length">
+          <h4>Work History</h4>
+          <div class="work-list">
+            <div class="work-item" *ngFor="let work of selectedResume.work_history">
+              <div class="work-header">
+                <span class="work-title">{{ work.title }}</span>
+                <span class="work-company">{{ work.company }}</span>
+              </div>
+              <span class="work-dates">{{ work.start }} - {{ work.end || 'Present' }}</span>
+              <p class="work-desc" *ngIf="work.description">{{ work.description }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Info -->
+        <div class="detail-section file-section">
+          <h4>File Information</h4>
+          <div class="file-info">
+            <span class="file-name">{{ selectedResume.file_name }}</span>
+            <span class="file-type">{{ selectedResume.file_type }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeModal()">Close</button>
+        <button class="btn-analyze" (click)="goToAnalyzer(selectedResume!)">
+          🎯 Analyze Against Job
+        </button>
+        <button class="btn-primary" (click)="downloadFile(selectedResume!)">
+          ⬇️ Download
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+    <div class="modal delete-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>🗑️ Delete Resume</h3>
+        <button class="close-btn" (click)="cancelDelete()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this resume?</p>
+        <div class="delete-resume-info" *ngIf="resumeToDelete">
+          <span class="delete-resume-name">{{ getDisplayName(resumeToDelete) }}</span>
+          <span class="delete-file-name">{{ resumeToDelete.file_name }}</span>
+        </div>
+        <p class="warning">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
+        <button class="btn-danger" (click)="deleteResume()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>

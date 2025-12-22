@@ -1,0 +1,113 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="logo">
+        <span class="logo-icon">💼</span>
+        <span class="logo-text">RecruitMS</span>
+      </div>
+      <h1>Create your account</h1>
+      <p>Start extracting job data in minutes</p>
+    </div>
+
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="auth-form">
+      <div class="form-group">
+        <label for="fullName">Full Name</label>
+        <input
+          type="text"
+          id="fullName"
+          formControlName="fullName"
+          placeholder="John Doe"
+          [class.error]="signupForm.get('fullName')?.invalid && signupForm.get('fullName')?.touched"
+        />
+        <span class="error-message" *ngIf="signupForm.get('fullName')?.errors?.['required'] && signupForm.get('fullName')?.touched">
+          Full name is required
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          placeholder="you@example.com"
+          [class.error]="signupForm.get('email')?.invalid && signupForm.get('email')?.touched"
+        />
+        <span class="error-message" *ngIf="signupForm.get('email')?.errors?.['required'] && signupForm.get('email')?.touched">
+          Email is required
+        </span>
+        <span class="error-message" *ngIf="signupForm.get('email')?.errors?.['email'] && signupForm.get('email')?.touched">
+          Please enter a valid email
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          formControlName="password"
+          placeholder="••••••••"
+          [class.error]="signupForm.get('password')?.invalid && signupForm.get('password')?.touched"
+        />
+        <span class="error-message" *ngIf="signupForm.get('password')?.errors?.['required'] && signupForm.get('password')?.touched">
+          Password is required
+        </span>
+        <span class="error-message" *ngIf="signupForm.get('password')?.errors?.['minlength'] && signupForm.get('password')?.touched">
+          Password must be at least 8 characters
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          formControlName="confirmPassword"
+          placeholder="••••••••"
+        />
+        <span class="error-message" *ngIf="signupForm.errors?.['passwordMismatch'] && signupForm.get('confirmPassword')?.touched">
+          Passwords do not match
+        </span>
+      </div>
+
+      <button type="submit" class="btn-primary" [disabled]="loading || signupForm.invalid">
+        <span *ngIf="!loading">Create Account</span>
+        <span *ngIf="loading" class="loading-spinner"></span>
+      </button>
+
+      <div class="error-alert" *ngIf="error">
+        {{ error }}
+      </div>
+
+      <div class="success-alert" *ngIf="success">
+        {{ success }}
+      </div>
+    </form>
+
+    <div class="auth-footer">
+      <p>Already have an account? <a routerLink="/auth/login">Sign in</a></p>
+    </div>
+  </div>
+
+  <div class="auth-illustration">
+    <div class="illustration-content">
+      <h2>Join thousands of recruiters</h2>
+      <p>Streamline your hiring process with AI-powered job extraction and candidate matching.</p>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-value">10k+</span>
+          <span class="stat-label">Jobs Extracted</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">95%</span>
+          <span class="stat-label">Accuracy</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">50%</span>
+          <span class="stat-label">Time Saved</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
