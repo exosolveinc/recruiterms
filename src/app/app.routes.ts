@@ -36,6 +36,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/dashboard/dashboard.component')
       .then(m => m.DashboardComponent)
   },
+  {
+    path: 'application/:id',
+    canActivate: [AuthGuard],
+    loadComponent: () => import('./features/application-edit/application-edit.component')
+      .then(m => m.ApplicationEditComponent)
+  },
 
   {
     path: 'admin',
@@ -47,11 +53,16 @@ export const routes: Routes = [
   loadComponent: () => import('./features/resumes/resume-manager/resume-manager.component').then(m => m.ResumeManagerComponent),
   canActivate: [AuthGuard]
 },
-// {
-//   path: 'analyzer',
-//   loadComponent: () => import('./features/analyzer/job-analyzer/job-analyzer.component').then(m => m.JobAnalyzerComponent),
-//   canActivate: [AuthGuard]
-// },
+{
+  path: 'candidates',
+  loadComponent: () => import('./features/candidates/candidates/candidates.component').then(m => m.CandidatesComponent),
+  canActivate: [AuthGuard]
+},
+{
+  path: 'job-feed',
+  loadComponent: () => import('./features/job-feed/job-feed/job-feed.component').then(m => m.JobFeedComponent),
+  canActivate: [AuthGuard]
+},
   {
     path: '**',
     redirectTo: 'dashboard'

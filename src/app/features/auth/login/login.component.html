@@ -1,15 +1,10 @@
-<div class="auth-container">
-  <div class="auth-card">
-    <div class="auth-header">
-      <div class="logo">
-        <span class="logo-icon">💼</span>
-        <span class="logo-text">RecruitMS</span>
-      </div>
-      <h1>Welcome back</h1>
-      <p>Sign in to your account to continue</p>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-header">
+      <h1>Sign In</h1>
     </div>
 
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="auth-form">
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
       <div class="form-group">
         <label for="email">Email</label>
         <input
@@ -33,7 +28,7 @@
           type="password"
           id="password"
           formControlName="password"
-          placeholder="••••••••"
+          placeholder="Enter your password"
           [class.error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
         />
         <span class="error-message" *ngIf="loginForm.get('password')?.errors?.['required'] && loginForm.get('password')?.touched">
@@ -41,39 +36,18 @@
         </span>
       </div>
 
-      <button type="submit" class="btn-primary" [disabled]="loading || loginForm.invalid">
-        <span *ngIf="!loading">Sign In</span>
-        <span *ngIf="loading" class="loading-spinner"></span>
-      </button>
-
       <div class="error-alert" *ngIf="error">
         {{ error }}
       </div>
+
+      <button type="submit" class="btn-submit" [disabled]="loading || loginForm.invalid">
+        <span *ngIf="!loading">Sign In</span>
+        <span *ngIf="loading" class="spinner"></span>
+      </button>
     </form>
 
-    <div class="auth-footer">
+    <div class="login-footer">
       <p>Don't have an account? <a routerLink="/auth/signup">Sign up</a></p>
-    </div>
-  </div>
-
-  <div class="auth-illustration">
-    <div class="illustration-content">
-      <h2>Extract. Analyze. Apply.</h2>
-      <p>AI-powered job description extraction to streamline your recruitment process.</p>
-      <div class="feature-list">
-        <div class="feature">
-          <span class="feature-icon">🎯</span>
-          <span>Smart skill matching</span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">📊</span>
-          <span>Analytics dashboard</span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">⚡</span>
-          <span>Instant extraction</span>
-        </div>
-      </div>
     </div>
   </div>
 </div>

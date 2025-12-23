@@ -1,0 +1,356 @@
+<app-sidebar activePage="candidates"></app-sidebar>
+<div class="candidates-page">
+    <main class="main-content">
+        <!-- Loading State -->
+        <div class="loading-state" *ngIf="loading">
+            <div class="spinner"></div>
+            <p>Loading candidates...</p>
+        </div>
+
+        <ng-container *ngIf="!loading">
+            <!-- Stats Row -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <span class="stat-value">{{ stats.totalCandidates }}</span>
+                        <span class="stat-label">Total Candidates</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📄</div>
+                    <div class="stat-info">
+                        <span class="stat-value">{{ stats.totalResumes }}</span>
+                        <span class="stat-label">Total Resumes</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-info">
+                        <span class="stat-value">{{ stats.avgExperience }} yrs</span>
+                        <span class="stat-label">Avg Experience</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Candidates Section -->
+            <div class="candidates-section">
+                <div class="section-header">
+                    <h2>Candidates ({{ filteredCandidates.length }})</h2>
+                    <div class="filters">
+                        <div class="search-box">
+                            <input type="text" [(ngModel)]="searchTerm" placeholder="Search by name, email, title..." />
+                        </div>
+                        <div class="skill-filter">
+                            <input
+                                type="text"
+                                [(ngModel)]="skillFilter"
+                                list="skillOptions"
+                                placeholder="Filter by skill..."
+                            />
+                            <datalist id="skillOptions">
+                                <option *ngFor="let skill of allSkills" [value]="skill"></option>
+                            </datalist>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" *ngIf="candidates.length === 0">
+                    <div class="empty-icon">👥</div>
+                    <p>No candidates yet. Upload resumes to see candidates here!</p>
+                    <button class="btn-primary" (click)="goToResumes()">Upload Resumes</button>
+                </div>
+
+                <!-- Candidates Table -->
+                <div class="table-container" *ngIf="filteredCandidates.length > 0">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-expand"></th>
+                                <th class="col-name">NAME</th>
+                                <th class="col-title">TITLE / COMPANY</th>
+                                <th class="col-contact">CONTACT</th>
+                                <th class="col-location">LOCATION</th>
+                                <th class="col-experience">EXPERIENCE</th>
+                                <th class="col-skills">TOP SKILLS</th>
+                                <th class="col-resumes">RESUMES</th>
+                                <th class="col-actions">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <ng-container *ngFor="let candidate of filteredCandidates">
+                                <!-- Main Row -->
+                                <tr class="candidate-row" [class.expanded]="isExpanded(candidate.id)" (click)="toggleExpand(candidate.id, $event)">
+                                    <!-- Expand Icon -->
+                                    <td class="expand-cell">
+                                        <span class="expand-icon" [class.open]="isExpanded(candidate.id)">▸</span>
+                                    </td>
+
+                                    <!-- Name -->
+                                    <td class="name-cell">
+                                        <div class="candidate-name">{{ candidate.name }}</div>
+                                    </td>
+
+                                    <!-- Title / Company -->
+                                    <td class="title-cell">
+                                        <div class="title-info">
+                                            <span class="job-title">{{ candidate.current_title || '—' }}</span>
+                                            <span class="company" *ngIf="candidate.current_company">{{ candidate.current_company }}</span>
+                                        </div>
+                                    </td>
+
+                                    <!-- Contact -->
+                                    <td class="contact-cell">
+                                        <div class="contact-info">
+                                            <span class="email" *ngIf="candidate.email">{{ candidate.email }}</span>
+                                            <span class="phone" *ngIf="candidate.phone">{{ candidate.phone }}</span>
+                                            <span class="no-data" *ngIf="!candidate.email && !candidate.phone">—</span>
+                                        </div>
+                                    </td>
+
+                                    <!-- Location -->
+                                    <td class="location-cell">
+                                        <span class="location">{{ candidate.location || '—' }}</span>
+                                    </td>
+
+                                    <!-- Experience -->
+                                    <td class="experience-cell">
+                                        <div class="exp-info">
+                                            <span class="exp-years" *ngIf="candidate.years_of_experience">
+                                                {{ candidate.years_of_experience }} yrs
+                                            </span>
+                                            <span class="exp-badge" *ngIf="candidate.experience_level" [class]="getExperienceBadgeClass(candidate.experience_level)">
+                                                {{ candidate.experience_level }}
+                                            </span>
+                                            <span class="no-data" *ngIf="!candidate.years_of_experience && !candidate.experience_level">—</span>
+                                        </div>
+                                    </td>
+
+                                    <!-- Skills -->
+                                    <td class="skills-cell">
+                                        <div class="skills-container">
+                                            <span class="skill-tag" *ngFor="let skill of candidate.skills.slice(0, 3)">{{ skill.name }}</span>
+                                            <span class="skills-more" *ngIf="candidate.skills.length > 3">+{{ candidate.skills.length - 3 }}</span>
+                                        </div>
+                                        <span class="no-data" *ngIf="!candidate.skills?.length">—</span>
+                                    </td>
+
+                                    <!-- Resume Count -->
+                                    <td class="resumes-cell">
+                                        <span class="resume-count" [class.multiple]="candidate.resume_count > 1">
+                                            {{ candidate.resume_count }}
+                                        </span>
+                                    </td>
+
+                                    <!-- Actions -->
+                                    <td class="actions-cell" (click)="$event.stopPropagation()">
+                                        <button class="action-btn" (click)="viewCandidate(candidate)" title="View details">
+                                            👁️
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Expanded Row -->
+                                <tr class="expand-row" *ngIf="isExpanded(candidate.id)">
+                                    <td colspan="9">
+                                        <div class="expand-content">
+                                            <div class="expand-grid">
+                                                <!-- Left Column - All Skills -->
+                                                <div class="expand-section">
+                                                    <h4>All Skills</h4>
+                                                    <div class="skills-full">
+                                                        <span class="skill-tag-lg" *ngFor="let skill of candidate.skills">
+                                                            {{ skill.name }}
+                                                            <span class="proficiency" *ngIf="skill.proficiency">({{ skill.proficiency }})</span>
+                                                        </span>
+                                                    </div>
+                                                    <div class="no-skills" *ngIf="!candidate.skills?.length">
+                                                        No skills extracted
+                                                    </div>
+                                                </div>
+
+                                                <!-- Middle Column - Contact Details -->
+                                                <div class="expand-section">
+                                                    <h4>Contact Details</h4>
+                                                    <div class="contact-details">
+                                                        <div class="detail-item" *ngIf="candidate.email">
+                                                            <span class="detail-icon">📧</span>
+                                                            <a [href]="'mailto:' + candidate.email">{{ candidate.email }}</a>
+                                                        </div>
+                                                        <div class="detail-item" *ngIf="candidate.phone">
+                                                            <span class="detail-icon">📱</span>
+                                                            <a [href]="'tel:' + candidate.phone">{{ candidate.phone }}</a>
+                                                        </div>
+                                                        <div class="detail-item" *ngIf="candidate.linkedin">
+                                                            <span class="detail-icon">🔗</span>
+                                                            <a [href]="candidate.linkedin" target="_blank">LinkedIn Profile</a>
+                                                        </div>
+                                                        <div class="detail-item" *ngIf="candidate.location">
+                                                            <span class="detail-icon">📍</span>
+                                                            <span>{{ candidate.location }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Right Column - Resumes -->
+                                                <div class="expand-section">
+                                                    <h4>Resumes ({{ candidate.resume_count }})</h4>
+                                                    <div class="resume-list">
+                                                        <div class="resume-item" *ngFor="let resume of candidate.resumes">
+                                                            <div class="resume-info">
+                                                                <span class="resume-name">{{ resume.file_name }}</span>
+                                                                <span class="resume-date">{{ formatDate(resume.created_at) }}</span>
+                                                            </div>
+                                                            <div class="resume-actions">
+                                                                <button class="btn-sm" (click)="openResumeFile(resume); $event.stopPropagation()">🔗 Open</button>
+                                                                <button class="btn-sm" (click)="downloadResume(resume); $event.stopPropagation()">⬇️ Download</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-container>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- No Results -->
+                <div class="no-results" *ngIf="candidates.length > 0 && filteredCandidates.length === 0">
+                    <p>No candidates match your search.</p>
+                </div>
+            </div>
+        </ng-container>
+    </main>
+
+    <!-- Candidate Detail Modal -->
+    <div class="modal-overlay" *ngIf="showCandidateModal" (click)="closeCandidateModal()">
+        <div class="modal candidate-modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h3>👤 {{ selectedCandidate?.name }}</h3>
+                <button class="close-btn" (click)="closeCandidateModal()">✕</button>
+            </div>
+
+            <div class="modal-body" *ngIf="selectedCandidate">
+                <!-- Candidate Header -->
+                <div class="candidate-header-section">
+                    <div class="candidate-main-info">
+                        <h2>{{ selectedCandidate.name }}</h2>
+                        <p class="title-company" *ngIf="selectedCandidate.current_title">
+                            {{ selectedCandidate.current_title }}
+                            <span *ngIf="selectedCandidate.current_company">at {{ selectedCandidate.current_company }}</span>
+                        </p>
+                        <div class="candidate-meta">
+                            <span *ngIf="selectedCandidate.location">📍 {{ selectedCandidate.location }}</span>
+                            <span *ngIf="selectedCandidate.years_of_experience">📊 {{ selectedCandidate.years_of_experience }} years experience</span>
+                            <span *ngIf="selectedCandidate.experience_level" class="level-badge">{{ selectedCandidate.experience_level }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Two Column Layout -->
+                <div class="candidate-details-grid">
+                    <!-- Left Column -->
+                    <div class="details-left">
+                        <!-- Contact Information -->
+                        <div class="detail-section">
+                            <h4>Contact Information</h4>
+                            <div class="contact-grid">
+                                <div class="contact-item" *ngIf="selectedCandidate.email">
+                                    <span class="label">Email</span>
+                                    <a [href]="'mailto:' + selectedCandidate.email">{{ selectedCandidate.email }}</a>
+                                </div>
+                                <div class="contact-item" *ngIf="selectedCandidate.phone">
+                                    <span class="label">Phone</span>
+                                    <a [href]="'tel:' + selectedCandidate.phone">{{ selectedCandidate.phone }}</a>
+                                </div>
+                                <div class="contact-item" *ngIf="selectedCandidate.linkedin">
+                                    <span class="label">LinkedIn</span>
+                                    <a [href]="selectedCandidate.linkedin" target="_blank">View Profile</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Skills -->
+                        <div class="detail-section" *ngIf="selectedCandidate.skills?.length">
+                            <h4>Skills ({{ selectedCandidate.skills.length }})</h4>
+                            <div class="skills-grid">
+                                <div class="skill-item" *ngFor="let skill of selectedCandidate.skills">
+                                    <span class="skill-name">{{ skill.name }}</span>
+                                    <span class="skill-proficiency" *ngIf="skill.proficiency">{{ skill.proficiency }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column - Resumes -->
+                    <div class="details-right">
+                        <div class="detail-section">
+                            <h4>Resumes ({{ selectedCandidate.resume_count }})</h4>
+                            <div class="resume-selector">
+                                <div
+                                    class="resume-card"
+                                    *ngFor="let resume of selectedCandidate.resumes"
+                                    [class.selected]="selectedResume?.id === resume.id"
+                                    (click)="selectResume(resume)"
+                                >
+                                    <div class="resume-card-header">
+                                        <span class="resume-icon">📄</span>
+                                        <div class="resume-card-info">
+                                            <span class="resume-card-name">{{ resume.file_name }}</span>
+                                            <span class="resume-card-date">Uploaded {{ formatDate(resume.created_at) }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="resume-card-actions">
+                                        <button class="btn-action" (click)="openResumeFile(resume); $event.stopPropagation()">🔗 Open</button>
+                                        <button class="btn-action" (click)="downloadResume(resume); $event.stopPropagation()">⬇️ Download</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Resume Details -->
+                        <div class="detail-section" *ngIf="selectedResume">
+                            <h4>Resume Details</h4>
+                            <div class="resume-details">
+                                <div class="resume-detail-row" *ngIf="selectedResume.professional_summary">
+                                    <span class="label">Summary</span>
+                                    <p>{{ selectedResume.professional_summary }}</p>
+                                </div>
+                                <div class="resume-detail-row" *ngIf="selectedResume.education?.length">
+                                    <span class="label">Education</span>
+                                    <div class="education-list">
+                                        <div class="edu-item" *ngFor="let edu of selectedResume.education">
+                                            <span class="degree">{{ edu.degree }}</span>
+                                            <span class="institution">{{ edu.institution }} <span *ngIf="edu.year">· {{ edu.year }}</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="resume-detail-row" *ngIf="selectedResume.work_history?.length">
+                                    <span class="label">Work History</span>
+                                    <div class="work-list">
+                                        <div class="work-item" *ngFor="let work of selectedResume.work_history.slice(0, 3)">
+                                            <span class="work-title">{{ work.title }}</span>
+                                            <span class="work-company">{{ work.company }}</span>
+                                            <span class="work-dates">{{ work.start }} - {{ work.end || 'Present' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" (click)="closeCandidateModal()">Close</button>
+                <button class="btn-primary" *ngIf="selectedResume" (click)="downloadResume(selectedResume)">
+                    ⬇️ Download Resume
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

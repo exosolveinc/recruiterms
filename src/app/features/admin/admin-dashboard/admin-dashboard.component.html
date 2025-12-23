@@ -401,13 +401,14 @@
 
   <!-- Job Detail Modal (existing) -->
   <div class="modal-overlay" *ngIf="showJobModal" (click)="closeJobModal()">
-    <div class="modal job-modal" (click)="$event.stopPropagation()">
+    <div class="modal job-modal job-modal-large" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>📋 Job Details</h3>
         <button class="close-btn" (click)="closeJobModal()">✕</button>
       </div>
-      
+
       <div class="modal-body" *ngIf="!loadingJobDetails && selectedJob">
+        <!-- Job Header -->
         <div class="job-header-section">
           <h2 class="job-title-large">{{ selectedJob.job_title }}</h2>
           <div class="job-company-large">
@@ -418,83 +419,192 @@
             <span *ngIf="selectedJob.location">📍 {{ selectedJob.location }}</span>
             <span *ngIf="selectedJob.work_type" class="work-badge">{{ selectedJob.work_type }}</span>
             <span *ngIf="selectedJob.employment_type">{{ selectedJob.employment_type }}</span>
+            <span *ngIf="selectedJob.experience_level" class="exp-badge">{{ selectedJob.experience_level }}</span>
           </div>
-        </div>
-
-        <div class="detail-section" *ngIf="selectedJob.match_score">
-          <h4>Match Analysis</h4>
-          <div class="match-display">
-            <div class="match-circle" [class]="getMatchClass(selectedJob.match_score)">
-              {{ selectedJob.match_score }}%
-            </div>
-            <div class="match-info">
-              <div class="skills-row" *ngIf="selectedJob.matching_skills?.length">
-                <span class="label">Matching:</span>
-                <span class="skill-tag success" *ngFor="let s of selectedJob.matching_skills">{{ s }}</span>
-              </div>
-              <div class="skills-row" *ngIf="selectedJob.missing_skills?.length">
-                <span class="label">Missing:</span>
-                <span class="skill-tag danger" *ngFor="let s of selectedJob.missing_skills">{{ s }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="detail-section" *ngIf="selectedJob.salary_min || selectedJob.salary_max">
-          <h4>Compensation</h4>
-          <div class="salary-display">
-            <span class="salary-amount">{{ formatSalary(selectedJob.salary_min, selectedJob.salary_max) }}</span>
-            <span class="salary-period" *ngIf="selectedJob.salary_period">/ {{ selectedJob.salary_period }}</span>
-            <span class="bonus-badge" *ngIf="selectedJob.has_bonus">+ Bonus</span>
-            <span class="equity-badge" *ngIf="selectedJob.has_equity">+ Equity</span>
-          </div>
-        </div>
-
-        <div class="detail-section" *ngIf="selectedJob.required_skills?.length">
-          <h4>Required Skills</h4>
-          <div class="skills-list">
-            <span 
-              class="skill-chip" 
-              *ngFor="let skill of selectedJob.required_skills"
-              [class.required]="skill.importance === 'Required'"
-            >
-              {{ skill.skill }}
-              <small>{{ skill.importance }}</small>
+          <div class="job-badges">
+            <span class="badge visa" *ngIf="selectedJob.visa_sponsorship">Visa Sponsorship</span>
+            <span class="badge easy-apply" *ngIf="selectedJob.easy_apply">Easy Apply</span>
+            <span class="badge deadline" *ngIf="selectedJob.application_deadline">
+              Deadline: {{ formatDate(selectedJob.application_deadline) }}
             </span>
           </div>
         </div>
 
-        <div class="detail-section" *ngIf="selectedJob.description_summary">
-          <h4>Job Description</h4>
-          <p class="description-text">{{ selectedJob.description_summary }}</p>
-        </div>
-
-        <div class="detail-section" *ngIf="selectedResume">
-          <h4>Resume Used</h4>
-          <div class="resume-preview">
-            <div class="resume-info">
-              <span class="resume-name">📄 {{ selectedResume.candidate_name || selectedResume.file_name }}</span>
-              <span class="resume-title" *ngIf="selectedResume.current_title">{{ selectedResume.current_title }}</span>
+        <!-- Two Column Layout -->
+        <div class="job-details-grid">
+          <!-- Left Column -->
+          <div class="job-details-left">
+            <!-- Match Analysis -->
+            <div class="detail-section" *ngIf="selectedJob.match_score">
+              <h4>Match Analysis</h4>
+              <div class="match-display">
+                <div class="match-circle" [class]="getMatchClass(selectedJob.match_score)">
+                  {{ selectedJob.match_score }}%
+                </div>
+                <div class="match-info">
+                  <div class="skills-row" *ngIf="selectedJob.matching_skills?.length">
+                    <span class="label">Matching:</span>
+                    <span class="skill-tag success" *ngFor="let s of selectedJob.matching_skills">{{ s }}</span>
+                  </div>
+                  <div class="skills-row" *ngIf="selectedJob.missing_skills?.length">
+                    <span class="label">Missing:</span>
+                    <span class="skill-tag danger" *ngFor="let s of selectedJob.missing_skills">{{ s }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="recommendations" *ngIf="selectedJob.recommendations?.length">
+                <h5>AI Recommendations</h5>
+                <ul>
+                  <li *ngFor="let rec of selectedJob.recommendations">{{ rec }}</li>
+                </ul>
+              </div>
             </div>
-            <div class="resume-skills" *ngIf="selectedResume.skills?.length">
-              <span class="skill-mini" *ngFor="let s of selectedResume.skills.slice(0, 5)">{{ s.name }}</span>
+
+            <!-- Compensation -->
+            <div class="detail-section" *ngIf="selectedJob.salary_min || selectedJob.salary_max || selectedJob.salary_raw">
+              <h4>Compensation</h4>
+              <div class="salary-display">
+                <span class="salary-amount">{{ formatSalary(selectedJob.salary_min, selectedJob.salary_max) }}</span>
+                <span class="salary-period" *ngIf="selectedJob.salary_period">/ {{ selectedJob.salary_period }}</span>
+              </div>
+              <div class="compensation-extras">
+                <span class="bonus-badge" *ngIf="selectedJob.has_bonus">+ Bonus</span>
+                <span class="equity-badge" *ngIf="selectedJob.has_equity">+ Equity</span>
+              </div>
+              <p class="salary-raw" *ngIf="selectedJob.salary_raw">{{ selectedJob.salary_raw }}</p>
+            </div>
+
+            <!-- Required Skills -->
+            <div class="detail-section" *ngIf="selectedJob.required_skills?.length">
+              <h4>Required Skills</h4>
+              <div class="skills-list">
+                <span
+                  class="skill-chip"
+                  *ngFor="let skill of selectedJob.required_skills"
+                  [class.required]="skill.importance === 'Required'"
+                  [class.preferred]="skill.importance === 'Preferred'"
+                >
+                  {{ skill.skill }}
+                  <small *ngIf="skill.importance">{{ skill.importance }}</small>
+                  <small *ngIf="skill.years"> · {{ skill.years }}+ yrs</small>
+                </span>
+              </div>
+            </div>
+
+            <!-- Education & Certifications -->
+            <div class="detail-section" *ngIf="selectedJob.required_education || selectedJob.required_certifications?.length">
+              <h4>Education & Certifications</h4>
+              <p *ngIf="selectedJob.required_education" class="education-text">
+                🎓 {{ selectedJob.required_education }}
+              </p>
+              <div class="certifications" *ngIf="selectedJob.required_certifications?.length">
+                <span class="cert-tag" *ngFor="let cert of selectedJob.required_certifications">
+                  📜 {{ cert }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Benefits -->
+            <div class="detail-section" *ngIf="selectedJob.benefits?.length">
+              <h4>Benefits</h4>
+              <div class="benefits-list">
+                <div class="benefit-category" *ngFor="let benefit of selectedJob.benefits">
+                  <span class="benefit-title">{{ benefit.category }}</span>
+                  <ul *ngIf="benefit.items?.length">
+                    <li *ngFor="let item of benefit.items">{{ item }}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resume Used -->
+            <div class="detail-section" *ngIf="selectedResume">
+              <h4>Resume Used</h4>
+              <div class="resume-preview">
+                <div class="resume-info">
+                  <span class="resume-name">📄 {{ selectedResume.candidate_name || selectedResume.file_name }}</span>
+                  <span class="resume-title" *ngIf="selectedResume.current_title">{{ selectedResume.current_title }}</span>
+                </div>
+                <div class="resume-skills" *ngIf="selectedResume.skills?.length">
+                  <span class="skill-mini" *ngFor="let s of selectedResume.skills.slice(0, 5)">{{ s.name }}</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="detail-section source-section">
-          <h4>Source</h4>
-          <div class="source-info">
-            <a *ngIf="selectedJob.source_url && !selectedJob.source_url.startsWith('manual')" 
-               [href]="selectedJob.source_url" 
-               target="_blank" 
-               class="source-link">
-              🔗 {{ selectedJob.source_url | slice:0:50 }}...
-            </a>
-            <span *ngIf="!selectedJob.source_url || selectedJob.source_url.startsWith('manual')" class="manual-entry">
-              Manually entered
-            </span>
-            <span class="created-date">Added: {{ formatDate(selectedJob.created_at) }}</span>
+          <!-- Right Column - Full Description -->
+          <div class="job-details-right">
+            <!-- Company Info -->
+            <div class="detail-section" *ngIf="selectedJob.company_industry || selectedJob.company_size || selectedJob.company_website">
+              <h4>Company Information</h4>
+              <div class="company-details">
+                <p *ngIf="selectedJob.company_industry">
+                  <strong>Industry:</strong> {{ selectedJob.company_industry }}
+                </p>
+                <p *ngIf="selectedJob.company_size">
+                  <strong>Size:</strong> {{ selectedJob.company_size }}
+                </p>
+                <a *ngIf="selectedJob.company_website" [href]="selectedJob.company_website" target="_blank" class="company-link">
+                  🌐 {{ selectedJob.company_website }}
+                </a>
+              </div>
+            </div>
+
+            <!-- Job Summary -->
+            <div class="detail-section" *ngIf="selectedJob.description_summary">
+              <h4>Summary</h4>
+              <p class="description-text">{{ selectedJob.description_summary }}</p>
+            </div>
+
+            <!-- Responsibilities -->
+            <div class="detail-section" *ngIf="selectedJob.responsibilities?.length">
+              <h4>Responsibilities</h4>
+              <ul class="responsibilities-list">
+                <li *ngFor="let resp of selectedJob.responsibilities">{{ resp }}</li>
+              </ul>
+            </div>
+
+            <!-- Qualifications -->
+            <div class="detail-section" *ngIf="selectedJob.qualifications?.length">
+              <h4>Qualifications</h4>
+              <ul class="qualifications-list">
+                <li *ngFor="let qual of selectedJob.qualifications">{{ qual }}</li>
+              </ul>
+            </div>
+
+            <!-- Full Description -->
+            <div class="detail-section" *ngIf="selectedJob.description_full">
+              <h4>Full Job Description</h4>
+              <div class="full-description">
+                <pre class="description-text-full">{{ selectedJob.description_full }}</pre>
+              </div>
+            </div>
+
+            <!-- Source -->
+            <div class="detail-section source-section">
+              <h4>Source</h4>
+              <div class="source-info">
+                <a *ngIf="selectedJob.source_url && !selectedJob.source_url.startsWith('manual')"
+                   [href]="selectedJob.source_url"
+                   target="_blank"
+                   class="source-link">
+                  🔗 View Original Posting
+                </a>
+                <a *ngIf="selectedJob.application_url"
+                   [href]="selectedJob.application_url"
+                   target="_blank"
+                   class="apply-link">
+                  📝 Apply Here
+                </a>
+                <span *ngIf="!selectedJob.source_url || selectedJob.source_url.startsWith('manual')" class="manual-entry">
+                  Manually entered
+                </span>
+                <div class="date-info">
+                  <span *ngIf="selectedJob.posted_date">Posted: {{ formatDate(selectedJob.posted_date) }}</span>
+                  <span>Added: {{ formatDate(selectedJob.created_at) }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -505,6 +615,14 @@
       </div>
 
       <div class="modal-footer">
+        <a
+          *ngIf="selectedJob?.application_url"
+          [href]="selectedJob!.application_url"
+          target="_blank"
+          class="btn-primary"
+        >
+          Apply Now
+        </a>
         <button class="btn-secondary" (click)="closeJobModal()">Close</button>
       </div>
     </div>

@@ -5,11 +5,13 @@ import { environment } from '../../../environments/environment';
 import {
   AdminEmployeeStats,
   AdminOrgDashboard,
+  Candidate,
   Job,
   JobApplication,
   Organization,
   Profile,
   Resume,
+  Skill,
   UserApplicationView,
   UserDashboard,
   UserRole
@@ -261,6 +263,294 @@ export class SupabaseService {
       .from('resumes')
       .update({ is_primary: true })
       .eq('id', id);
+  }
+
+  // ============================================================================
+  // CANDIDATES (Deduplicated from Resumes)
+  // ============================================================================
+
+  /**
+   * Get all candidates with deduplication logic.
+   * Candidates are considered the same if they have the same name AND either the same email or phone.
+   */
+  async getCandidates(): Promise<Candidate[]> {
+    const resumes = await this.getResumes();
+
+    // Group resumes by candidate using deduplication logic
+    const candidateMap = new Map<string, Candidate>();
+
+    for (const resume of resumes) {
+      const name = resume.candidate_name?.trim().toLowerCase() || '';
+      const email = resume.candidate_email?.trim().toLowerCase() || '';
+      const phone = this.normalizePhone(resume.candidate_phone);
+
+      if (!name) continue; // Skip resumes without a name
+
+      // Find existing candidate by name + (email OR phone)
+      let existingCandidate: Candidate | undefined;
+      let matchKey: string | undefined;
+
+      for (const [key, candidate] of candidateMap.entries()) {
+        const candidateName = candidate.name.toLowerCase();
+        const candidateEmail = candidate.email?.toLowerCase() || '';
+        const candidatePhone = this.normalizePhone(candidate.phone);
+
+        if (candidateName === name) {
+          // Same name - check if email or phone matches
+          if ((email && candidateEmail && email === candidateEmail) ||
+              (phone && candidatePhone && phone === candidatePhone)) {
+            existingCandidate = candidate;
+            matchKey = key;
+            break;
+          }
+        }
+      }
+
+      if (existingCandidate && matchKey) {
+        // Add resume to existing candidate
+        existingCandidate.resumes.push(resume);
+        existingCandidate.resume_count++;
+
+        // Update with latest info if available
+        if (resume.candidate_email && !existingCandidate.email) {
+          existingCandidate.email = resume.candidate_email;
+        }
+        if (resume.candidate_phone && !existingCandidate.phone) {
+          existingCandidate.phone = resume.candidate_phone;
+        }
+        if (resume.candidate_location && !existingCandidate.location) {
+          existingCandidate.location = resume.candidate_location;
+        }
+        if (resume.candidate_linkedin && !existingCandidate.linkedin) {
+          existingCandidate.linkedin = resume.candidate_linkedin;
+        }
+        if (resume.current_title && !existingCandidate.current_title) {
+          existingCandidate.current_title = resume.current_title;
+        }
+        if (resume.current_company && !existingCandidate.current_company) {
+          existingCandidate.current_company = resume.current_company;
+        }
+        if (resume.years_of_experience && (!existingCandidate.years_of_experience || resume.years_of_experience > existingCandidate.years_of_experience)) {
+          existingCandidate.years_of_experience = resume.years_of_experience;
+        }
+        if (resume.experience_level && !existingCandidate.experience_level) {
+          existingCandidate.experience_level = resume.experience_level;
+        }
+
+        // Merge skills
+        if (resume.skills?.length) {
+          const existingSkillNames = new Set(existingCandidate.skills.map(s => s.name.toLowerCase()));
+          for (const skill of resume.skills) {
+            if (!existingSkillNames.has(skill.name.toLowerCase())) {
+              existingCandidate.skills.push(skill);
+              existingSkillNames.add(skill.name.toLowerCase());
+            }
+          }
+        }
+
+        // Update timestamps
+        if (new Date(resume.updated_at) > new Date(existingCandidate.last_updated)) {
+          existingCandidate.last_updated = resume.updated_at;
+        }
+        if (new Date(resume.created_at) < new Date(existingCandidate.created_at)) {
+          existingCandidate.created_at = resume.created_at;
+        }
+      } else {
+        // Create new candidate
+        const candidateId = this.generateCandidateId(resume);
+        const newCandidate: Candidate = {
+          id: candidateId,
+          name: resume.candidate_name || 'Unknown',
+          email: resume.candidate_email,
+          phone: resume.candidate_phone,
+          location: resume.candidate_location,
+          linkedin: resume.candidate_linkedin,
+          current_title: resume.current_title,
+          current_company: resume.current_company,
+          years_of_experience: resume.years_of_experience,
+          experience_level: resume.experience_level,
+          skills: resume.skills ? [...resume.skills] : [],
+          resumes: [resume],
+          resume_count: 1,
+          last_updated: resume.updated_at,
+          created_at: resume.created_at
+        };
+        candidateMap.set(candidateId, newCandidate);
+      }
+    }
+
+    // Convert to array and sort by last_updated
+    return Array.from(candidateMap.values())
+      .sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+  }
+
+  /**
+   * Normalize phone number for comparison
+   */
+  private normalizePhone(phone: string | null): string {
+    if (!phone) return '';
+    return phone.replace(/[\s\-\(\)\+\.]/g, '');
+  }
+
+  /**
+   * Generate a unique ID for a candidate based on resume data
+   */
+  private generateCandidateId(resume: Resume): string {
+    const name = resume.candidate_name?.trim().toLowerCase() || '';
+    const email = resume.candidate_email?.trim().toLowerCase() || '';
+    const phone = this.normalizePhone(resume.candidate_phone);
+
+    // Create a hash-like ID from the identifying info
+    const identifier = `${name}-${email || phone || resume.id}`;
+    return btoa(identifier).replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+  }
+
+  /**
+   * Get a specific candidate by ID
+   */
+  async getCandidate(candidateId: string): Promise<Candidate | null> {
+    const candidates = await this.getCandidates();
+    return candidates.find(c => c.id === candidateId) || null;
+  }
+
+  /**
+   * Get all resumes for organization (admin view)
+   */
+  async getAllResumesForOrg(): Promise<Resume[]> {
+    const profile = this._profile.value;
+    if (!profile?.organization_id) return [];
+
+    const { data, error } = await this.supabase
+      .from('resumes')
+      .select('*')
+      .eq('organization_id', profile.organization_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data as Resume[];
+  }
+
+  /**
+   * Get all candidates for the organization (admin view)
+   */
+  async getAllCandidatesForOrg(): Promise<Candidate[]> {
+    const profile = this._profile.value;
+    if (!profile?.organization_id) return [];
+
+    const { data: resumes, error } = await this.supabase
+      .from('resumes')
+      .select('*')
+      .eq('organization_id', profile.organization_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Apply same deduplication logic
+    return this.deduplicateResumesToCandidates(resumes as Resume[]);
+  }
+
+  /**
+   * Shared deduplication logic
+   */
+  private deduplicateResumesToCandidates(resumes: Resume[]): Candidate[] {
+    const candidateMap = new Map<string, Candidate>();
+
+    for (const resume of resumes) {
+      const name = resume.candidate_name?.trim().toLowerCase() || '';
+      const email = resume.candidate_email?.trim().toLowerCase() || '';
+      const phone = this.normalizePhone(resume.candidate_phone);
+
+      if (!name) continue;
+
+      let existingCandidate: Candidate | undefined;
+      let matchKey: string | undefined;
+
+      for (const [key, candidate] of candidateMap.entries()) {
+        const candidateName = candidate.name.toLowerCase();
+        const candidateEmail = candidate.email?.toLowerCase() || '';
+        const candidatePhone = this.normalizePhone(candidate.phone);
+
+        if (candidateName === name) {
+          if ((email && candidateEmail && email === candidateEmail) ||
+              (phone && candidatePhone && phone === candidatePhone)) {
+            existingCandidate = candidate;
+            matchKey = key;
+            break;
+          }
+        }
+      }
+
+      if (existingCandidate && matchKey) {
+        existingCandidate.resumes.push(resume);
+        existingCandidate.resume_count++;
+
+        // Update with latest info
+        if (resume.candidate_email && !existingCandidate.email) {
+          existingCandidate.email = resume.candidate_email;
+        }
+        if (resume.candidate_phone && !existingCandidate.phone) {
+          existingCandidate.phone = resume.candidate_phone;
+        }
+        if (resume.candidate_location && !existingCandidate.location) {
+          existingCandidate.location = resume.candidate_location;
+        }
+        if (resume.candidate_linkedin && !existingCandidate.linkedin) {
+          existingCandidate.linkedin = resume.candidate_linkedin;
+        }
+        if (resume.current_title && !existingCandidate.current_title) {
+          existingCandidate.current_title = resume.current_title;
+        }
+        if (resume.current_company && !existingCandidate.current_company) {
+          existingCandidate.current_company = resume.current_company;
+        }
+        if (resume.years_of_experience && (!existingCandidate.years_of_experience || resume.years_of_experience > existingCandidate.years_of_experience)) {
+          existingCandidate.years_of_experience = resume.years_of_experience;
+        }
+        if (resume.experience_level && !existingCandidate.experience_level) {
+          existingCandidate.experience_level = resume.experience_level;
+        }
+
+        if (resume.skills?.length) {
+          const existingSkillNames = new Set(existingCandidate.skills.map(s => s.name.toLowerCase()));
+          for (const skill of resume.skills) {
+            if (!existingSkillNames.has(skill.name.toLowerCase())) {
+              existingCandidate.skills.push(skill);
+              existingSkillNames.add(skill.name.toLowerCase());
+            }
+          }
+        }
+
+        if (new Date(resume.updated_at) > new Date(existingCandidate.last_updated)) {
+          existingCandidate.last_updated = resume.updated_at;
+        }
+        if (new Date(resume.created_at) < new Date(existingCandidate.created_at)) {
+          existingCandidate.created_at = resume.created_at;
+        }
+      } else {
+        const candidateId = this.generateCandidateId(resume);
+        const newCandidate: Candidate = {
+          id: candidateId,
+          name: resume.candidate_name || 'Unknown',
+          email: resume.candidate_email,
+          phone: resume.candidate_phone,
+          location: resume.candidate_location,
+          linkedin: resume.candidate_linkedin,
+          current_title: resume.current_title,
+          current_company: resume.current_company,
+          years_of_experience: resume.years_of_experience,
+          experience_level: resume.experience_level,
+          skills: resume.skills ? [...resume.skills] : [],
+          resumes: [resume],
+          resume_count: 1,
+          last_updated: resume.updated_at,
+          created_at: resume.created_at
+        };
+        candidateMap.set(candidateId, newCandidate);
+      }
+    }
+
+    return Array.from(candidateMap.values())
+      .sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
   }
 
   // ============================================================================

@@ -1,0 +1,174 @@
+<app-sidebar activePage="job-feed"></app-sidebar>
+<div class="job-feed-page">
+  <main class="main-content">
+    <!-- Search Section -->
+    <div class="search-section">
+      <h1>Find Your Next Opportunity</h1>
+      <p class="subtitle">Search thousands of jobs from multiple sources</p>
+
+      <div class="search-box">
+        <div class="search-inputs">
+          <div class="input-group">
+            <label>Job Title or Keywords</label>
+            <input
+              type="text"
+              [(ngModel)]="searchQuery"
+              placeholder="e.g. Software Engineer, Data Scientist"
+              (keyup.enter)="searchJobs()"
+            />
+          </div>
+          <div class="input-group">
+            <label>Location</label>
+            <input
+              type="text"
+              [(ngModel)]="searchLocation"
+              placeholder="e.g. New York, Remote"
+              (keyup.enter)="searchJobs()"
+            />
+          </div>
+          <div class="input-group source-select">
+            <label>Source</label>
+            <select [(ngModel)]="selectedSource">
+              <option value="adzuna">Adzuna</option>
+              <option value="rapidapi">JSearch (RapidAPI)</option>
+              <option value="all">All Sources</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-search" (click)="searchJobs()" [disabled]="searching || !searchQuery.trim()">
+          <span *ngIf="!searching">Search Jobs</span>
+          <span *ngIf="searching" class="spinner"></span>
+        </button>
+      </div>
+
+      <!-- Popular Searches -->
+      <div class="popular-searches" *ngIf="jobs.length === 0 && !searching">
+        <span class="label">Popular:</span>
+        <button
+          class="quick-search"
+          *ngFor="let search of popularSearches"
+          (click)="quickSearch(search)"
+        >
+          {{ search }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section" *ngIf="jobs.length > 0 || searching">
+      <!-- Stats Bar -->
+      <div class="stats-bar" *ngIf="jobs.length > 0">
+        <div class="stat">
+          <span class="stat-value">{{ stats.totalFound | number }}</span>
+          <span class="stat-label">Jobs Found</span>
+        </div>
+        <div class="stat" *ngIf="stats.averageSalary > 0">
+          <span class="stat-value">${{ stats.averageSalary | number }}</span>
+          <span class="stat-label">Avg Salary</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ currentPage }}/{{ totalPages }}</span>
+          <span class="stat-label">Page</span>
+        </div>
+      </div>
+
+      <!-- Job List -->
+      <div class="job-list">
+        <div
+          class="job-card"
+          *ngFor="let job of jobs"
+          [class.selected]="selectedJob?.id === job.id"
+          (click)="selectJob(job)"
+        >
+          <div class="job-card-header">
+            <div class="job-main">
+              <h3 class="job-title">{{ job.title }}</h3>
+              <p class="job-company">{{ job.company }}</p>
+            </div>
+            <span class="source-badge" [class]="job.source">{{ job.source }}</span>
+          </div>
+
+          <div class="job-meta">
+            <span class="meta-item location">📍 {{ job.location }}</span>
+            <span class="meta-item salary" *ngIf="job.salary_text">💰 {{ job.salary_text }}</span>
+            <span class="meta-item type" *ngIf="job.employment_type">💼 {{ job.employment_type }}</span>
+            <span class="meta-item date">🕐 {{ formatDate(job.posted_date) }}</span>
+          </div>
+
+          <p class="job-description">{{ truncateDescription(job.description, 150) }}</p>
+
+          <div class="job-card-footer">
+            <button class="btn-apply" (click)="applyToJob(job); $event.stopPropagation()">
+              Apply Now
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading More -->
+        <div class="loading-more" *ngIf="loading">
+          <div class="spinner"></div>
+          <span>Loading more jobs...</span>
+        </div>
+
+        <!-- Load More Button -->
+        <button
+          class="btn-load-more"
+          *ngIf="currentPage < totalPages && !loading"
+          (click)="loadMore()"
+        >
+          Load More Jobs
+        </button>
+      </div>
+
+      <!-- Searching State -->
+      <div class="searching-state" *ngIf="searching">
+        <div class="spinner-lg"></div>
+        <p>Searching for jobs...</p>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="jobs.length === 0 && !searching && searchQuery">
+      <div class="empty-icon">🔍</div>
+      <h3>No jobs found</h3>
+      <p>Try adjusting your search terms or location</p>
+    </div>
+  </main>
+
+  <!-- Job Preview Modal -->
+  <div class="modal-overlay" *ngIf="selectedJob" (click)="closeJobPreview()">
+    <div class="modal job-preview-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3>{{ selectedJob.title }}</h3>
+          <span class="source-badge" [class]="selectedJob.source">{{ selectedJob.source }}</span>
+        </div>
+        <button class="close-btn" (click)="closeJobPreview()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="job-preview-header">
+          <h2>{{ selectedJob.company }}</h2>
+          <div class="job-preview-meta">
+            <span>📍 {{ selectedJob.location }}</span>
+            <span *ngIf="selectedJob.salary_text">💰 {{ selectedJob.salary_text }}</span>
+            <span *ngIf="selectedJob.employment_type">💼 {{ selectedJob.employment_type }}</span>
+            <span>🕐 Posted {{ formatDate(selectedJob.posted_date) }}</span>
+          </div>
+        </div>
+
+        <div class="job-preview-description">
+          <h4>Description</h4>
+          <div class="description-content" [innerHTML]="selectedJob.description"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeJobPreview()">Close</button>
+        <button class="btn-primary" (click)="applyToJob(selectedJob)">
+          Apply on {{ selectedJob.source === 'adzuna' ? 'Adzuna' : 'Job Site' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

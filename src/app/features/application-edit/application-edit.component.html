@@ -1,0 +1,504 @@
+<div class="edit-container">
+  <!-- Header -->
+  <div class="edit-header">
+    <button class="back-btn" (click)="cancel()">← Back to Dashboard</button>
+    <h1>Edit Application</h1>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading application...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-state" *ngIf="error && !loading">
+    <div class="error-icon">⚠️</div>
+    <p>{{ error }}</p>
+    <button class="btn-primary" (click)="cancel()">Return to Dashboard</button>
+  </div>
+
+  <!-- Edit Form -->
+  <div class="edit-form" *ngIf="!loading && !error && application">
+    <!-- Company & Job Info Section -->
+    <div class="form-section">
+      <h2>🏢 Company & Job Information</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="companyName">Company Name</label>
+          <input
+            type="text"
+            id="companyName"
+            [(ngModel)]="companyName"
+            placeholder="e.g., Google"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="jobTitle">Job Title</label>
+          <input
+            type="text"
+            id="jobTitle"
+            [(ngModel)]="jobTitle"
+            placeholder="e.g., Senior Software Engineer"
+          />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="platform">Platform</label>
+          <input
+            type="text"
+            id="platform"
+            [(ngModel)]="platform"
+            list="platformOptions"
+            placeholder="Select or type platform"
+          />
+          <datalist id="platformOptions">
+            <option value="LinkedIn"></option>
+            <option value="Indeed"></option>
+            <option value="Glassdoor"></option>
+            <option value="Dice"></option>
+            <option value="Company Website"></option>
+            <option value="Referral"></option>
+            <option value="AngelList"></option>
+            <option value="ZipRecruiter"></option>
+          </datalist>
+        </div>
+
+        <div class="form-group">
+          <label for="experienceLevel">Experience Level</label>
+          <select id="experienceLevel" [(ngModel)]="experienceLevel">
+            <option value="">Select level</option>
+            <option value="Entry Level">Entry Level</option>
+            <option value="Mid Level">Mid Level</option>
+            <option value="Senior">Senior</option>
+            <option value="Lead">Lead</option>
+            <option value="Principal">Principal</option>
+            <option value="Director">Director</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="location">Location</label>
+          <input
+            type="text"
+            id="location"
+            [(ngModel)]="location"
+            placeholder="e.g., San Francisco, CA"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="workType">Work Type</label>
+          <select id="workType" [(ngModel)]="workType">
+            <option value="">Select work type</option>
+            <option value="Remote">Remote</option>
+            <option value="Hybrid">Hybrid</option>
+            <option value="Onsite">Onsite</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="salaryMin">Minimum Salary</label>
+          <input
+            type="number"
+            id="salaryMin"
+            [(ngModel)]="salaryMin"
+            placeholder="e.g., 120000"
+            step="1000"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="salaryMax">Maximum Salary</label>
+          <input
+            type="number"
+            id="salaryMax"
+            [(ngModel)]="salaryMax"
+            placeholder="e.g., 180000"
+            step="1000"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Skills Section -->
+    <div class="form-section">
+      <h2>🎯 Required Skills</h2>
+
+      <div class="skills-list" *ngIf="requiredSkills.length > 0">
+        <div class="skill-item" *ngFor="let skill of requiredSkills; let i = index">
+          <div class="skill-info">
+            <span class="skill-name">{{ skill.skill }}</span>
+            <span class="skill-meta" *ngIf="skill.importance">{{ skill.importance }}</span>
+            <span class="skill-meta" *ngIf="skill.years">{{ skill.years }} years</span>
+          </div>
+          <button class="remove-btn" (click)="removeSkill(i)">✕</button>
+        </div>
+      </div>
+
+      <div class="add-skill-form">
+        <div class="form-row">
+          <div class="form-group">
+            <input
+              type="text"
+              [(ngModel)]="newSkill"
+              placeholder="Skill name (e.g., Python, React)"
+              (keyup.enter)="addSkill()"
+            />
+          </div>
+          <div class="form-group">
+            <select [(ngModel)]="newSkillImportance">
+              <option value="required">Required</option>
+              <option value="preferred">Preferred</option>
+              <option value="nice-to-have">Nice to Have</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <input
+              type="number"
+              [(ngModel)]="newSkillYears"
+              placeholder="Years"
+              min="0"
+              max="30"
+            />
+          </div>
+          <button class="btn-add" (click)="addSkill()">+ Add Skill</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Application Status Section -->
+    <div class="form-section">
+      <h2>📊 Application Status</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" [(ngModel)]="status">
+            <option value="extracted">Extracted</option>
+            <option value="applied">Applied</option>
+            <option value="screening">Screening</option>
+            <option value="interviewing">Interviewing</option>
+            <option value="offer">Offer</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+            <option value="withdrawn">Withdrawn</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="appliedAt">Applied Date</label>
+          <input
+            type="date"
+            id="appliedAt"
+            [(ngModel)]="appliedAt"
+          />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="nextStep">Next Step</label>
+          <input
+            type="text"
+            id="nextStep"
+            [(ngModel)]="nextStep"
+            placeholder="e.g., Technical Interview, Follow up"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="nextStepDate">Next Step Date</label>
+          <input
+            type="date"
+            id="nextStepDate"
+            [(ngModel)]="nextStepDate"
+          />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="offeredSalary">Offered Salary</label>
+          <input
+            type="number"
+            id="offeredSalary"
+            [(ngModel)]="offeredSalary"
+            placeholder="e.g., 150000"
+            step="1000"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="outcome">Outcome</label>
+          <input
+            type="text"
+            id="outcome"
+            [(ngModel)]="outcome"
+            placeholder="e.g., Accepted offer, Position filled"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Interviews Section -->
+    <div class="form-section">
+      <h2>🗓️ Interviews</h2>
+
+      <div class="interviews-list" *ngIf="interviews.length > 0">
+        <div class="interview-item" *ngFor="let interview of interviews; let i = index">
+          <div class="interview-header">
+            <h4>Interview {{ i + 1 }}</h4>
+            <button class="remove-btn" (click)="removeInterview(i)">✕</button>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Type</label>
+              <select [(ngModel)]="interview.type">
+                <option value="phone">Phone Screen</option>
+                <option value="video">Video Call</option>
+                <option value="onsite">Onsite</option>
+                <option value="technical">Technical</option>
+                <option value="behavioral">Behavioral</option>
+                <option value="final">Final Round</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Scheduled Date/Time</label>
+              <input
+                type="datetime-local"
+                [(ngModel)]="interview.scheduled_at"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Duration (minutes)</label>
+              <input
+                type="number"
+                [(ngModel)]="interview.duration_minutes"
+                placeholder="60"
+                min="15"
+                step="15"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Interviewer</label>
+              <input
+                type="text"
+                [(ngModel)]="interview.interviewer"
+                placeholder="e.g., John Doe, Engineering Manager"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group full-width">
+              <label>Location/Link</label>
+              <input
+                type="text"
+                [(ngModel)]="interview.location"
+                placeholder="e.g., Zoom link, Office address"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group full-width">
+              <label>Notes</label>
+              <textarea
+                [(ngModel)]="interview.notes"
+                rows="3"
+                placeholder="Interview notes, topics discussed, etc."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Outcome</label>
+              <select [(ngModel)]="interview.outcome">
+                <option value="">Pending</option>
+                <option value="passed">Passed</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="rescheduled">Rescheduled</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-add-interview" (click)="addInterview()">+ Add Interview</button>
+    </div>
+
+    <!-- Notes Section -->
+    <div class="form-section">
+      <h2>📝 Notes</h2>
+
+      <div class="form-group full-width">
+        <textarea
+          [(ngModel)]="notes"
+          rows="6"
+          placeholder="Add any additional notes about this application..."
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Resume Management Section -->
+    <div class="form-section">
+      <h2>📄 Resume Management</h2>
+
+      <div class="resume-section-content">
+        <!-- Current Resume Display -->
+        <div class="current-resume" *ngIf="resume">
+          <div class="resume-card">
+            <div class="resume-header">
+              <div class="resume-info">
+                <span class="resume-name">{{ getResumeName() }}</span>
+                <span class="resume-file">{{ resume.file_name }}</span>
+              </div>
+              <div class="resume-actions-row">
+                <button class="btn-icon" (click)="downloadResume()" title="Download">
+                  ⬇️
+                </button>
+                <button class="btn-icon danger" (click)="deleteCurrentResume()" title="Delete">
+                  🗑️
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- No Resume State -->
+        <div class="no-resume-state" *ngIf="!resume">
+          <p>No resume attached to this application</p>
+        </div>
+
+        <!-- Resume Actions -->
+        <div class="resume-actions">
+          <!-- Change Resume Dropdown -->
+          <div class="form-group" *ngIf="allResumes.length > 0">
+            <label>Change to Existing Resume</label>
+            <select (change)="changeResume($any($event.target).value)" [disabled]="uploadingResume">
+              <option value="">-- Select Resume --</option>
+              <option *ngFor="let r of allResumes" [value]="r.id" [selected]="r.id === resume?.id">
+                {{ r.candidate_name || r.file_name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Upload New Resume -->
+          <div class="upload-resume-section">
+            <label class="upload-resume-btn" [class.uploading]="uploadingResume">
+              <input
+                type="file"
+                accept=".pdf,.docx"
+                (change)="onResumeFileSelected($event)"
+                hidden
+                [disabled]="uploadingResume"
+              />
+              <span *ngIf="!uploadingResume">📤 Upload New Resume</span>
+              <span *ngIf="uploadingResume">
+                <span class="spinner-small"></span>
+                Uploading...
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Match Analyzer Section -->
+    <div class="form-section analyzer-section">
+      <h2>🎯 AI Match Analyzer</h2>
+
+      <div class="analyzer-content">
+        <p class="analyzer-description">
+          Analyze how well the selected resume matches this job. The AI will provide a match score and suggestions for improvements.
+        </p>
+
+        <button
+          class="btn-analyze"
+          (click)="runAnalyzer()"
+          [disabled]="analyzing || !resume"
+        >
+          <span *ngIf="!analyzing">🔍 Run Match Analysis</span>
+          <span *ngIf="analyzing">
+            <span class="spinner-small"></span>
+            Analyzing...
+          </span>
+        </button>
+
+        <!-- Match Results -->
+        <div class="match-results" *ngIf="matchResult">
+          <div class="match-score-container">
+            <div class="match-score-circle" [class]="getMatchClass(matchResult.score)">
+              <span class="score-value">{{ matchResult.score }}%</span>
+              <span class="score-label">Match</span>
+            </div>
+          </div>
+
+          <!-- Matching Skills -->
+          <div class="match-section" *ngIf="matchResult.matching.length > 0">
+            <h4>✓ Matching Skills</h4>
+            <div class="skill-tags success">
+              <span class="skill-tag" *ngFor="let skill of matchResult.matching">
+                {{ skill }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Missing Skills -->
+          <div class="match-section" *ngIf="matchResult.missing.length > 0">
+            <h4>✗ Missing Skills</h4>
+            <div class="skill-tags danger">
+              <span class="skill-tag" *ngFor="let skill of matchResult.missing">
+                {{ skill }}
+              </span>
+            </div>
+          </div>
+
+          <!-- AI Suggestions -->
+          <div class="match-section suggestions-section" *ngIf="matchResult.suggestions.length > 0">
+            <h4>💡 AI Suggestions - Where to Add What</h4>
+            <div class="suggestions-list">
+              <div class="suggestion-item" *ngFor="let suggestion of matchResult.suggestions">
+                <span class="suggestion-icon">→</span>
+                <span class="suggestion-text">{{ suggestion }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="analyzer-hint" *ngIf="!resume">
+          <p>⚠️ Please upload or select a resume to run the match analysis</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="form-actions">
+      <button class="btn-cancel" (click)="cancel()" [disabled]="saving">Cancel</button>
+      <button class="btn-save" (click)="saveChanges()" [disabled]="saving">
+        <span *ngIf="!saving">Save Changes</span>
+        <span *ngIf="saving">
+          <span class="spinner-small"></span>
+          Saving...
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
