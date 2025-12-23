@@ -6,7 +6,7 @@
 export type UserRole = 'user' | 'admin';
 export type ExtractionStatus = 'pending' | 'processing' | 'completed' | 'failed';
 export type JobStatus = 'new' | 'reviewing' | 'applied' | 'interviewing' | 'offered' | 'rejected' | 'archived';
-export type ApplicationStatus = 'applied' | 'screening' | 'interviewing' | 'offer' | 'accepted' | 'rejected' | 'withdrawn';
+export type ApplicationStatus = 'extracted' | 'applied' | 'screening' | 'interviewing' | 'offer' | 'accepted' | 'rejected' | 'withdrawn';
 
 // Organization
 export interface Organization {
@@ -183,9 +183,11 @@ export interface Job {
 
 // Interview
 export interface Interview {
-  date: string;
   type: string;
-  with?: string;
+  scheduled_at?: string;
+  duration_minutes?: number;
+  location?: string;
+  interviewer?: string;
   notes?: string;
   outcome?: string;
 }
@@ -281,6 +283,25 @@ export interface AdminEmployeeStats {
   avg_match_score: number | null;
 }
 
+// Candidate (aggregated from resumes)
+export interface Candidate {
+  id: string; // Generated unique ID for the candidate
+  name: string;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  linkedin: string | null;
+  current_title: string | null;
+  current_company: string | null;
+  years_of_experience: number | null;
+  experience_level: string | null;
+  skills: Skill[];
+  resumes: Resume[]; // All resumes associated with this candidate
+  resume_count: number;
+  last_updated: string;
+  created_at: string;
+}
+
 export interface UserApplicationView {
   id: string;
   user_id: string;
@@ -296,6 +317,9 @@ export interface UserApplicationView {
   match_score: number | null;
   experience_level: string | null;
   required_skills: RequiredSkill[] | null;
+  matching_skills: string[] | null;
+  missing_skills: string[] | null;
+  source_url: string | null;
   status: ApplicationStatus;
   applied_at: string;
   next_step: string | null;

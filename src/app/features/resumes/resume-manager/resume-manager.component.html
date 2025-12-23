@@ -1,19 +1,5 @@
+<app-sidebar activePage="resumes"></app-sidebar>
 <div class="resume-manager">
-  <!-- Header -->
-  <header class="header">
-    <div class="header-left">
-      <button class="btn-back" (click)="goToDashboard()">← Back</button>
-      <div class="logo">
-        <span class="logo-icon">📄</span>
-        <span class="logo-text">Resume Manager</span>
-      </div>
-    </div>
-    <div class="header-right">
-      <span class="user-name">{{ profile?.full_name || profile?.email }}</span>
-      <button class="btn-logout" (click)="logout()">Logout</button>
-    </div>
-  </header>
-
   <!-- Loading -->
   <div class="loading-screen" *ngIf="loading">
     <div class="spinner"></div>

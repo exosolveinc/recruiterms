@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Profile, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
 @Component({
   selector: 'app-resume-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './resume-manager.component.html',
   styleUrls: ['./resume-manager.component.scss']
 })

@@ -1,0 +1,21 @@
+<nav class="sidebar">
+  <div class="sidebar-top">
+    <div class="logo">R</div>
+    <div class="nav-items">
+      <button
+        *ngFor="let item of navItems"
+        class="nav-item"
+        [class.active]="activePage === item.id"
+        (click)="navigate(item.route)"
+        [title]="item.label"
+      >
+        <span class="nav-icon">{{ item.icon }}</span>
+      </button>
+    </div>
+  </div>
+  <div class="sidebar-bottom">
+    <button class="nav-item logout" (click)="logout()" title="Logout">
+      <span class="nav-icon">🚪</span>
+    </button>
+  </div>
+</nav>

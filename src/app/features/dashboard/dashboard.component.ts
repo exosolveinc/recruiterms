@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Job, Profile, Resume, UserApplicationView } from '../../core/models';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -19,7 +20,6 @@ export class DashboardComponent implements OnInit {
   stats = {
     applied: 0,
     interviews: 0,
-    offers: 0,
     interviewRate: 0
   };
 
@@ -54,6 +54,9 @@ export class DashboardComponent implements OnInit {
   applications: UserApplicationView[] = [];
   searchTerm = '';
   loading = true;
+
+  // Expandable row
+  expandedAppId: string | null = null;
 
   constructor(
     private supabase: SupabaseService,
@@ -105,9 +108,6 @@ export class DashboardComponent implements OnInit {
     this.stats.interviews = this.applications.filter(a =>
       ['interviewing', 'screening', 'offer', 'accepted'].includes(a.status)
     ).length;
-    this.stats.offers = this.applications.filter(a =>
-      ['offer', 'accepted'].includes(a.status)
-    ).length;
     this.stats.interviewRate = this.stats.applied > 0
       ? Math.round((this.stats.interviews / this.stats.applied) * 100)
       : 0;
@@ -149,9 +149,7 @@ export class DashboardComponent implements OnInit {
 
     try {
       // Step 1: Upload file to storage
-      console.log('Uploading file to storage...');
       const { url } = await this.supabase.uploadResumeFile(file);
-      console.log('File uploaded:', url);
 
       // Step 2: Create resume record with processing status
       const resume = await this.supabase.createResume({
@@ -165,9 +163,7 @@ export class DashboardComponent implements OnInit {
       let extractedData: Partial<Resume>;
 
       try {
-        console.log('Calling AI to extract resume...');
         extractedData = await this.supabase.extractResumeFromUrl(url, file.name);
-        console.log('AI Resume Extraction Result:', extractedData);
         extractedData.extraction_status = 'completed';
       } catch (aiError: any) {
         console.error('AI resume extraction failed:', aiError);
@@ -185,7 +181,6 @@ export class DashboardComponent implements OnInit {
       this.resumes.unshift(updatedResume);
       this.selectedResumeId = updatedResume.id;
 
-      console.log('Resume uploaded and processed:', updatedResume);
 
     } catch (err: any) {
       console.error('Resume upload error:', err);
@@ -351,7 +346,7 @@ export class DashboardComponent implements OnInit {
       await this.supabase.createApplication({
         job_id: job.id,
         resume_id: this.selectedResumeId,
-        status: 'applied',
+        status: 'extracted',
         application_method: 'Direct'
       });
 
@@ -411,6 +406,15 @@ export class DashboardComponent implements OnInit {
 
   canProgress(app: UserApplicationView): boolean {
     return ['applied', 'screening', 'interviewing'].includes(app.status);
+  }
+
+  toggleExpand(appId: string, event: Event) {
+    event.stopPropagation();
+    this.expandedAppId = this.expandedAppId === appId ? null : appId;
+  }
+
+  isExpanded(appId: string): boolean {
+    return this.expandedAppId === appId;
   }
 
   progressApplication(app: UserApplicationView) {
@@ -537,8 +541,20 @@ export class DashboardComponent implements OnInit {
     this.router.navigate(['/resumes']);
   }
 
+  goToCandidates() {
+    this.router.navigate(['/candidates']);
+  }
+
+  goToJobFeed() {
+    this.router.navigate(['/job-feed']);
+  }
+
   goToAnalyzer() {
     this.router.navigate(['/analyzer']);
+  }
+
+  editApplication(app: UserApplicationView) {
+    this.router.navigate(['/application', app.id]);
   }
 
   // Delete selected resume

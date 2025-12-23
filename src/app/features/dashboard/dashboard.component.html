@@ -1,19 +1,5 @@
+<app-sidebar activePage="dashboard"></app-sidebar>
 <div class="dashboard">
-    <!-- Header -->
-    <header class="header">
-        <div class="logo">
-            <span class="logo-icon">💼</span>
-            <span class="logo-text">Job Tracker</span>
-        </div>
-        <div class="header-right">
-            <button class="btn-nav" (click)="goToResumes()">📄 Resumes</button>
-            <button class="btn-nav" (click)="goToAnalyzer()">🎯 Analyzer</button>
-            <span class="user-email">{{ profile?.full_name || profile?.id }}</span>
-            <button class="btn-logout" (click)="logout()">Logout</button>
-        </div>
-
-    </header>
-
     <main class="main-content">
         <!-- Stats Row -->
         <div class="stats-row">
@@ -29,13 +15,6 @@
                 <div class="stat-info">
                     <span class="stat-value">{{ stats.interviews }}</span>
                     <span class="stat-label">Interviews</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon green">🎉</div>
-                <div class="stat-info">
-                    <span class="stat-value">{{ stats.offers }}</span>
-                    <span class="stat-label">Offers</span>
                 </div>
             </div>
             <div class="stat-card">
@@ -68,13 +47,6 @@
                             </option>
                         </select>
 
-                        <!-- Delete Resume Button -->
-                        <button class="delete-resume-btn" *ngIf="selectedResumeId && resumes.length > 0"
-                            (click)="deleteSelectedResume()" title="Delete selected resume"
-                            [disabled]="uploadingResume">
-                            🗑️
-                        </button>
-
                         <!-- Upload Button -->
                         <label class="upload-label" [class.uploading]="uploadingResume">
                             <span *ngIf="!uploadingResume">📤</span>
@@ -85,14 +57,22 @@
 
                     <!-- Platform -->
                     <div class="form-group platform-select">
-                        <select [(ngModel)]="platform">
-                            <option value="LinkedIn">LinkedIn</option>
-                            <option value="Indeed">Indeed</option>
-                            <option value="Glassdoor">Glassdoor</option>
-                            <option value="Dice">Dice</option>
-                            <option value="Company Website">Company Website</option>
-                            <option value="Other">Other</option>
-                        </select>
+                        <input
+                            type="text"
+                            [(ngModel)]="platform"
+                            list="platformOptions"
+                            placeholder="Select or type platform"
+                        />
+                        <datalist id="platformOptions">
+                            <option value="LinkedIn"></option>
+                            <option value="Indeed"></option>
+                            <option value="Glassdoor"></option>
+                            <option value="Dice"></option>
+                            <option value="Company Website"></option>
+                            <option value="Referral"></option>
+                            <option value="AngelList"></option>
+                            <option value="ZipRecruiter"></option>
+                        </datalist>
                     </div>
 
                     <!-- Job URL -->
@@ -145,151 +125,215 @@
                 <table>
                     <thead>
                         <tr>
+                            <th class="col-expand"></th>
                             <th class="col-date">DATE</th>
                             <th class="col-company">COMPANY</th>
                             <th class="col-title">TITLE</th>
                             <th class="col-location">LOCATION</th>
                             <th class="col-pay">PAY</th>
-                            <th class="col-skills">SKILLS</th>
                             <th class="col-match">MATCH</th>
-                            <th class="col-resume">RESUME</th>
                             <th class="col-status">STATUS</th>
                             <th class="col-actions">ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr *ngFor="let app of filteredApplications">
-                            <!-- Date -->
-                            <td class="date-cell">
-                                <span class="date-value">{{ formatDate(app.applied_at) }}</span>
-                            </td>
+                        <ng-container *ngFor="let app of filteredApplications">
+                            <!-- Main Row -->
+                            <tr class="app-row" [class.expanded]="isExpanded(app.id)" (click)="toggleExpand(app.id, $event)">
+                                <!-- Expand Icon -->
+                                <td class="expand-cell">
+                                    <span class="expand-icon" [class.open]="isExpanded(app.id)">▸</span>
+                                </td>
 
-                            <!-- Company -->
-                            <td class="company-cell">
-                                <div class="company-info">
-                                    <span class="company-name">{{ app.company_name || '—' }}</span>
-                                </div>
-                                <span class="platform-tag" *ngIf="app.platform">{{ app.platform }}</span>
-                            </td>
+                                <!-- Date -->
+                                <td class="date-cell">
+                                    <span class="date-value">{{ formatDate(app.applied_at) }}</span>
+                                </td>
 
-                            <!-- Title -->
-                            <td class="title-cell">
-                                <div class="title-info">
-                                    <span class="job-title">{{ app.job_title || '—' }}</span>
-                                    <span class="job-level" *ngIf="app.experience_level">({{ app.experience_level
-                                        }})</span>
-                                </div>
-                            </td>
+                                <!-- Company -->
+                                <td class="company-cell">
+                                    <div class="company-info">
+                                        <span class="company-name">{{ app.company_name || '—' }}</span>
+                                    </div>
+                                    <span class="platform-tag" *ngIf="app.platform">{{ app.platform }}</span>
+                                </td>
 
-                            <!-- Location -->
-                            <td class="location-cell">
-                                <div class="location-info">
-                                    <span class="location-text">{{ app.location || '—' }}</span>
-                                    <span class="work-type-badge" *ngIf="app.work_type"
-                                        [class.remote]="app.work_type === 'Remote'"
-                                        [class.hybrid]="app.work_type === 'Hybrid'"
-                                        [class.onsite]="app.work_type === 'Onsite'">
-                                        {{ app.work_type | uppercase }}
-                                    </span>
-                                </div>
-                            </td>
+                                <!-- Title -->
+                                <td class="title-cell">
+                                    <div class="title-info">
+                                        <span class="job-title">{{ app.job_title || '—' }}</span>
+                                        <span class="job-level" *ngIf="app.experience_level">({{ app.experience_level }})</span>
+                                    </div>
+                                </td>
 
-                            <!-- Pay -->
-                            <td class="pay-cell">
-                                <ng-container *ngIf="app.salary_min || app.salary_max; else noPay">
-                                    <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
-                                </ng-container>
-                                <ng-template #noPay>
-                                    <span class="no-data">Not listed</span>
-                                </ng-template>
-                            </td>
-
-                            <!-- Skills -->
-                            <td class="skills-cell">
-                                <ng-container
-                                    *ngIf="app.required_skills && app.required_skills.length > 0; else noSkills">
-                                    <div class="skills-container">
-                                        <span class="skill-tag" *ngFor="let skill of getSkills(app)">
-                                            {{ skill }}
-                                        </span>
-                                        <span class="skills-more" *ngIf="hasMoreSkills(app)">
-                                            +{{ getMoreSkillsCount(app) }}
+                                <!-- Location -->
+                                <td class="location-cell">
+                                    <div class="location-info">
+                                        <span class="location-text">{{ app.location || '—' }}</span>
+                                        <span class="work-type-badge" *ngIf="app.work_type"
+                                            [class.remote]="app.work_type === 'Remote'"
+                                            [class.hybrid]="app.work_type === 'Hybrid'"
+                                            [class.onsite]="app.work_type === 'Onsite'">
+                                            {{ app.work_type | uppercase }}
                                         </span>
                                     </div>
-                                </ng-container>
-                                <ng-template #noSkills>
-                                    <span class="no-data">—</span>
-                                </ng-template>
-                            </td>
+                                </td>
 
-                            <!-- Match Score -->
-                            <td class="match-cell">
-                                <div class="match-score" *ngIf="app.match_score"
-                                    [class]="getMatchClass(app.match_score)">
-                                    {{ app.match_score }}%
-                                </div>
-                                <span class="no-data" *ngIf="!app.match_score">—</span>
-                            </td>
+                                <!-- Pay -->
+                                <td class="pay-cell">
+                                    <ng-container *ngIf="app.salary_min || app.salary_max; else noPay">
+                                        <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
+                                    </ng-container>
+                                    <ng-template #noPay>
+                                        <span class="no-data">Not listed</span>
+                                    </ng-template>
+                                </td>
 
-                            <!-- Resume -->
-                            <td class="resume-cell">
-                                <ng-container *ngIf="app.resume_id; else noResume">
-                                    <ng-container *ngIf="getResumeForApp(app) as resume; else loadingResume">
-                                        <div class="resume-info">
-                                            <span class="resume-name" [title]="resume.file_name || ''">
-                                                {{ getResumeName(resume) }}
-                                            </span>
-                                            <div class="resume-actions">
-                                                <button class="resume-btn view" (click)="viewResume(resume)"
-                                                    title="View extracted data">
-                                                    👁️
-                                                </button>
-                                                <button class="resume-btn open" (click)="openResumeFile(resume)"
-                                                    title="Open in new tab">
-                                                    🔗
-                                                </button>
-                                                <button class="resume-btn download" (click)="downloadResume(resume)"
-                                                    title="Download">
-                                                    ⬇️
-                                                </button>
+                                <!-- Match Score -->
+                                <td class="match-cell">
+                                    <div class="match-score" *ngIf="app.match_score"
+                                        [class]="getMatchClass(app.match_score)">
+                                        {{ app.match_score }}%
+                                    </div>
+                                    <span class="no-data" *ngIf="!app.match_score">—</span>
+                                </td>
+
+                                <!-- Status -->
+                                <td class="status-cell" (click)="$event.stopPropagation()">
+                                    <select [ngModel]="app.status" (ngModelChange)="updateStatus(app, $event)"
+                                        [class]="'status-select status-' + app.status">
+                                        <option value="extracted">Extracted</option>
+                                        <option value="applied">Applied</option>
+                                        <option value="screening">Screening</option>
+                                        <option value="interviewing">Interview</option>
+                                        <option value="offer">Offer</option>
+                                        <option value="accepted">Accepted</option>
+                                        <option value="rejected">Rejected</option>
+                                        <option value="withdrawn">Withdrawn</option>
+                                    </select>
+                                </td>
+
+                                <!-- Actions -->
+                                <td class="actions-cell" (click)="$event.stopPropagation()">
+                                    <button class="action-btn edit" title="Edit application" (click)="editApplication(app)">
+                                        ✏️
+                                    </button>
+                                    <button class="action-btn danger" (click)="deleteApplication(app)" title="Remove application">
+                                        ✕
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Expanded Row -->
+                            <tr class="expand-row" *ngIf="isExpanded(app.id)">
+                                <td colspan="9">
+                                    <div class="expand-content">
+                                        <div class="expand-grid">
+                                            <!-- Left Column - Skills Analysis -->
+                                            <div class="expand-section">
+                                                <h4>🎯 Skills Analysis</h4>
+                                                <div class="skill-analysis">
+                                                    <!-- Matching Skills -->
+                                                    <div class="skill-group" *ngIf="app.matching_skills?.length">
+                                                        <span class="skill-label">Matching:</span>
+                                                        <div class="skill-tags-inline">
+                                                            <span class="skill-tag match" *ngFor="let skill of app.matching_skills">{{ skill }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Missing Skills -->
+                                                    <div class="skill-group" *ngIf="app.missing_skills?.length">
+                                                        <span class="skill-label">Missing:</span>
+                                                        <div class="skill-tags-inline">
+                                                            <span class="skill-tag missing" *ngFor="let skill of app.missing_skills">{{ skill }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Required Skills -->
+                                                    <div class="skill-group" *ngIf="app.required_skills?.length && !app.matching_skills?.length">
+                                                        <span class="skill-label">Required:</span>
+                                                        <div class="skill-tags-inline">
+                                                            <span class="skill-tag" *ngFor="let skill of app.required_skills">
+                                                                {{ skill.skill || skill }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Match Score Display -->
+                                                    <div class="match-preview" *ngIf="app.match_score">
+                                                        <div class="match-circle-lg" [class]="getMatchClass(app.match_score)">
+                                                            {{ app.match_score }}%
+                                                        </div>
+                                                        <div class="match-text">
+                                                            <span *ngIf="app.match_score >= 80">Great match!</span>
+                                                            <span *ngIf="app.match_score >= 60 && app.match_score < 80">Good match</span>
+                                                            <span *ngIf="app.match_score < 60">Needs improvement</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Middle Column - Resume & Details -->
+                                            <div class="expand-section">
+                                                <h4>📄 Resume & Details</h4>
+                                                <!-- Resume Info -->
+                                                <div class="resume-detail" *ngIf="getResumeForApp(app) as resume">
+                                                    <div class="resume-name-lg">{{ resume.candidate_name || resume.file_name }}</div>
+                                                    <div class="resume-meta" *ngIf="resume.current_title">{{ resume.current_title }}</div>
+                                                    <div class="resume-actions-lg">
+                                                        <button class="btn-action" (click)="viewResume(resume); $event.stopPropagation()">
+                                                            👁️ View
+                                                        </button>
+                                                        <button class="btn-action" (click)="openResumeFile(resume); $event.stopPropagation()">
+                                                            🔗 Open
+                                                        </button>
+                                                        <button class="btn-action" (click)="downloadResume(resume); $event.stopPropagation()">
+                                                            ⬇️ Download
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="no-resume-msg" *ngIf="!app.resume_id">
+                                                    No resume attached
+                                                </div>
+                                                <!-- Job Details -->
+                                                <div class="job-details-mini">
+                                                    <div class="detail-item" *ngIf="app.experience_level">
+                                                        <span class="detail-label">Level:</span>
+                                                        <span class="detail-value">{{ app.experience_level }}</span>
+                                                    </div>
+                                                    <div class="detail-item" *ngIf="app.salary_min || app.salary_max">
+                                                        <span class="detail-label">Salary:</span>
+                                                        <span class="detail-value salary-value">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Right Column - Actions -->
+                                            <div class="expand-section">
+                                                <h4>⚡ Quick Actions</h4>
+                                                <div class="action-buttons">
+                                                    <button class="btn-expand-action primary" (click)="editApplication(app); $event.stopPropagation()">
+                                                        ✏️ Edit Full Details
+                                                    </button>
+                                                    <button class="btn-expand-action success" *ngIf="canProgress(app)" (click)="progressApplication(app); $event.stopPropagation()">
+                                                        ✓ Move to Next Stage
+                                                    </button>
+                                                    <a class="btn-expand-action" *ngIf="app.source_url && !app.source_url.startsWith('manual')" [href]="app.source_url" target="_blank" (click)="$event.stopPropagation()">
+                                                        🔗 View Original Job
+                                                    </a>
+                                                </div>
+                                                <!-- Interviews -->
+                                                <div class="interviews-mini" *ngIf="app.interviews?.length">
+                                                    <h5>📅 Interviews ({{ app.interviews.length }})</h5>
+                                                    <div class="interview-item" *ngFor="let interview of app.interviews.slice(0, 2)">
+                                                        <span class="interview-type">{{ interview.type }}</span>
+                                                        <span class="interview-date" *ngIf="interview.scheduled_at">{{ formatDate(interview.scheduled_at) }}</span>
+                                                        <span class="interview-outcome" *ngIf="interview.outcome" [class]="interview.outcome">{{ interview.outcome }}</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </ng-container>
-                                    <ng-template #loadingResume>
-                                        <span class="loading-resume">Loading...</span>
-                                    </ng-template>
-                                </ng-container>
-                                <ng-template #noResume>
-                                    <span class="no-data">No resume</span>
-                                </ng-template>
-                            </td>
-
-                            <!-- Status -->
-                            <td class="status-cell">
-                                <select [ngModel]="app.status" (ngModelChange)="updateStatus(app, $event)"
-                                    [class]="'status-select status-' + app.status">
-                                    <option value="applied">Applied</option>
-                                    <option value="screening">Screening</option>
-                                    <option value="interviewing">Interview</option>
-                                    <option value="offer">Offer</option>
-                                    <option value="accepted">Accepted</option>
-                                    <option value="rejected">Rejected</option>
-                                    <option value="withdrawn">Withdrawn</option>
-                                </select>
-                            </td>
-
-                            <!-- Actions -->
-                            <td class="actions-cell">
-                                <button class="action-btn success" title="Move to next stage"
-                                    (click)="progressApplication(app)" *ngIf="canProgress(app)">
-                                    ✓
-                                </button>
-                                <button class="action-btn danger" (click)="deleteApplication(app)"
-                                    title="Remove application">
-                                    ✕
-                                </button>
-                            </td>
-                        </tr>
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-container>
                     </tbody>
                 </table>
             </div>
