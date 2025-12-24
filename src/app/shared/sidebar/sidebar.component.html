@@ -7,15 +7,16 @@
         class="nav-item"
         [class.active]="activePage === item.id"
         (click)="navigate(item.route)"
-        [title]="item.label"
       >
         <span class="nav-icon">{{ item.icon }}</span>
+        <span class="tooltip">{{ item.label }}</span>
       </button>
     </div>
   </div>
   <div class="sidebar-bottom">
-    <button class="nav-item logout" (click)="logout()" title="Logout">
+    <button class="nav-item logout" (click)="logout()">
       <span class="nav-icon">🚪</span>
+      <span class="tooltip">Sign Out</span>
     </button>
   </div>
 </nav>
