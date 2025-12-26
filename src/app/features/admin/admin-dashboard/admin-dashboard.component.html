@@ -1,24 +1,18 @@
+<app-sidebar activePage="admin"></app-sidebar>
 <div class="admin-dashboard">
   <!-- Header -->
-  <header class="header">
-    <div class="header-left">
-      <div class="logo">
-        <span class="logo-icon">👔</span>
-        <span class="logo-text">Admin Dashboard</span>
-      </div>
-      <span class="org-badge" *ngIf="profile">{{ profile.organization_id | slice:0:8 }}</span>
+  <div class="page-header">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="page-sub">Overview of your organization's recruitment activity</p>
     </div>
     <div class="header-right">
-      <button class="btn-switch" (click)="goToUserDashboard()">
-        ← User View
-      </button>
       <span class="user-info">
         <span class="admin-badge">Admin</span>
         {{ profile?.full_name || profile?.email }}
       </span>
-      <button class="btn-logout" (click)="logout()">Logout</button>
     </div>
-  </header>
+  </div>
 
   <!-- Loading -->
   <div class="loading-screen" *ngIf="loading">

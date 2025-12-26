@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Job, Profile, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
 interface RecruiterStats {
   user_id: string;
@@ -47,7 +48,7 @@ interface NewUserForm {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
 })

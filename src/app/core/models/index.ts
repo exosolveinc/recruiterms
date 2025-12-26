@@ -283,6 +283,45 @@ export interface AdminEmployeeStats {
   avg_match_score: number | null;
 }
 
+// Candidate Preferences
+export interface CandidatePreferences {
+  preferred_job_titles: string[];
+  preferred_locations: string[];
+  willing_to_relocate: boolean;
+  preferred_work_type: ('remote' | 'hybrid' | 'onsite')[];
+  preferred_company_size: ('startup' | 'small' | 'medium' | 'large' | 'enterprise')[];
+  preferred_industries: string[];
+  salary_expectation_min: number | null;
+  salary_expectation_max: number | null;
+  salary_currency: string;
+  available_start_date: string | null;
+  notice_period_days: number | null;
+  visa_status: string | null;
+  work_authorization: string | null;
+  has_drivers_license: boolean;
+  willing_to_travel: boolean;
+  travel_percentage: number | null;
+  notes: string | null;
+}
+
+// Candidate Document
+export interface CandidateDocument {
+  id: string;
+  candidate_id: string;
+  user_id: string;
+  organization_id: string | null;
+  document_type: 'drivers_license' | 'passport' | 'id_card' | 'certification' | 'degree' | 'reference' | 'portfolio' | 'other';
+  document_name: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  expiry_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Candidate (aggregated from resumes)
 export interface Candidate {
   id: string; // Generated unique ID for the candidate
@@ -300,6 +339,9 @@ export interface Candidate {
   resume_count: number;
   last_updated: string;
   created_at: string;
+  // New fields for preferences and documents
+  preferences: CandidatePreferences | null;
+  documents: CandidateDocument[];
 }
 
 export interface UserApplicationView {

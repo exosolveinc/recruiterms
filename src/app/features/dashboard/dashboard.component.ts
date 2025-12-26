@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Job, Profile, Resume, UserApplicationView } from '../../core/models';
+import { Candidate, Job, Profile, Resume, UserApplicationView } from '../../core/models';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 
@@ -23,8 +23,10 @@ export class DashboardComponent implements OnInit {
     interviewRate: 0
   };
 
-  // Resumes
-  resumes: Resume[] = [];
+  // Candidates & Resumes
+  candidates: Candidate[] = [];
+  selectedCandidateId = '';
+  resumes: Resume[] = [];  // All resumes (for backward compat)
   selectedResumeId = '';
   uploadingResume = false;
 
@@ -34,6 +36,16 @@ export class DashboardComponent implements OnInit {
   jobDescription = '';
   extracting = false;
   extractError = '';
+
+  // Loading animation state
+  loadingSteps = [
+    'Extracting job details...',
+    'Analyzing your resume...',
+    'Comparing skills...',
+    'Generating recommendations...'
+  ];
+  currentLoadingStep = 0;
+  completedSteps: number[] = [];
 
   // Resume Modal
   showResumeModal = false;
@@ -58,6 +70,12 @@ export class DashboardComponent implements OnInit {
   // Expandable row
   expandedAppId: string | null = null;
 
+  // Candidate Selection Drawer
+  showCandidateDrawer = false;
+
+  // Reanalysis state
+  reanalyzingAppId: string | null = null;
+
   constructor(
     private supabase: SupabaseService,
     private router: Router
@@ -65,7 +83,7 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadProfile();
-    await this.loadResumes();
+    await this.loadCandidates();
     await this.loadApplications();
     this.calculateStats();
     this.loading = false;
@@ -80,17 +98,18 @@ export class DashboardComponent implements OnInit {
     this.profile = profile;
   }
 
-  async loadResumes() {
+  async loadCandidates() {
     try {
+      this.candidates = await this.supabase.getCandidates();
+      // Also load all resumes for backward compat
       this.resumes = await this.supabase.getResumes();
-      const primary = this.resumes.find(r => r.is_primary);
-      if (primary) {
-        this.selectedResumeId = primary.id;
-      } else if (this.resumes.length > 0) {
-        this.selectedResumeId = this.resumes[0].id;
+
+      // Auto-select first candidate if available
+      if (this.candidates.length > 0) {
+        this.selectCandidate(this.candidates[0].id);
       }
     } catch (err) {
-      console.error('Failed to load resumes:', err);
+      console.error('Failed to load candidates:', err);
     }
   }
 
@@ -177,8 +196,10 @@ export class DashboardComponent implements OnInit {
       // Step 4: Update resume with extracted data
       const updatedResume = await this.supabase.updateResume(resume.id, extractedData);
 
-      // Step 5: Update UI
-      this.resumes.unshift(updatedResume);
+      // Step 5: Reload candidates to refresh the UI
+      await this.loadCandidates();
+
+      // Select the newly uploaded resume
       this.selectedResumeId = updatedResume.id;
 
 
@@ -208,9 +229,12 @@ export class DashboardComponent implements OnInit {
 
     this.extracting = true;
     this.extractError = '';
+    this.currentLoadingStep = 0;
+    this.completedSteps = [];
 
     try {
-      // Step 1: Extract job data using AI
+      // Step 1: Extract job details
+      this.currentLoadingStep = 0;
       console.log('Extracting job with AI...');
       let jobData: Partial<Job>;
 
@@ -221,6 +245,7 @@ export class DashboardComponent implements OnInit {
           this.platform
         );
         console.log('AI Job Extraction Result:', jobData);
+        this.completedSteps.push(0);
       } catch (aiError: any) {
         console.error('AI extraction failed:', aiError);
         this.extractError = 'AI extraction failed: ' + (aiError.message || 'Unknown error');
@@ -228,10 +253,14 @@ export class DashboardComponent implements OnInit {
         return;
       }
 
-      // Step 2: Get selected resume
+      // Step 2: Analyzing resume
+      this.currentLoadingStep = 1;
+      await this.delay(300); // Brief pause for visual feedback
       const resume = this.selectedResume;
+      this.completedSteps.push(1);
 
-      // Step 3: Analyze match using AI
+      // Step 3: Comparing skills
+      this.currentLoadingStep = 2;
       let matchResult: { score: number; matching: string[]; missing: string[]; suggestions: string[] };
 
       if (resume) {
@@ -252,14 +281,20 @@ export class DashboardComponent implements OnInit {
       } else {
         matchResult = { score: 70, matching: [], missing: [], suggestions: ['Select a resume for accurate matching'] };
       }
+      this.completedSteps.push(2);
+
+      // Step 4: Generating recommendations
+      this.currentLoadingStep = 3;
+      await this.delay(300); // Brief pause for visual feedback
 
       // Store match data in job
       jobData.match_score = matchResult.score;
       jobData.matching_skills = matchResult.matching;
       jobData.missing_skills = matchResult.missing;
       jobData.recommendations = matchResult.suggestions;
+      this.completedSteps.push(3);
 
-      // Step 4: Check if low match - show modal
+      // Check if low match - show modal
       if (matchResult.score < 50) {
         this.matchResult = matchResult;
         this.pendingJob = jobData;
@@ -268,7 +303,7 @@ export class DashboardComponent implements OnInit {
         return;
       }
 
-      // Step 5: Save application
+      // Save application
       await this.saveApplication(jobData, matchResult.score);
 
     } catch (err: any) {
@@ -276,7 +311,13 @@ export class DashboardComponent implements OnInit {
       this.extractError = err.message || 'Failed to extract job data';
     } finally {
       this.extracting = false;
+      this.currentLoadingStep = 0;
+      this.completedSteps = [];
     }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   // Local fallback for match analysis (if AI fails)
@@ -343,7 +384,7 @@ export class DashboardComponent implements OnInit {
       }
 
       // Create application
-      await this.supabase.createApplication({
+      const newApplication = await this.supabase.createApplication({
         job_id: job.id,
         resume_id: this.selectedResumeId,
         status: 'extracted',
@@ -353,6 +394,9 @@ export class DashboardComponent implements OnInit {
       // Refresh data
       await this.loadApplications();
       this.calculateStats();
+
+      // Expand the newly created application row
+      this.expandedAppId = newApplication.id;
 
       // Clear form
       this.jobUrl = '';
@@ -541,6 +585,20 @@ export class DashboardComponent implements OnInit {
     this.router.navigate(['/resumes']);
   }
 
+  // Candidate Drawer
+  openCandidateDrawer() {
+    this.showCandidateDrawer = true;
+  }
+
+  closeCandidateDrawer() {
+    this.showCandidateDrawer = false;
+  }
+
+  selectCandidateAndClose(candidateId: string) {
+    this.selectCandidate(candidateId);
+    this.closeCandidateDrawer();
+  }
+
   goToCandidates() {
     this.router.navigate(['/candidates']);
   }
@@ -612,5 +670,246 @@ export class DashboardComponent implements OnInit {
   formatDate(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // ============================================================================
+  // CANDIDATE SELECTOR HELPERS
+  // ============================================================================
+
+  get selectedCandidate(): Candidate | null {
+    return this.candidates.find(c => c.id === this.selectedCandidateId) || null;
+  }
+
+  get candidateResumes(): Resume[] {
+    const candidate = this.selectedCandidate;
+    if (!candidate) return [];
+    return candidate.resumes || [];
+  }
+
+  selectCandidate(candidateId: string) {
+    this.selectedCandidateId = candidateId;
+    // Auto-select primary resume or first resume for this candidate
+    const candidate = this.candidates.find(c => c.id === candidateId);
+    if (candidate && candidate.resumes.length > 0) {
+      const primary = candidate.resumes.find(r => r.is_primary);
+      this.selectedResumeId = primary?.id || candidate.resumes[0].id;
+    } else {
+      this.selectedResumeId = '';
+    }
+  }
+
+  getInitials(name: string): string {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+
+  getResumeLabel(resume: Resume): string {
+    if (resume.label) return resume.label;
+    if (resume.file_name) {
+      return resume.file_name.split('.')[0] || 'Resume';
+    }
+    return 'Resume';
+  }
+
+  selectResume(resumeId: string) {
+    this.selectedResumeId = resumeId;
+  }
+
+  getAvgMatch(): number {
+    const appsWithMatch = this.applications.filter(a => a.match_score);
+    if (appsWithMatch.length === 0) return 0;
+    const total = appsWithMatch.reduce((sum, a) => sum + (a.match_score || 0), 0);
+    return Math.round(total / appsWithMatch.length);
+  }
+
+  // Get applications for selected candidate
+  getCandidateApplications(): number {
+    if (!this.selectedCandidateId) return 0;
+    const candidateResumeIds = this.candidateResumes.map(r => r.id);
+    return this.applications.filter(a => a.resume_id && candidateResumeIds.includes(a.resume_id)).length;
+  }
+
+  // Get interviews for selected candidate
+  getCandidateInterviews(): number {
+    if (!this.selectedCandidateId) return 0;
+    const candidateResumeIds = this.candidateResumes.map(r => r.id);
+    return this.applications.filter(a =>
+      a.resume_id && candidateResumeIds.includes(a.resume_id) &&
+      ['interviewing', 'screening', 'offer', 'accepted'].includes(a.status)
+    ).length;
+  }
+
+  // Get average match for selected candidate
+  getCandidateAvgMatch(): number {
+    if (!this.selectedCandidateId) return 0;
+    const candidateResumeIds = this.candidateResumes.map(r => r.id);
+    const candidateApps = this.applications.filter(a =>
+      a.resume_id && candidateResumeIds.includes(a.resume_id) && a.match_score
+    );
+    if (candidateApps.length === 0) return 0;
+    const total = candidateApps.reduce((sum, a) => sum + (a.match_score || 0), 0);
+    return Math.round(total / candidateApps.length);
+  }
+
+  getCompanyColor(companyName: string | null): string {
+    const colors = [
+      '#635BFF', // Stripe purple
+      '#5E6AD2', // Linear purple
+      '#96BF48', // Shopify green
+      '#FF5A5F', // Airbnb red
+      '#000000', // Vercel black
+      '#A259FF', // Figma purple
+      '#0A66C2', // LinkedIn blue
+      '#E01E5A', // Slack pink
+    ];
+    if (!companyName) return colors[0];
+    const hash = companyName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'extracted': 'Extracted',
+      'applied': 'Applied',
+      'screening': 'Screening',
+      'interviewing': 'Interview',
+      'offer': 'Offer',
+      'accepted': 'Accepted',
+      'rejected': 'Rejected',
+      'withdrawn': 'Withdrawn'
+    };
+    return labels[status] || status;
+  }
+
+  getResumeNameForApp(app: UserApplicationView): string {
+    if (!app.resume_id) return '—';
+    const resume = this.resumes.find(r => r.id === app.resume_id);
+    if (!resume) return '—';
+    return this.getResumeLabel(resume);
+  }
+
+  // ============================================================================
+  // REUPLOAD & REANALYZE
+  // ============================================================================
+
+  async onReuploadResume(event: Event, app: UserApplicationView) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file = input.files[0];
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const allowedExtensions = ['pdf', 'docx'];
+
+    if (!extension || !allowedExtensions.includes(extension)) {
+      alert('Please upload a PDF or DOCX file.');
+      return;
+    }
+
+    this.reanalyzingAppId = app.id;
+
+    try {
+      // Step 1: Upload file to storage
+      const { url } = await this.supabase.uploadResumeFile(file);
+
+      // Step 2: Create resume record with processing status
+      const resume = await this.supabase.createResume({
+        file_name: file.name,
+        file_url: url,
+        file_type: file.type,
+        extraction_status: 'processing'
+      });
+
+      // Step 3: Extract data using AI
+      let extractedData: Partial<Resume>;
+
+      try {
+        extractedData = await this.supabase.extractResumeFromUrl(url, file.name);
+        extractedData.extraction_status = 'completed';
+      } catch (aiError: any) {
+        console.error('AI resume extraction failed:', aiError);
+        extractedData = {
+          extraction_status: 'failed',
+          extraction_confidence: 0
+        };
+      }
+
+      // Step 4: Update resume with extracted data
+      const updatedResume = await this.supabase.updateResume(resume.id, extractedData);
+
+      // Step 5: Update the application to use this new resume
+      await this.supabase.updateApplication(app.id, { resume_id: updatedResume.id });
+
+      // Step 6: Reload data
+      await this.loadCandidates();
+      await this.loadApplications();
+
+      // Step 7: Reanalyze the match with the new resume
+      await this.reanalyzeApplicationWithResume(app, updatedResume);
+
+    } catch (err: any) {
+      console.error('Resume reupload error:', err);
+      alert('Failed to upload resume: ' + err.message);
+    } finally {
+      this.reanalyzingAppId = null;
+      input.value = '';
+    }
+  }
+
+  async reanalyzeApplication(app: UserApplicationView) {
+    if (!app.resume_id) {
+      alert('No resume attached. Please attach a resume first.');
+      return;
+    }
+
+    const resume = this.getResumeForApp(app);
+    if (!resume) {
+      alert('Could not load resume. Please try again.');
+      return;
+    }
+
+    this.reanalyzingAppId = app.id;
+
+    try {
+      await this.reanalyzeApplicationWithResume(app, resume);
+    } finally {
+      this.reanalyzingAppId = null;
+    }
+  }
+
+  private async reanalyzeApplicationWithResume(app: UserApplicationView, resume: Resume) {
+    try {
+      // Get the job details
+      const job = await this.supabase.getJob(app.job_id);
+      if (!job) {
+        throw new Error('Could not find job details');
+      }
+
+      // Analyze match using AI
+      console.log('Re-analyzing match with AI...');
+      const aiMatch = await this.supabase.analyzeMatchWithAI(resume, job);
+      console.log('AI Re-analysis Result:', aiMatch);
+
+      // Update the job with new match data
+      await this.supabase.updateJob(job.id, {
+        match_score: aiMatch.match_score,
+        matching_skills: aiMatch.matching_skills || [],
+        missing_skills: aiMatch.missing_skills || [],
+        recommendations: aiMatch.recommendations || []
+      });
+
+      // Reload applications to reflect new data
+      await this.loadApplications();
+
+      // Keep the row expanded
+      this.expandedAppId = app.id;
+
+    } catch (err: any) {
+      console.error('Re-analysis failed:', err);
+      alert('Failed to re-analyze: ' + (err.message || 'Unknown error'));
+    }
   }
 }
