@@ -384,8 +384,42 @@ export class SupabaseService {
     }
 
     // Convert to array and sort by last_updated
-    return Array.from(candidateMap.values())
+    const candidates = Array.from(candidateMap.values())
       .sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+
+    // Fetch preferences for all candidates
+    await this.loadPreferencesForCandidates(candidates);
+
+    return candidates;
+  }
+
+  /**
+   * Load preferences for a list of candidates
+   */
+  private async loadPreferencesForCandidates(candidates: Candidate[]): Promise<void> {
+    if (candidates.length === 0) return;
+
+    const candidateIds = candidates.map(c => c.id);
+
+    const { data: allPreferences, error } = await this.supabase
+      .from('candidate_preferences')
+      .select('*')
+      .in('candidate_id', candidateIds);
+
+    if (error) {
+      console.warn('Failed to load candidate preferences:', error);
+      return;
+    }
+
+    // Map preferences to candidates
+    const preferencesMap = new Map<string, CandidatePreferences>();
+    for (const pref of (allPreferences || [])) {
+      preferencesMap.set(pref.candidate_id, pref as CandidatePreferences);
+    }
+
+    for (const candidate of candidates) {
+      candidate.preferences = preferencesMap.get(candidate.id) || null;
+    }
   }
 
   /**
@@ -450,7 +484,12 @@ export class SupabaseService {
     if (error) throw error;
 
     // Apply same deduplication logic
-    return this.deduplicateResumesToCandidates(resumes as Resume[]);
+    const candidates = this.deduplicateResumesToCandidates(resumes as Resume[]);
+
+    // Fetch preferences for all candidates
+    await this.loadPreferencesForCandidates(candidates);
+
+    return candidates;
   }
 
   /**

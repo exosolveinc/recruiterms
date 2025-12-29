@@ -1,6 +1,64 @@
 <app-sidebar activePage="job-feed"></app-sidebar>
 <div class="job-feed-page">
   <main class="main-content">
+    <!-- Candidate Selection Bar -->
+    <div class="candidate-selection-bar">
+      <div class="selected-candidate-display" (click)="openCandidateDrawer()">
+        <div class="candidate-avatar" *ngIf="selectedCandidate">
+          {{ getInitials(selectedCandidate.name) }}
+        </div>
+        <div class="candidate-avatar empty" *ngIf="!selectedCandidate">
+          ?
+        </div>
+        <div class="candidate-details">
+          <span class="candidate-name" *ngIf="selectedCandidate">{{ selectedCandidate.name }}</span>
+          <span class="candidate-name placeholder" *ngIf="!selectedCandidate">Select a candidate</span>
+          <span class="candidate-meta" *ngIf="selectedCandidate">
+            {{ selectedCandidate.current_title || 'No title' }}
+            <span *ngIf="selectedResume"> · {{ getResumeLabel(selectedResume) }}</span>
+          </span>
+        </div>
+        <button class="change-btn">
+          {{ selectedCandidate ? 'Change' : 'Select' }}
+        </button>
+      </div>
+
+      <!-- Preferences Summary (collapsed view) -->
+      <div class="preferences-bar" *ngIf="selectedCandidate?.preferences">
+        <div class="pref-tags">
+          <span class="pref-tag" *ngIf="selectedCandidate?.preferences?.preferred_job_titles?.length">
+            {{ selectedCandidate!.preferences!.preferred_job_titles![0] }}
+            <span *ngIf="selectedCandidate!.preferences!.preferred_job_titles!.length > 1">
+              +{{ selectedCandidate!.preferences!.preferred_job_titles!.length - 1 }}
+            </span>
+          </span>
+          <span class="pref-tag location" *ngIf="selectedCandidate?.preferences?.preferred_locations?.length">
+            {{ selectedCandidate!.preferences!.preferred_locations![0] }}
+          </span>
+          <span
+            class="pref-tag work-type"
+            *ngFor="let wt of selectedCandidate?.preferences?.preferred_work_type"
+            [class]="wt"
+          >
+            {{ wt | titlecase }}
+          </span>
+        </div>
+        <button
+          class="btn-search-preferences"
+          (click)="searchWithPreferences()"
+          [disabled]="searching || !selectedCandidate"
+        >
+          <span *ngIf="!searching">Search with Preferences</span>
+          <span *ngIf="searching" class="spinner-sm"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- No Candidates Message -->
+    <div class="no-candidates-message" *ngIf="candidates.length === 0">
+      <p>No candidates found. <a (click)="goToCandidates()">Add a candidate</a> to analyze job matches.</p>
+    </div>
+
     <!-- Search Section -->
     <div class="search-section">
       <h1>Find Your Next Opportunity</h1>
@@ -29,9 +87,20 @@
           <div class="input-group source-select">
             <label>Source</label>
             <select [(ngModel)]="selectedSource">
-              <option value="adzuna">Adzuna</option>
-              <option value="rapidapi">JSearch (RapidAPI)</option>
-              <option value="all">All Sources</option>
+              <optgroup label="Standard APIs">
+                <option value="adzuna">Adzuna</option>
+                <option value="rapidapi">JSearch (RapidAPI)</option>
+              </optgroup>
+              <optgroup label="AI-Powered Search">
+                <option value="dice">Dice (AI)</option>
+                <option value="linkedin">LinkedIn (AI)</option>
+                <option value="indeed">Indeed (AI)</option>
+                <option value="glassdoor">Glassdoor (AI)</option>
+                <option value="ai-search">All Platforms (AI)</option>
+              </optgroup>
+              <optgroup label="Combined">
+                <option value="all">All Sources</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -66,10 +135,22 @@
           <span class="stat-value">${{ stats.averageSalary | number }}</span>
           <span class="stat-label">Avg Salary</span>
         </div>
+        <div class="stat" *ngIf="stats.avgMatchScore > 0">
+          <span class="stat-value">{{ stats.avgMatchScore }}%</span>
+          <span class="stat-label">Avg Match</span>
+        </div>
         <div class="stat">
           <span class="stat-value">{{ currentPage }}/{{ totalPages }}</span>
           <span class="stat-label">Page</span>
         </div>
+      </div>
+
+      <!-- Analysis Progress -->
+      <div class="analysis-progress" *ngIf="analyzingAll">
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="(analyzedCount / jobs.length) * 100"></div>
+        </div>
+        <span class="progress-text">Analyzing jobs... {{ analyzedCount }}/{{ jobs.length }}</span>
       </div>
 
       <!-- Job List -->
@@ -78,6 +159,9 @@
           class="job-card"
           *ngFor="let job of jobs"
           [class.selected]="selectedJob?.id === job.id"
+          [class.high-match]="job.match_score !== undefined && job.match_score >= 80"
+          [class.medium-match]="job.match_score !== undefined && job.match_score >= 60 && job.match_score < 80"
+          [class.low-match]="job.match_score !== undefined && job.match_score < 60"
           (click)="selectJob(job)"
         >
           <div class="job-card-header">
@@ -85,19 +169,53 @@
               <h3 class="job-title">{{ job.title }}</h3>
               <p class="job-company">{{ job.company }}</p>
             </div>
-            <span class="source-badge" [class]="job.source">{{ job.source }}</span>
+            <div class="job-badges">
+              <!-- Match Score Badge -->
+              <div class="match-badge" *ngIf="job.match_score !== undefined" [class]="getMatchClass(job.match_score)">
+                <span class="score">{{ job.match_score }}%</span>
+                <span class="label">Match</span>
+              </div>
+              <!-- Analyzing Spinner -->
+              <div class="analyzing-badge" *ngIf="job.analyzing">
+                <span class="spinner-sm"></span>
+              </div>
+              <span class="source-badge" [class]="job.source">{{ job.source }}</span>
+            </div>
           </div>
 
           <div class="job-meta">
-            <span class="meta-item location">📍 {{ job.location }}</span>
-            <span class="meta-item salary" *ngIf="job.salary_text">💰 {{ job.salary_text }}</span>
-            <span class="meta-item type" *ngIf="job.employment_type">💼 {{ job.employment_type }}</span>
-            <span class="meta-item date">🕐 {{ formatDate(job.posted_date) }}</span>
+            <span class="meta-item location">{{ job.location }}</span>
+            <span class="meta-item salary" *ngIf="job.salary_text">{{ job.salary_text }}</span>
+            <span class="meta-item type" *ngIf="job.employment_type">{{ job.employment_type }}</span>
+            <span class="meta-item date">{{ formatDate(job.posted_date) }}</span>
+            <span
+              class="meta-item work-type-indicator"
+              *ngIf="selectedCandidate?.preferences?.preferred_work_type?.length"
+              [class.matches]="checkWorkTypeMatch(job).matches"
+              [class.no-match]="!checkWorkTypeMatch(job).matches"
+              [title]="checkWorkTypeMatch(job).reason"
+            >
+              <span *ngIf="checkWorkTypeMatch(job).matches">✓ Work type</span>
+              <span *ngIf="!checkWorkTypeMatch(job).matches">⚠ Work type</span>
+            </span>
+          </div>
+
+          <!-- Matching Skills Preview -->
+          <div class="skills-preview" *ngIf="job.matching_skills && job.matching_skills.length > 0">
+            <span class="skill-tag matching" *ngFor="let skill of job.matching_skills!.slice(0, 4)">
+              {{ skill }}
+            </span>
+            <span class="more-skills" *ngIf="job.matching_skills!.length > 4">
+              +{{ job.matching_skills!.length - 4 }} more
+            </span>
           </div>
 
           <p class="job-description">{{ truncateDescription(job.description, 150) }}</p>
 
           <div class="job-card-footer">
+            <button class="btn-save" (click)="saveJob(job); $event.stopPropagation()" *ngIf="selectedResumeId">
+              Save Job
+            </button>
             <button class="btn-apply" (click)="applyToJob(job); $event.stopPropagation()">
               Apply Now
             </button>
@@ -129,7 +247,7 @@
 
     <!-- Empty State -->
     <div class="empty-state" *ngIf="jobs.length === 0 && !searching && searchQuery">
-      <div class="empty-icon">🔍</div>
+      <div class="empty-icon">No Results</div>
       <h3>No jobs found</h3>
       <p>Try adjusting your search terms or location</p>
     </div>
@@ -141,20 +259,72 @@
       <div class="modal-header">
         <div class="modal-title">
           <h3>{{ selectedJob.title }}</h3>
-          <span class="source-badge" [class]="selectedJob.source">{{ selectedJob.source }}</span>
+          <div class="header-badges">
+            <!-- Match Score in Modal -->
+            <div class="match-badge large" *ngIf="selectedJob.match_score !== undefined" [class]="getMatchClass(selectedJob.match_score)">
+              <span class="score">{{ selectedJob.match_score }}%</span>
+              <span class="label">Match</span>
+            </div>
+            <span class="source-badge" [class]="selectedJob.source">{{ selectedJob.source }}</span>
+          </div>
         </div>
-        <button class="close-btn" (click)="closeJobPreview()">✕</button>
+        <button class="close-btn" (click)="closeJobPreview()">X</button>
       </div>
 
       <div class="modal-body">
         <div class="job-preview-header">
           <h2>{{ selectedJob.company }}</h2>
           <div class="job-preview-meta">
-            <span>📍 {{ selectedJob.location }}</span>
-            <span *ngIf="selectedJob.salary_text">💰 {{ selectedJob.salary_text }}</span>
-            <span *ngIf="selectedJob.employment_type">💼 {{ selectedJob.employment_type }}</span>
-            <span>🕐 Posted {{ formatDate(selectedJob.posted_date) }}</span>
+            <span>{{ selectedJob.location }}</span>
+            <span *ngIf="selectedJob.salary_text">{{ selectedJob.salary_text }}</span>
+            <span *ngIf="selectedJob.employment_type">{{ selectedJob.employment_type }}</span>
+            <span>Posted {{ formatDate(selectedJob.posted_date) }}</span>
           </div>
+        </div>
+
+        <!-- Match Analysis Section -->
+        <div class="match-analysis-section" *ngIf="selectedJob.analyzed && selectedJob.match_score !== undefined">
+          <h4>Match Analysis</h4>
+
+          <div class="match-score-display" [class]="getMatchClass(selectedJob.match_score)">
+            <div class="score-circle">
+              <span class="score-value">{{ selectedJob.match_score }}%</span>
+            </div>
+            <div class="score-details">
+              <span class="score-label">Overall Match Score</span>
+              <p class="score-description">
+                <ng-container *ngIf="selectedJob.match_score >= 80">Excellent match! You meet most requirements.</ng-container>
+                <ng-container *ngIf="selectedJob.match_score >= 60 && selectedJob.match_score < 80">Good match with room for growth.</ng-container>
+                <ng-container *ngIf="selectedJob.match_score < 60">Consider upskilling in missing areas.</ng-container>
+              </p>
+            </div>
+          </div>
+
+          <!-- Matching Skills -->
+          <div class="skills-section matching" *ngIf="selectedJob.matching_skills && selectedJob.matching_skills.length > 0">
+            <h5>Matching Skills ({{ selectedJob.matching_skills!.length }})</h5>
+            <div class="skill-tags">
+              <span class="skill-tag matching" *ngFor="let skill of selectedJob.matching_skills!">
+                {{ skill }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Missing Skills -->
+          <div class="skills-section missing" *ngIf="selectedJob.missing_skills && selectedJob.missing_skills.length > 0">
+            <h5>Skills to Develop ({{ selectedJob.missing_skills!.length }})</h5>
+            <div class="skill-tags">
+              <span class="skill-tag missing" *ngFor="let skill of selectedJob.missing_skills!">
+                {{ skill }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analyzing State -->
+        <div class="analyzing-state" *ngIf="selectedJob.analyzing">
+          <div class="spinner"></div>
+          <span>Analyzing match...</span>
         </div>
 
         <div class="job-preview-description">
@@ -165,10 +335,128 @@
 
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeJobPreview()">Close</button>
+        <button class="btn-save" (click)="saveJob(selectedJob)" *ngIf="selectedResumeId">
+          Save to Applications
+        </button>
         <button class="btn-primary" (click)="applyToJob(selectedJob)">
           Apply on {{ selectedJob.source === 'adzuna' ? 'Adzuna' : 'Job Site' }}
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Candidate Selection Drawer -->
+  <div class="drawer-overlay" *ngIf="showCandidateDrawer" (click)="closeCandidateDrawer()"></div>
+  <div class="candidate-drawer" [class.open]="showCandidateDrawer">
+    <div class="drawer-header">
+      <h3>Select Candidate</h3>
+      <button class="close-btn" (click)="closeCandidateDrawer()">×</button>
+    </div>
+    <div class="drawer-body">
+      <!-- Search -->
+      <div class="drawer-search">
+        <input type="text" [(ngModel)]="candidateSearchQuery" placeholder="Search candidates..." />
+      </div>
+
+      <!-- Candidates List -->
+      <div class="candidates-list">
+        <div
+          class="candidate-item"
+          *ngFor="let candidate of filteredCandidates"
+          [class.active]="selectedCandidateId === candidate.id"
+          (click)="selectCandidateFromDrawer(candidate.id)"
+        >
+          <div class="candidate-avatar">
+            {{ getInitials(candidate.name || 'C') }}
+          </div>
+          <div class="candidate-info">
+            <div class="candidate-name">{{ candidate.name }}</div>
+            <div class="candidate-title">
+              {{ candidate.current_title || 'No title' }}
+              <span *ngIf="candidate.years_of_experience"> · {{ candidate.years_of_experience }} yrs</span>
+            </div>
+            <div class="candidate-resumes" *ngIf="candidate.resume_count">
+              {{ candidate.resume_count }} resume{{ candidate.resume_count > 1 ? 's' : '' }}
+            </div>
+          </div>
+          <div class="candidate-check" *ngIf="selectedCandidateId === candidate.id">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="drawer-empty" *ngIf="candidates.length === 0">
+          <p>No candidates yet</p>
+          <button class="btn-primary" (click)="goToCandidates()">Add Candidate</button>
+        </div>
+      </div>
+
+      <!-- Resume Selection (when candidate is selected) -->
+      <div class="drawer-resume-section" *ngIf="selectedCandidate && candidateResumes.length > 0">
+        <h4>Select Resume</h4>
+        <div class="resume-list">
+          <div
+            class="resume-item"
+            *ngFor="let resume of candidateResumes"
+            [class.active]="selectedResumeId === resume.id"
+            (click)="selectResume(resume.id)"
+          >
+            <div class="resume-icon">📄</div>
+            <div class="resume-info">
+              <span class="resume-name">{{ getResumeLabel(resume) }}</span>
+              <span class="resume-meta">
+                <span class="primary-badge" *ngIf="resume.is_primary">Primary</span>
+                {{ resume.experience_level || '' }}
+              </span>
+            </div>
+            <div class="resume-check" *ngIf="selectedResumeId === resume.id">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preferences Summary -->
+      <div class="drawer-preferences" *ngIf="selectedCandidate?.preferences">
+        <h4>Preferences</h4>
+        <div class="preferences-grid">
+          <div class="pref-row" *ngIf="selectedCandidate?.preferences?.preferred_job_titles?.length">
+            <span class="pref-label">Titles:</span>
+            <span class="pref-value">{{ selectedCandidate!.preferences!.preferred_job_titles!.join(', ') }}</span>
+          </div>
+          <div class="pref-row" *ngIf="selectedCandidate?.preferences?.preferred_locations?.length">
+            <span class="pref-label">Locations:</span>
+            <span class="pref-value">{{ selectedCandidate!.preferences!.preferred_locations!.join(', ') }}</span>
+          </div>
+          <div class="pref-row" *ngIf="selectedCandidate?.preferences?.preferred_work_type?.length">
+            <span class="pref-label">Work Type:</span>
+            <span class="pref-value">
+              <span class="work-type-badge" *ngFor="let wt of selectedCandidate!.preferences!.preferred_work_type!" [class]="wt">
+                {{ wt | titlecase }}
+              </span>
+            </span>
+          </div>
+          <div class="pref-row" *ngIf="selectedCandidate?.preferences?.salary_expectation_min">
+            <span class="pref-label">Salary:</span>
+            <span class="pref-value">
+              ${{ selectedCandidate!.preferences!.salary_expectation_min | number }}
+              <span *ngIf="selectedCandidate?.preferences?.salary_expectation_max">
+                - ${{ selectedCandidate!.preferences!.salary_expectation_max | number }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="drawer-footer">
+      <button class="btn-secondary" (click)="goToCandidates()">Manage Candidates</button>
+      <button class="btn-primary" (click)="closeCandidateDrawer()" [disabled]="!selectedResumeId">
+        Done
+      </button>
     </div>
   </div>
 </div>

@@ -4,12 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Candidate, Job, Profile, Resume, UserApplicationView } from '../../core/models';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { InterviewService, ScheduledInterview } from '../../core/services/interview.service';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
+import { InterviewModalComponent } from '../../shared/interview-modal/interview-modal.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, InterviewModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -31,7 +33,7 @@ export class DashboardComponent implements OnInit {
   uploadingResume = false;
 
   // Job Extractor
-  platform = 'LinkedIn';
+  platform = 'Auto-detect';
   jobUrl = '';
   jobDescription = '';
   extracting = false;
@@ -76,15 +78,22 @@ export class DashboardComponent implements OnInit {
   // Reanalysis state
   reanalyzingAppId: string | null = null;
 
+  // Interview scheduling
+  showInterviewModal = false;
+  selectedAppForInterview: UserApplicationView | null = null;
+  upcomingInterviews: ScheduledInterview[] = [];
+
   constructor(
     private supabase: SupabaseService,
-    private router: Router
+    private router: Router,
+    private interviewService: InterviewService
   ) { }
 
   async ngOnInit() {
     await this.loadProfile();
     await this.loadCandidates();
     await this.loadApplications();
+    await this.loadUpcomingInterviews();
     this.calculateStats();
     this.loading = false;
   }
@@ -223,7 +232,7 @@ export class DashboardComponent implements OnInit {
     }
 
     if (!this.jobDescription && !this.jobUrl) {
-      this.extractError = 'Please paste a job description or enter a job URL';
+      this.extractError = 'Please enter a job URL or paste the job description';
       return;
     }
 
@@ -672,6 +681,34 @@ export class DashboardComponent implements OnInit {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
+  // Auto-detect platform from URL
+  detectPlatformFromUrl(url: string): string {
+    if (!url) return 'Auto-detect';
+    const urlLower = url.toLowerCase();
+
+    if (urlLower.includes('linkedin.com')) return 'LinkedIn';
+    if (urlLower.includes('indeed.com')) return 'Indeed';
+    if (urlLower.includes('glassdoor.com')) return 'Glassdoor';
+    if (urlLower.includes('dice.com')) return 'Dice';
+    if (urlLower.includes('ziprecruiter.com')) return 'ZipRecruiter';
+    if (urlLower.includes('angel.co') || urlLower.includes('wellfound.com')) return 'AngelList';
+    if (urlLower.includes('greenhouse.io')) return 'Greenhouse';
+    if (urlLower.includes('lever.co')) return 'Lever';
+    if (urlLower.includes('workday.com') || urlLower.includes('myworkdayjobs.com')) return 'Workday';
+    if (urlLower.includes('ashbyhq.com')) return 'Ashby';
+    if (urlLower.includes('jobs.') || urlLower.includes('/jobs') || urlLower.includes('/careers')) return 'Company Website';
+
+    return 'Other';
+  }
+
+  onJobUrlChange(url: string) {
+    this.jobUrl = url;
+    const detected = this.detectPlatformFromUrl(url);
+    if (detected !== 'Auto-detect') {
+      this.platform = detected;
+    }
+  }
+
   // ============================================================================
   // CANDIDATE SELECTOR HELPERS
   // ============================================================================
@@ -856,6 +893,65 @@ export class DashboardComponent implements OnInit {
     } finally {
       this.reanalyzingAppId = null;
       input.value = '';
+    }
+  }
+
+  // ============================================================================
+  // INTERVIEW SCHEDULING
+  // ============================================================================
+
+  async loadUpcomingInterviews() {
+    try {
+      this.upcomingInterviews = await this.interviewService.getUpcomingInterviews(7);
+    } catch (err) {
+      console.error('Failed to load upcoming interviews:', err);
+      this.upcomingInterviews = [];
+    }
+  }
+
+  openInterviewModal(app: UserApplicationView) {
+    this.selectedAppForInterview = app;
+    this.showInterviewModal = true;
+  }
+
+  closeInterviewModal() {
+    this.showInterviewModal = false;
+    this.selectedAppForInterview = null;
+  }
+
+  async onInterviewScheduled(interview: ScheduledInterview) {
+    this.closeInterviewModal();
+    await this.loadUpcomingInterviews();
+    await this.loadApplications();
+    this.calculateStats();
+  }
+
+  getInterviewsForApp(app: UserApplicationView): ScheduledInterview[] {
+    return this.upcomingInterviews.filter(i => i.application_id === app.id);
+  }
+
+  hasUpcomingInterview(app: UserApplicationView): boolean {
+    return this.getInterviewsForApp(app).length > 0;
+  }
+
+  getNextInterviewDate(app: UserApplicationView): string {
+    const interviews = this.getInterviewsForApp(app);
+    if (interviews.length === 0) return '';
+    const next = interviews[0];
+    return this.formatInterviewDate(next.scheduled_at);
+  }
+
+  formatInterviewDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return `Today at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+    } else if (diffDays === 1) {
+      return `Tomorrow at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+    } else {
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     }
   }
 

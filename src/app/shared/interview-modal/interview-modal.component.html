@@ -1,0 +1,291 @@
+<div class="modal-overlay" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h3>{{ isEditing ? 'Edit Interview' : 'Schedule Interview' }}</h3>
+            <button class="close-btn" (click)="closeModal()">×</button>
+        </div>
+
+        <div class="modal-body">
+            <!-- Application Info -->
+            <div class="application-info">
+                <div class="company-logo" [style.background]="'#635BFF'">
+                    {{ application.company_name?.charAt(0) || '?' }}
+                </div>
+                <div class="application-details">
+                    <div class="job-title">{{ application.job_title || 'Position' }}</div>
+                    <div class="company-name">{{ application.company_name || 'Company' }}</div>
+                </div>
+            </div>
+
+            <!-- AI Scheduling Assistant Toggle -->
+            <div class="ai-assistant-toggle">
+                <button
+                    type="button"
+                    class="btn-ai-assistant"
+                    (click)="toggleAiAssistant()"
+                    [class.active]="showAiAssistant"
+                >
+                    <svg class="ai-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>{{ showAiAssistant ? 'Hide AI Assistant' : 'AI Scheduling Assistant' }}</span>
+                </button>
+            </div>
+
+            <!-- AI Assistant Panel -->
+            <div class="ai-assistant-panel" *ngIf="showAiAssistant">
+                <div class="ai-chat-container">
+                    <!-- Messages -->
+                    <div class="ai-messages">
+                        <div
+                            *ngFor="let msg of aiMessages"
+                            class="ai-message"
+                            [class.user]="msg.role === 'user'"
+                            [class.assistant]="msg.role === 'assistant'"
+                        >
+                            <div class="message-content">
+                                <p class="message-text">{{ msg.content }}</p>
+
+                                <!-- Suggested Slots -->
+                                <div class="suggested-slots" *ngIf="msg.suggestedSlots?.length">
+                                    <div
+                                        *ngFor="let slot of msg.suggestedSlots"
+                                        class="slot-card"
+                                        (click)="selectSuggestedSlot(slot)"
+                                    >
+                                        <div class="slot-datetime">
+                                            <span class="slot-date">{{ slot.date | date:'EEE, MMM d' }}</span>
+                                            <span class="slot-time">{{ slot.startTime }} - {{ slot.endTime }}</span>
+                                        </div>
+                                        <div class="slot-reason">{{ slot.reason }}</div>
+                                        <button type="button" class="btn-select-slot">Select This Time</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="message-time">{{ msg.timestamp | date:'shortTime' }}</span>
+                        </div>
+
+                        <!-- Loading indicator -->
+                        <div class="ai-message assistant" *ngIf="aiLoading">
+                            <div class="message-content">
+                                <div class="typing-indicator">
+                                    <span></span><span></span><span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input -->
+                    <div class="ai-input-container">
+                        <input
+                            type="text"
+                            [(ngModel)]="aiUserInput"
+                            name="aiUserInput"
+                            placeholder="Ask about scheduling..."
+                            (keydown)="onAiInputKeydown($event)"
+                            [disabled]="aiLoading"
+                        />
+                        <button
+                            type="button"
+                            class="btn-send"
+                            (click)="sendAiMessage()"
+                            [disabled]="!aiUserInput.trim() || aiLoading"
+                        >
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Error message -->
+                    <div class="ai-error" *ngIf="aiError">{{ aiError }}</div>
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div class="error-message" *ngIf="error">
+                {{ error }}
+            </div>
+
+            <!-- Form -->
+            <form (ngSubmit)="scheduleInterview()">
+                <!-- Title -->
+                <div class="form-group">
+                    <label for="title">Interview Title</label>
+                    <input
+                        type="text"
+                        id="title"
+                        [(ngModel)]="title"
+                        name="title"
+                        placeholder="e.g., Technical Interview Round 1"
+                        required
+                    />
+                </div>
+
+                <!-- Interview Type -->
+                <div class="form-group">
+                    <label for="type">Interview Type</label>
+                    <select id="type" [(ngModel)]="interviewType" name="interviewType">
+                        <option *ngFor="let type of interviewTypes" [value]="type.value">
+                            {{ type.label }}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Date and Time Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date">Date</label>
+                        <input
+                            type="date"
+                            id="date"
+                            [(ngModel)]="scheduledDate"
+                            name="scheduledDate"
+                            [min]="minDate"
+                            required
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label for="time">Time</label>
+                        <input
+                            type="time"
+                            id="time"
+                            [(ngModel)]="scheduledTime"
+                            name="scheduledTime"
+                            required
+                        />
+                    </div>
+                </div>
+
+                <!-- Duration and Timezone Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="duration">Duration</label>
+                        <select id="duration" [(ngModel)]="duration" name="duration">
+                            <option *ngFor="let d of durations" [value]="d.value">
+                                {{ d.label }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="timezone">Timezone</label>
+                        <input
+                            type="text"
+                            id="timezone"
+                            [(ngModel)]="timezone"
+                            name="timezone"
+                            readonly
+                        />
+                    </div>
+                </div>
+
+                <!-- Location (for onsite) -->
+                <div class="form-group" *ngIf="interviewType === 'onsite'">
+                    <label for="location">Location</label>
+                    <input
+                        type="text"
+                        id="location"
+                        [(ngModel)]="location"
+                        name="location"
+                        placeholder="e.g., 123 Main St, New York, NY"
+                    />
+                </div>
+
+                <!-- Meeting Link (for video) -->
+                <div class="form-group" *ngIf="interviewType === 'video' || interviewType === 'phone'">
+                    <label for="meetingLink">Meeting Link <span class="optional">(optional)</span></label>
+                    <input
+                        type="url"
+                        id="meetingLink"
+                        [(ngModel)]="meetingLink"
+                        name="meetingLink"
+                        placeholder="https://zoom.us/j/..."
+                    />
+                    <small class="hint" *ngIf="interviewType === 'video'">
+                        Enter the video meeting link
+                    </small>
+                </div>
+
+                <!-- Interviewer Info -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="interviewerName">Interviewer Name <span class="optional">(optional)</span></label>
+                        <input
+                            type="text"
+                            id="interviewerName"
+                            [(ngModel)]="interviewerName"
+                            name="interviewerName"
+                            placeholder="John Smith"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label for="interviewerEmail">Interviewer Email <span class="optional">(optional)</span></label>
+                        <input
+                            type="email"
+                            id="interviewerEmail"
+                            [(ngModel)]="interviewerEmail"
+                            name="interviewerEmail"
+                            placeholder="john@company.com"
+                        />
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-group">
+                    <label for="notes">Notes <span class="optional">(optional)</span></label>
+                    <textarea
+                        id="notes"
+                        [(ngModel)]="notes"
+                        name="notes"
+                        placeholder="Any preparation notes or details..."
+                        rows="3"
+                    ></textarea>
+                </div>
+
+                <!-- Google Calendar Integration -->
+                <div class="google-calendar-section">
+                    <div class="google-header">
+                        <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <span>Google Calendar</span>
+                    </div>
+
+                    <div class="google-status">
+                        <label class="checkbox-label">
+                            <input
+                                type="checkbox"
+                                [(ngModel)]="addToGoogleCalendar"
+                                name="addToGoogleCalendar"
+                            />
+                            <span>Add to Google Calendar</span>
+                        </label>
+                        <p class="status-message">Interview will be added to the shared calendar</p>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" (click)="closeModal()">Cancel</button>
+            <button
+                type="button"
+                class="btn-primary"
+                (click)="scheduleInterview()"
+                [disabled]="saving || !scheduledDate || !scheduledTime"
+            >
+                <span *ngIf="!saving">
+                    {{ isEditing ? 'Update Interview' : 'Schedule Interview' }}
+                </span>
+                <span *ngIf="saving" class="loading-text">
+                    <span class="spinner-small"></span>
+                    {{ isEditing ? 'Updating...' : 'Scheduling...' }}
+                </span>
+            </button>
+        </div>
+    </div>
+</div>

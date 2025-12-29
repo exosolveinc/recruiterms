@@ -78,27 +78,33 @@
                     <div class="form-group platform-select">
                         <label>Platform</label>
                         <select [(ngModel)]="platform">
+                            <option value="Auto-detect">Auto-detect</option>
                             <option value="LinkedIn">LinkedIn</option>
                             <option value="Indeed">Indeed</option>
                             <option value="Glassdoor">Glassdoor</option>
                             <option value="Dice">Dice</option>
+                            <option value="ZipRecruiter">ZipRecruiter</option>
+                            <option value="AngelList">AngelList</option>
+                            <option value="Greenhouse">Greenhouse</option>
+                            <option value="Lever">Lever</option>
+                            <option value="Workday">Workday</option>
+                            <option value="Ashby">Ashby</option>
                             <option value="Company Website">Company Website</option>
                             <option value="Referral">Referral</option>
-                            <option value="AngelList">AngelList</option>
-                            <option value="ZipRecruiter">ZipRecruiter</option>
+                            <option value="Other">Other</option>
                         </select>
                     </div>
                     <div class="form-group url-input">
-                        <label>Job URL (optional)</label>
-                        <input type="url" [(ngModel)]="jobUrl" placeholder="https://..." />
+                        <label>Job URL</label>
+                        <input type="url" [ngModel]="jobUrl" (ngModelChange)="onJobUrlChange($event)" placeholder="https://linkedin.com/jobs/..." />
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Job Description</label>
+                    <label>Job Description <span class="optional-hint">(or paste URL above)</span></label>
                     <textarea
                         [(ngModel)]="jobDescription"
-                        placeholder="Paste job URL or description..."
+                        placeholder="Paste job description here, or just use the URL above..."
                         rows="4"
                     ></textarea>
                 </div>
@@ -181,9 +187,21 @@
                                 />
                             </td>
                             <td>
-                                <span class="status-badge" [class]="'status-' + app.status">
-                                    {{ getStatusLabel(app.status) }}
-                                </span>
+                                <select
+                                    class="status-select-inline"
+                                    [class]="'status-' + app.status"
+                                    [ngModel]="app.status"
+                                    (ngModelChange)="updateStatus(app, $event)"
+                                    (click)="$event.stopPropagation()">
+                                    <option value="extracted">Extracted</option>
+                                    <option value="applied">Applied</option>
+                                    <option value="screening">Screening</option>
+                                    <option value="interviewing">Interview</option>
+                                    <option value="offer">Offer</option>
+                                    <option value="accepted">Accepted</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="withdrawn">Withdrawn</option>
+                                </select>
                             </td>
                             <td class="resume-col">{{ getResumeNameForApp(app) }}</td>
                             <td>
@@ -284,6 +302,26 @@
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            <!-- Points to Add Section -->
+                                            <div class="optimizer-section points-to-add-section" *ngIf="app.missing_skills?.length">
+                                                <h4>Points to Add to Your Resume</h4>
+                                                <p class="section-subtitle">Consider adding these skills or experiences to improve your match</p>
+                                                <div class="points-list">
+                                                    <div class="point-item" *ngFor="let skill of app.missing_skills">
+                                                        <span class="point-icon">+</span>
+                                                        <span class="point-text">{{ skill }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="points-tips" *ngIf="app.missing_skills && app.missing_skills.length > 0">
+                                                    <p class="tip-header">💡 Tips:</p>
+                                                    <ul class="tips-list">
+                                                        <li *ngIf="app.missing_skills!.length <= 3">You're close! Adding these {{ app.missing_skills!.length }} skill(s) could significantly boost your match.</li>
+                                                        <li *ngIf="app.missing_skills!.length > 3">Focus on the most critical skills first. Consider highlighting any related experience you have.</li>
+                                                        <li>Even if you don't have direct experience, mention related projects or transferable skills.</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <!-- Right Column: Actions & Status -->
@@ -295,6 +333,15 @@
                                                     <button class="btn-action primary" (click)="editApplication(app); $event.stopPropagation()">
                                                         Edit Details
                                                     </button>
+                                                    <button class="btn-action interview" (click)="openInterviewModal(app); $event.stopPropagation()">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                        </svg>
+                                                        Schedule Interview
+                                                    </button>
                                                     <button class="btn-action success" *ngIf="canProgress(app)" (click)="progressApplication(app); $event.stopPropagation()">
                                                         Move to Next Stage
                                                     </button>
@@ -304,6 +351,15 @@
                                                     <button class="btn-action danger" (click)="deleteApplication(app); $event.stopPropagation()">
                                                         Delete
                                                     </button>
+                                                </div>
+
+                                                <!-- Upcoming Interview Badge -->
+                                                <div class="upcoming-interview-badge" *ngIf="hasUpcomingInterview(app)">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <circle cx="12" cy="12" r="10"></circle>
+                                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                                    </svg>
+                                                    <span>Interview: {{ getNextInterviewDate(app) }}</span>
                                                 </div>
                                             </div>
 
@@ -486,4 +542,12 @@
             <button class="btn-secondary" (click)="goToCandidates()">Manage All Candidates</button>
         </div>
     </div>
+
+    <!-- Interview Scheduling Modal -->
+    <app-interview-modal
+        *ngIf="showInterviewModal && selectedAppForInterview"
+        [application]="selectedAppForInterview"
+        (close)="closeInterviewModal()"
+        (saved)="onInterviewScheduled($event)"
+    ></app-interview-modal>
 </div>

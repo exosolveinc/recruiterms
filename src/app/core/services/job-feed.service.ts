@@ -14,9 +14,12 @@ export interface ExternalJob {
   salary_text?: string;
   url: string;
   posted_date: string;
-  source: 'adzuna' | 'rapidapi' | 'other';
+  source: 'adzuna' | 'rapidapi' | 'dice' | 'linkedin' | 'indeed' | 'glassdoor' | 'ai-search' | 'other';
   employment_type?: string;
   category?: string;
+  work_type?: string;
+  experience_level?: string;
+  required_skills?: string[];
 }
 
 export interface JobSearchParams {
@@ -28,7 +31,12 @@ export interface JobSearchParams {
   salaryMax?: number;
   fullTime?: boolean;
   remote?: boolean;
+  workType?: 'remote' | 'hybrid' | 'onsite';
+  experienceLevel?: string;
+  platforms?: string[];
 }
+
+export type JobPlatform = 'adzuna' | 'rapidapi' | 'dice' | 'linkedin' | 'indeed' | 'glassdoor' | 'ziprecruiter' | 'ai-search' | 'all';
 
 export interface JobSearchResult {
   jobs: ExternalJob[];
@@ -43,6 +51,7 @@ export interface JobSearchResult {
 export class JobFeedService {
   private adzunaBaseUrl = 'https://api.adzuna.com/v1/api/jobs';
   private rapidApiBaseUrl = 'https://jsearch.p.rapidapi.com';
+  private supabaseFunctionsUrl = `${environment.supabaseUrl}/functions/v1`;
 
   constructor(private http: HttpClient) {}
 
@@ -209,6 +218,88 @@ export class JobFeedService {
     } catch (error) {
       console.error('Failed to fetch categories:', error);
       return [];
+    }
+  }
+
+  /**
+   * Search jobs using AI-powered web search (Dice, LinkedIn, Indeed, etc.)
+   * This uses Claude API to search across multiple job platforms
+   */
+  async searchWithAI(params: JobSearchParams, platforms: string[] = ['dice', 'indeed', 'linkedin']): Promise<JobSearchResult> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${environment.supabaseAnonKey}`
+    });
+
+    const requestBody = {
+      query: params.query,
+      location: params.location,
+      platforms: platforms,
+      workType: params.workType,
+      experienceLevel: params.experienceLevel,
+      salaryMin: params.salaryMin,
+      salaryMax: params.salaryMax,
+      limit: params.resultsPerPage || 15
+    };
+
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(`${this.supabaseFunctionsUrl}/search-jobs-ai`, requestBody, { headers })
+      );
+
+      const jobs: ExternalJob[] = (response.jobs || []).map((job: any) => ({
+        id: job.id || `ai-${Date.now()}-${Math.random()}`,
+        title: job.title || 'Unknown Title',
+        company: job.company || 'Unknown Company',
+        location: job.location || 'Unknown Location',
+        description: job.description || '',
+        salary_min: job.salary_min,
+        salary_max: job.salary_max,
+        salary_text: job.salary_text || this.formatSalary(job.salary_min, job.salary_max),
+        url: job.url || '',
+        posted_date: job.posted_date || new Date().toISOString(),
+        source: this.normalizeSource(job.source),
+        employment_type: job.employment_type || 'Full-time',
+        work_type: job.work_type,
+        experience_level: job.experience_level,
+        required_skills: job.required_skills || [],
+        category: ''
+      }));
+
+      return {
+        jobs,
+        total: response.total || jobs.length,
+        page: params.page || 1,
+        totalPages: Math.ceil((response.total || jobs.length) / (params.resultsPerPage || 15))
+      };
+    } catch (error) {
+      console.error('AI Search error:', error);
+      return { jobs: [], total: 0, page: 1, totalPages: 0 };
+    }
+  }
+
+  /**
+   * Search specific platform using AI
+   */
+  async searchPlatform(platform: string, params: JobSearchParams): Promise<JobSearchResult> {
+    return this.searchWithAI(params, [platform]);
+  }
+
+  /**
+   * Normalize source string to match our type
+   */
+  private normalizeSource(source: string): ExternalJob['source'] {
+    if (!source) return 'other';
+    const normalized = source.toLowerCase().replace(/[^a-z]/g, '');
+    switch (normalized) {
+      case 'dice': return 'dice';
+      case 'linkedin': return 'linkedin';
+      case 'indeed': return 'indeed';
+      case 'glassdoor': return 'glassdoor';
+      case 'adzuna': return 'adzuna';
+      case 'rapidapi': return 'rapidapi';
+      case 'aisearch': return 'ai-search';
+      default: return 'other';
     }
   }
 }
