@@ -5,5 +5,7 @@ export const environment = {
   // Job Feed APIs
   rapidApiKey: '679aef075cmsh37d0236b8a1a173p1b827cjsnb0fcaccacc88',
   adzunaAppId: 'd4af06fa',
-  adzunaApiKey: '257adac44c42b7c237a958e118f88120'
+  adzunaApiKey: '257adac44c42b7c237a958e118f88120',
+  // Google Calendar Integration
+  googleClientId: '105337480884-cddt144lh5q7efjko1soot3psbojfdll.apps.googleusercontent.com'
 };

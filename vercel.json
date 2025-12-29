@@ -1,6 +1,6 @@
 {
   "buildCommand": "ng build --configuration production",
-  "outputDirectory": "dist/recruitmentmsFrontend/browser",
+  "outputDirectory": "dist/recruitmentms-frontend",
   "framework": "angular",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },

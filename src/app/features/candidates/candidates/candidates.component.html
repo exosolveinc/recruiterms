@@ -251,92 +251,328 @@
                     </div>
                 </div>
 
-                <!-- Two Column Layout -->
-                <div class="candidate-details-grid">
-                    <!-- Left Column -->
-                    <div class="details-left">
-                        <!-- Contact Information -->
-                        <div class="detail-section">
-                            <h4>Contact Information</h4>
-                            <div class="contact-grid">
-                                <div class="contact-item" *ngIf="selectedCandidate.email">
-                                    <span class="label">Email</span>
-                                    <a [href]="'mailto:' + selectedCandidate.email">{{ selectedCandidate.email }}</a>
+                <!-- Tab Navigation -->
+                <div class="modal-tabs">
+                    <button class="tab-btn" [class.active]="activeTab === 'overview'" (click)="setActiveTab('overview')">
+                        Overview
+                    </button>
+                    <button class="tab-btn" [class.active]="activeTab === 'preferences'" (click)="setActiveTab('preferences')">
+                        Preferences
+                    </button>
+                    <button class="tab-btn" [class.active]="activeTab === 'documents'" (click)="setActiveTab('documents')">
+                        Documents
+                        <span class="tab-badge" *ngIf="candidateDocuments.length">{{ candidateDocuments.length }}</span>
+                    </button>
+                </div>
+
+                <!-- Tab Content: Overview -->
+                <div class="tab-content" *ngIf="activeTab === 'overview'">
+                    <div class="candidate-details-grid">
+                        <!-- Left Column -->
+                        <div class="details-left">
+                            <div class="detail-section">
+                                <h4>Contact Information</h4>
+                                <div class="contact-grid">
+                                    <div class="contact-item" *ngIf="selectedCandidate.email">
+                                        <span class="label">Email</span>
+                                        <a [href]="'mailto:' + selectedCandidate.email">{{ selectedCandidate.email }}</a>
+                                    </div>
+                                    <div class="contact-item" *ngIf="selectedCandidate.phone">
+                                        <span class="label">Phone</span>
+                                        <a [href]="'tel:' + selectedCandidate.phone">{{ selectedCandidate.phone }}</a>
+                                    </div>
+                                    <div class="contact-item" *ngIf="selectedCandidate.linkedin">
+                                        <span class="label">LinkedIn</span>
+                                        <a [href]="selectedCandidate.linkedin" target="_blank">View Profile</a>
+                                    </div>
                                 </div>
-                                <div class="contact-item" *ngIf="selectedCandidate.phone">
-                                    <span class="label">Phone</span>
-                                    <a [href]="'tel:' + selectedCandidate.phone">{{ selectedCandidate.phone }}</a>
-                                </div>
-                                <div class="contact-item" *ngIf="selectedCandidate.linkedin">
-                                    <span class="label">LinkedIn</span>
-                                    <a [href]="selectedCandidate.linkedin" target="_blank">View Profile</a>
+                            </div>
+                            <div class="detail-section" *ngIf="selectedCandidate.skills?.length">
+                                <h4>Skills ({{ selectedCandidate.skills.length }})</h4>
+                                <div class="skills-grid">
+                                    <div class="skill-item" *ngFor="let skill of selectedCandidate.skills">
+                                        <span class="skill-name">{{ skill.name }}</span>
+                                        <span class="skill-proficiency" *ngIf="skill.proficiency">{{ skill.proficiency }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Skills -->
-                        <div class="detail-section" *ngIf="selectedCandidate.skills?.length">
-                            <h4>Skills ({{ selectedCandidate.skills.length }})</h4>
-                            <div class="skills-grid">
-                                <div class="skill-item" *ngFor="let skill of selectedCandidate.skills">
-                                    <span class="skill-name">{{ skill.name }}</span>
-                                    <span class="skill-proficiency" *ngIf="skill.proficiency">{{ skill.proficiency }}</span>
+                        <!-- Right Column - Resumes -->
+                        <div class="details-right">
+                            <div class="detail-section">
+                                <h4>Resumes ({{ selectedCandidate.resume_count }})</h4>
+                                <div class="resume-selector">
+                                    <div class="resume-card" *ngFor="let resume of selectedCandidate.resumes" [class.selected]="selectedResume?.id === resume.id" (click)="selectResume(resume)">
+                                        <div class="resume-card-header">
+                                            <span class="resume-icon">📄</span>
+                                            <div class="resume-card-info">
+                                                <span class="resume-card-name">{{ resume.file_name }}</span>
+                                                <span class="resume-card-date">Uploaded {{ formatDate(resume.created_at) }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="resume-card-actions">
+                                            <button class="btn-action" (click)="openResumeFile(resume); $event.stopPropagation()">🔗 Open</button>
+                                            <button class="btn-action" (click)="downloadResume(resume); $event.stopPropagation()">⬇️ Download</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-section" *ngIf="selectedResume">
+                                <h4>Resume Details</h4>
+                                <div class="resume-details">
+                                    <div class="resume-detail-row" *ngIf="selectedResume.professional_summary">
+                                        <span class="label">Summary</span>
+                                        <p>{{ selectedResume.professional_summary }}</p>
+                                    </div>
+                                    <div class="resume-detail-row" *ngIf="selectedResume.education?.length">
+                                        <span class="label">Education</span>
+                                        <div class="education-list">
+                                            <div class="edu-item" *ngFor="let edu of selectedResume.education">
+                                                <span class="degree">{{ edu.degree }}</span>
+                                                <span class="institution">{{ edu.institution }} <span *ngIf="edu.year">· {{ edu.year }}</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="resume-detail-row" *ngIf="selectedResume.work_history?.length">
+                                        <span class="label">Work History</span>
+                                        <div class="work-list">
+                                            <div class="work-item" *ngFor="let work of selectedResume.work_history.slice(0, 3)">
+                                                <span class="work-title">{{ work.title }}</span>
+                                                <span class="work-company">{{ work.company }}</span>
+                                                <span class="work-dates">{{ work.start }} - {{ work.end || 'Present' }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Right Column - Resumes -->
-                    <div class="details-right">
-                        <div class="detail-section">
-                            <h4>Resumes ({{ selectedCandidate.resume_count }})</h4>
-                            <div class="resume-selector">
-                                <div
-                                    class="resume-card"
-                                    *ngFor="let resume of selectedCandidate.resumes"
-                                    [class.selected]="selectedResume?.id === resume.id"
-                                    (click)="selectResume(resume)"
-                                >
-                                    <div class="resume-card-header">
-                                        <span class="resume-icon">📄</span>
-                                        <div class="resume-card-info">
-                                            <span class="resume-card-name">{{ resume.file_name }}</span>
-                                            <span class="resume-card-date">Uploaded {{ formatDate(resume.created_at) }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="resume-card-actions">
-                                        <button class="btn-action" (click)="openResumeFile(resume); $event.stopPropagation()">🔗 Open</button>
-                                        <button class="btn-action" (click)="downloadResume(resume); $event.stopPropagation()">⬇️ Download</button>
-                                    </div>
-                                </div>
+                <!-- Tab Content: Preferences -->
+                <div class="tab-content" *ngIf="activeTab === 'preferences'">
+                    <div class="preferences-section">
+                        <div class="preferences-header">
+                            <h4>Job Preferences</h4>
+                            <div class="preferences-actions" *ngIf="!editingPreferences">
+                                <button class="btn-edit" (click)="startEditingPreferences()">Edit Preferences</button>
+                            </div>
+                            <div class="preferences-actions" *ngIf="editingPreferences">
+                                <button class="btn-cancel" (click)="cancelEditingPreferences()">Cancel</button>
+                                <button class="btn-save" (click)="savePreferences()" [disabled]="savingPreferences">
+                                    {{ savingPreferences ? 'Saving...' : 'Save' }}
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Selected Resume Details -->
-                        <div class="detail-section" *ngIf="selectedResume">
-                            <h4>Resume Details</h4>
-                            <div class="resume-details">
-                                <div class="resume-detail-row" *ngIf="selectedResume.professional_summary">
-                                    <span class="label">Summary</span>
-                                    <p>{{ selectedResume.professional_summary }}</p>
+                        <div class="preferences-grid">
+                            <!-- Job Titles -->
+                            <div class="pref-section">
+                                <label class="pref-label">Preferred Job Titles</label>
+                                <div class="tag-input-container" *ngIf="editingPreferences">
+                                    <input type="text" placeholder="Add job title and press Enter" (keydown.enter)="addPreferredJobTitle($event)" class="pref-input" />
                                 </div>
-                                <div class="resume-detail-row" *ngIf="selectedResume.education?.length">
-                                    <span class="label">Education</span>
-                                    <div class="education-list">
-                                        <div class="edu-item" *ngFor="let edu of selectedResume.education">
-                                            <span class="degree">{{ edu.degree }}</span>
-                                            <span class="institution">{{ edu.institution }} <span *ngIf="edu.year">· {{ edu.year }}</span></span>
+                                <div class="tags-list">
+                                    <span class="pref-tag" *ngFor="let title of editedPreferences.preferred_job_titles">
+                                        {{ title }}
+                                        <button class="remove-tag" *ngIf="editingPreferences" (click)="removePreferredJobTitle(title)">×</button>
+                                    </span>
+                                    <span class="no-data" *ngIf="!editedPreferences.preferred_job_titles?.length">Not specified</span>
+                                </div>
+                            </div>
+
+                            <!-- Locations -->
+                            <div class="pref-section">
+                                <label class="pref-label">Preferred Locations</label>
+                                <div class="tag-input-container" *ngIf="editingPreferences">
+                                    <input type="text" placeholder="Add location and press Enter" (keydown.enter)="addPreferredLocation($event)" class="pref-input" />
+                                </div>
+                                <div class="tags-list">
+                                    <span class="pref-tag" *ngFor="let loc of editedPreferences.preferred_locations">
+                                        {{ loc }}
+                                        <button class="remove-tag" *ngIf="editingPreferences" (click)="removePreferredLocation(loc)">×</button>
+                                    </span>
+                                    <span class="no-data" *ngIf="!editedPreferences.preferred_locations?.length">Not specified</span>
+                                </div>
+                            </div>
+
+                            <!-- Work Type -->
+                            <div class="pref-section">
+                                <label class="pref-label">Work Type</label>
+                                <div class="checkbox-group" [class.disabled]="!editingPreferences">
+                                    <label class="checkbox-item" *ngFor="let type of workTypeOptions">
+                                        <input type="checkbox" [checked]="isWorkTypeSelected(type)" (change)="toggleWorkType(type)" [disabled]="!editingPreferences" />
+                                        <span class="checkbox-label">{{ type | titlecase }}</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Company Size -->
+                            <div class="pref-section">
+                                <label class="pref-label">Company Size</label>
+                                <div class="checkbox-group" [class.disabled]="!editingPreferences">
+                                    <label class="checkbox-item" *ngFor="let size of companySizeOptions">
+                                        <input type="checkbox" [checked]="isCompanySizeSelected(size)" (change)="toggleCompanySize(size)" [disabled]="!editingPreferences" />
+                                        <span class="checkbox-label">{{ size | titlecase }}</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Industries -->
+                            <div class="pref-section">
+                                <label class="pref-label">Preferred Industries</label>
+                                <div class="tag-input-container" *ngIf="editingPreferences">
+                                    <input type="text" placeholder="Add industry and press Enter" (keydown.enter)="addPreferredIndustry($event)" class="pref-input" />
+                                </div>
+                                <div class="tags-list">
+                                    <span class="pref-tag" *ngFor="let ind of editedPreferences.preferred_industries">
+                                        {{ ind }}
+                                        <button class="remove-tag" *ngIf="editingPreferences" (click)="removePreferredIndustry(ind)">×</button>
+                                    </span>
+                                    <span class="no-data" *ngIf="!editedPreferences.preferred_industries?.length">Not specified</span>
+                                </div>
+                            </div>
+
+                            <!-- Salary -->
+                            <div class="pref-section salary-section">
+                                <label class="pref-label">Salary Expectation</label>
+                                <div class="salary-inputs" *ngIf="editingPreferences">
+                                    <input type="number" [(ngModel)]="editedPreferences.salary_expectation_min" placeholder="Min" class="pref-input salary-input" />
+                                    <span class="salary-separator">to</span>
+                                    <input type="number" [(ngModel)]="editedPreferences.salary_expectation_max" placeholder="Max" class="pref-input salary-input" />
+                                    <select [(ngModel)]="editedPreferences.salary_currency" class="pref-select">
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="AUD">AUD</option>
+                                    </select>
+                                </div>
+                                <div class="salary-display" *ngIf="!editingPreferences">
+                                    <span *ngIf="editedPreferences.salary_expectation_min || editedPreferences.salary_expectation_max">
+                                        {{ editedPreferences.salary_currency || 'USD' }} {{ editedPreferences.salary_expectation_min | number }} - {{ editedPreferences.salary_expectation_max | number }}
+                                    </span>
+                                    <span class="no-data" *ngIf="!editedPreferences.salary_expectation_min && !editedPreferences.salary_expectation_max">Not specified</span>
+                                </div>
+                            </div>
+
+                            <!-- Availability -->
+                            <div class="pref-section">
+                                <label class="pref-label">Available Start Date</label>
+                                <input *ngIf="editingPreferences" type="date" [(ngModel)]="editedPreferences.available_start_date" class="pref-input" />
+                                <span *ngIf="!editingPreferences">{{ editedPreferences.available_start_date ? formatDate(editedPreferences.available_start_date) : 'Not specified' }}</span>
+                            </div>
+
+                            <!-- Notice Period -->
+                            <div class="pref-section">
+                                <label class="pref-label">Notice Period</label>
+                                <div class="notice-input" *ngIf="editingPreferences">
+                                    <input type="number" [(ngModel)]="editedPreferences.notice_period_days" placeholder="Days" class="pref-input" style="width: 100px" />
+                                    <span>days</span>
+                                </div>
+                                <span *ngIf="!editingPreferences">{{ editedPreferences.notice_period_days ? editedPreferences.notice_period_days + ' days' : 'Not specified' }}</span>
+                            </div>
+
+                            <!-- Work Authorization -->
+                            <div class="pref-section">
+                                <label class="pref-label">Work Authorization</label>
+                                <input *ngIf="editingPreferences" type="text" [(ngModel)]="editedPreferences.work_authorization" placeholder="e.g., US Citizen, H1B" class="pref-input" />
+                                <span *ngIf="!editingPreferences">{{ editedPreferences.work_authorization || 'Not specified' }}</span>
+                            </div>
+
+                            <!-- Boolean Options -->
+                            <div class="pref-section boolean-options">
+                                <div class="bool-row">
+                                    <label class="bool-label">
+                                        <input type="checkbox" [(ngModel)]="editedPreferences.willing_to_relocate" [disabled]="!editingPreferences" />
+                                        Willing to Relocate
+                                    </label>
+                                </div>
+                                <div class="bool-row">
+                                    <label class="bool-label">
+                                        <input type="checkbox" [(ngModel)]="editedPreferences.has_drivers_license" [disabled]="!editingPreferences" />
+                                        Has Driver's License
+                                    </label>
+                                </div>
+                                <div class="bool-row">
+                                    <label class="bool-label">
+                                        <input type="checkbox" [(ngModel)]="editedPreferences.willing_to_travel" [disabled]="!editingPreferences" />
+                                        Willing to Travel
+                                    </label>
+                                    <input *ngIf="editedPreferences.willing_to_travel && editingPreferences" type="number" [(ngModel)]="editedPreferences.travel_percentage" placeholder="%" class="travel-percent" min="0" max="100" />
+                                    <span *ngIf="editedPreferences.willing_to_travel && !editingPreferences && editedPreferences.travel_percentage">({{ editedPreferences.travel_percentage }}%)</span>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="pref-section full-width">
+                                <label class="pref-label">Notes</label>
+                                <textarea *ngIf="editingPreferences" [(ngModel)]="editedPreferences.notes" placeholder="Additional notes..." class="pref-textarea" rows="3"></textarea>
+                                <p class="notes-display" *ngIf="!editingPreferences">{{ editedPreferences.notes || 'No notes' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Documents -->
+                <div class="tab-content" *ngIf="activeTab === 'documents'">
+                    <div class="documents-section">
+                        <!-- Upload Form -->
+                        <div class="upload-document-form">
+                            <h4>Upload Document</h4>
+                            <div class="upload-form-grid">
+                                <div class="form-row">
+                                    <label>Document Type</label>
+                                    <select [(ngModel)]="newDocumentType" class="doc-select">
+                                        <option *ngFor="let dt of documentTypes" [value]="dt.value">{{ dt.label }}</option>
+                                    </select>
+                                </div>
+                                <div class="form-row">
+                                    <label>Document Name</label>
+                                    <input type="text" [(ngModel)]="newDocumentName" placeholder="e.g., Driver's License" class="doc-input" />
+                                </div>
+                                <div class="form-row">
+                                    <label>Expiry Date</label>
+                                    <input type="date" [(ngModel)]="newDocumentExpiry" class="doc-input" />
+                                </div>
+                                <div class="form-row full">
+                                    <label>Notes</label>
+                                    <input type="text" [(ngModel)]="newDocumentNotes" placeholder="Additional notes..." class="doc-input" />
+                                </div>
+                            </div>
+                            <label class="upload-btn" [class.uploading]="uploadingDocument">
+                                <span *ngIf="!uploadingDocument">📎 Select File to Upload</span>
+                                <span *ngIf="uploadingDocument">Uploading...</span>
+                                <input type="file" (change)="onDocumentFileSelected($event)" hidden [disabled]="uploadingDocument" />
+                            </label>
+                            <p class="upload-hint">Supported: PDF, JPG, PNG, DOC. Max 10MB</p>
+                        </div>
+
+                        <!-- Documents List -->
+                        <div class="documents-list">
+                            <h4>Uploaded Documents ({{ candidateDocuments.length }})</h4>
+                            <div class="loading-docs" *ngIf="loadingDocuments">Loading documents...</div>
+                            <div class="no-documents" *ngIf="!loadingDocuments && candidateDocuments.length === 0">
+                                <p>No documents uploaded yet.</p>
+                            </div>
+                            <div class="document-cards" *ngIf="!loadingDocuments && candidateDocuments.length > 0">
+                                <div class="document-card" *ngFor="let doc of candidateDocuments" [class.expired]="isDocumentExpired(doc)" [class.expiring-soon]="isDocumentExpiringSoon(doc)">
+                                    <div class="doc-icon">{{ getDocumentIcon(doc.document_type) }}</div>
+                                    <div class="doc-info">
+                                        <div class="doc-name">{{ doc.document_name }}</div>
+                                        <div class="doc-meta">
+                                            <span class="doc-type">{{ getDocumentTypeLabel(doc.document_type) }}</span>
+                                            <span class="doc-size" *ngIf="doc.file_size">· {{ formatFileSize(doc.file_size) }}</span>
                                         </div>
+                                        <div class="doc-expiry" *ngIf="doc.expiry_date">
+                                            <span class="expiry-label" [class.expired]="isDocumentExpired(doc)" [class.warning]="isDocumentExpiringSoon(doc)">
+                                                {{ isDocumentExpired(doc) ? 'Expired' : 'Expires' }}: {{ formatDate(doc.expiry_date) }}
+                                            </span>
+                                        </div>
+                                        <div class="doc-notes" *ngIf="doc.notes">{{ doc.notes }}</div>
                                     </div>
-                                </div>
-                                <div class="resume-detail-row" *ngIf="selectedResume.work_history?.length">
-                                    <span class="label">Work History</span>
-                                    <div class="work-list">
-                                        <div class="work-item" *ngFor="let work of selectedResume.work_history.slice(0, 3)">
-                                            <span class="work-title">{{ work.title }}</span>
-                                            <span class="work-company">{{ work.company }}</span>
-                                            <span class="work-dates">{{ work.start }} - {{ work.end || 'Present' }}</span>
-                                        </div>
+                                    <div class="doc-actions">
+                                        <button class="doc-action-btn" (click)="openDocument(doc)" title="View">🔗</button>
+                                        <button class="doc-action-btn delete" (click)="deleteDocument(doc)" title="Delete">🗑️</button>
                                     </div>
                                 </div>
                             </div>
@@ -347,7 +583,7 @@
 
             <div class="modal-footer">
                 <button class="btn-secondary" (click)="closeCandidateModal()">Close</button>
-                <button class="btn-primary" *ngIf="selectedResume" (click)="downloadResume(selectedResume)">
+                <button class="btn-primary" *ngIf="selectedResume && activeTab === 'overview'" (click)="downloadResume(selectedResume)">
                     ⬇️ Download Resume
                 </button>
             </div>

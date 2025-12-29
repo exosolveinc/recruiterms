@@ -6,6 +6,8 @@ import {
   AdminEmployeeStats,
   AdminOrgDashboard,
   Candidate,
+  CandidateDocument,
+  CandidatePreferences,
   Job,
   JobApplication,
   Organization,
@@ -373,15 +375,51 @@ export class SupabaseService {
           resumes: [resume],
           resume_count: 1,
           last_updated: resume.updated_at,
-          created_at: resume.created_at
+          created_at: resume.created_at,
+          preferences: null,
+          documents: []
         };
         candidateMap.set(candidateId, newCandidate);
       }
     }
 
     // Convert to array and sort by last_updated
-    return Array.from(candidateMap.values())
+    const candidates = Array.from(candidateMap.values())
       .sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+
+    // Fetch preferences for all candidates
+    await this.loadPreferencesForCandidates(candidates);
+
+    return candidates;
+  }
+
+  /**
+   * Load preferences for a list of candidates
+   */
+  private async loadPreferencesForCandidates(candidates: Candidate[]): Promise<void> {
+    if (candidates.length === 0) return;
+
+    const candidateIds = candidates.map(c => c.id);
+
+    const { data: allPreferences, error } = await this.supabase
+      .from('candidate_preferences')
+      .select('*')
+      .in('candidate_id', candidateIds);
+
+    if (error) {
+      console.warn('Failed to load candidate preferences:', error);
+      return;
+    }
+
+    // Map preferences to candidates
+    const preferencesMap = new Map<string, CandidatePreferences>();
+    for (const pref of (allPreferences || [])) {
+      preferencesMap.set(pref.candidate_id, pref as CandidatePreferences);
+    }
+
+    for (const candidate of candidates) {
+      candidate.preferences = preferencesMap.get(candidate.id) || null;
+    }
   }
 
   /**
@@ -446,7 +484,12 @@ export class SupabaseService {
     if (error) throw error;
 
     // Apply same deduplication logic
-    return this.deduplicateResumesToCandidates(resumes as Resume[]);
+    const candidates = this.deduplicateResumesToCandidates(resumes as Resume[]);
+
+    // Fetch preferences for all candidates
+    await this.loadPreferencesForCandidates(candidates);
+
+    return candidates;
   }
 
   /**
@@ -543,7 +586,9 @@ export class SupabaseService {
           resumes: [resume],
           resume_count: 1,
           last_updated: resume.updated_at,
-          created_at: resume.created_at
+          created_at: resume.created_at,
+          preferences: null,
+          documents: []
         };
         candidateMap.set(candidateId, newCandidate);
       }
@@ -666,6 +711,158 @@ export class SupabaseService {
       .eq('id', id);
 
     if (error) throw error;
+  }
+
+  // ============================================================================
+  // CANDIDATE DOCUMENTS
+  // ============================================================================
+
+  async uploadCandidateDocument(file: File, candidateId: string): Promise<{ path: string; url: string }> {
+    const user = this._user.value;
+    if (!user) throw new Error('Not authenticated');
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${user.id}/documents/${candidateId}/${fileName}`;
+
+    const { error: uploadError } = await this.supabase.storage
+      .from('candidate-documents')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    // For private buckets, store the path and generate signed URLs on-demand
+    // Return the path as URL for now - we'll generate signed URLs when viewing
+    return { path: filePath, url: filePath };
+  }
+
+  /**
+   * Get a signed URL for accessing a document from the private bucket
+   * @param filePath The file path stored in the database
+   * @returns Signed URL valid for 1 hour
+   */
+  async getSignedDocumentUrl(filePath: string): Promise<string> {
+    const { data, error } = await this.supabase.storage
+      .from('candidate-documents')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+    if (error) throw error;
+    return data.signedUrl;
+  }
+
+  async createCandidateDocument(document: Partial<CandidateDocument>): Promise<CandidateDocument> {
+    const user = this._user.value;
+    const profile = this._profile.value;
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await this.supabase
+      .from('candidate_documents')
+      .insert({
+        ...document,
+        user_id: user.id,
+        organization_id: profile?.organization_id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as CandidateDocument;
+  }
+
+  async getCandidateDocuments(candidateId: string): Promise<CandidateDocument[]> {
+    const { data, error } = await this.supabase
+      .from('candidate_documents')
+      .select('*')
+      .eq('candidate_id', candidateId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data as CandidateDocument[];
+  }
+
+  async deleteCandidateDocument(id: string): Promise<void> {
+    // First get the document to get file path
+    const { data: doc } = await this.supabase
+      .from('candidate_documents')
+      .select('file_url')
+      .eq('id', id)
+      .single();
+
+    // Delete from storage if file exists
+    if (doc?.file_url) {
+      try {
+        // file_url now stores the path directly (not a full URL)
+        await this.supabase.storage
+          .from('candidate-documents')
+          .remove([doc.file_url]);
+      } catch (storageErr) {
+        console.warn('Could not delete file from storage:', storageErr);
+      }
+    }
+
+    // Delete from database
+    const { error } = await this.supabase
+      .from('candidate_documents')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // ============================================================================
+  // CANDIDATE PREFERENCES
+  // ============================================================================
+
+  async getCandidatePreferences(candidateId: string): Promise<CandidatePreferences | null> {
+    const { data, error } = await this.supabase
+      .from('candidate_preferences')
+      .select('*')
+      .eq('candidate_id', candidateId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
+    return data as CandidatePreferences | null;
+  }
+
+  async saveCandidatePreferences(candidateId: string, preferences: Partial<CandidatePreferences>): Promise<CandidatePreferences> {
+    const user = this._user.value;
+    const profile = this._profile.value;
+    if (!user) throw new Error('Not authenticated');
+
+    // Check if preferences exist
+    const { data: existing } = await this.supabase
+      .from('candidate_preferences')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .single();
+
+    if (existing) {
+      // Update existing
+      const { data, error } = await this.supabase
+        .from('candidate_preferences')
+        .update(preferences)
+        .eq('candidate_id', candidateId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as CandidatePreferences;
+    } else {
+      // Create new
+      const { data, error } = await this.supabase
+        .from('candidate_preferences')
+        .insert({
+          ...preferences,
+          candidate_id: candidateId,
+          user_id: user.id,
+          organization_id: profile?.organization_id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as CandidatePreferences;
+    }
   }
 
   // ============================================================================

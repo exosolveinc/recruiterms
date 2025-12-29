@@ -21,6 +21,11 @@ export const routes: Routes = [
         canActivate: [GuestGuard],
         loadComponent: () => import('./features/auth/signup/signup.component')
           .then(m => m.SignupComponent)
+      },
+      {
+        path: 'google-callback',
+        loadComponent: () => import('./auth/google-callback/google-callback.component')
+          .then(m => m.GoogleCallbackComponent)
       }
     ]
   },

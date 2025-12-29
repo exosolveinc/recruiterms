@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Candidate, Profile, Resume } from '../../../core/models';
+import { Candidate, CandidateDocument, CandidatePreferences, Profile, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
@@ -27,6 +27,39 @@ export class CandidatesComponent implements OnInit {
   showCandidateModal = false;
   selectedCandidate: Candidate | null = null;
   selectedResume: Resume | null = null;
+
+  // Active tab in modal
+  activeTab: 'overview' | 'preferences' | 'documents' = 'overview';
+
+  // Preferences editing
+  editingPreferences = false;
+  savingPreferences = false;
+  editedPreferences: Partial<CandidatePreferences> = {};
+
+  // Documents
+  candidateDocuments: CandidateDocument[] = [];
+  loadingDocuments = false;
+  uploadingDocument = false;
+  newDocumentType: CandidateDocument['document_type'] = 'other';
+  newDocumentName = '';
+  newDocumentExpiry = '';
+  newDocumentNotes = '';
+
+  // Document type options
+  documentTypes: { value: CandidateDocument['document_type']; label: string }[] = [
+    { value: 'drivers_license', label: 'Driver\'s License' },
+    { value: 'passport', label: 'Passport' },
+    { value: 'id_card', label: 'ID Card' },
+    { value: 'certification', label: 'Certification' },
+    { value: 'degree', label: 'Degree/Diploma' },
+    { value: 'reference', label: 'Reference Letter' },
+    { value: 'portfolio', label: 'Portfolio' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  // Work type options
+  workTypeOptions = ['remote', 'hybrid', 'onsite'];
+  companySizeOptions = ['startup', 'small', 'medium', 'large', 'enterprise'];
 
   // Stats
   stats = {
@@ -123,20 +156,69 @@ export class CandidatesComponent implements OnInit {
     return this.expandedCandidateId === candidateId;
   }
 
-  viewCandidate(candidate: Candidate) {
+  async viewCandidate(candidate: Candidate) {
     this.selectedCandidate = candidate;
     this.selectedResume = candidate.resumes[0] || null;
+    this.activeTab = 'overview';
     this.showCandidateModal = true;
+
+    // Load documents for this candidate
+    await this.loadCandidateDocuments(candidate.id);
+
+    // Initialize preferences editing with existing or default values
+    this.initializePreferencesForm(candidate.preferences);
+  }
+
+  async loadCandidateDocuments(candidateId: string) {
+    this.loadingDocuments = true;
+    try {
+      this.candidateDocuments = await this.supabase.getCandidateDocuments(candidateId);
+    } catch (err) {
+      console.error('Failed to load documents:', err);
+      this.candidateDocuments = [];
+    } finally {
+      this.loadingDocuments = false;
+    }
+  }
+
+  initializePreferencesForm(preferences: CandidatePreferences | null) {
+    this.editedPreferences = preferences ? { ...preferences } : {
+      preferred_job_titles: [],
+      preferred_locations: [],
+      willing_to_relocate: false,
+      preferred_work_type: [],
+      preferred_company_size: [],
+      preferred_industries: [],
+      salary_expectation_min: null,
+      salary_expectation_max: null,
+      salary_currency: 'USD',
+      available_start_date: null,
+      notice_period_days: null,
+      visa_status: null,
+      work_authorization: null,
+      has_drivers_license: false,
+      willing_to_travel: false,
+      travel_percentage: null,
+      notes: null
+    };
+    this.editingPreferences = false;
   }
 
   selectResume(resume: Resume) {
     this.selectedResume = resume;
   }
 
+  setActiveTab(tab: 'overview' | 'preferences' | 'documents') {
+    this.activeTab = tab;
+  }
+
   closeCandidateModal() {
     this.showCandidateModal = false;
     this.selectedCandidate = null;
     this.selectedResume = null;
+    this.candidateDocuments = [];
+    this.editingPreferences = false;
+    this.activeTab = 'overview';
   }
 
   openResumeFile(resume: Resume) {
@@ -156,6 +238,253 @@ export class CandidatesComponent implements OnInit {
     link.click();
     document.body.removeChild(link);
   }
+
+  // ============================================================================
+  // PREFERENCES
+  // ============================================================================
+
+  startEditingPreferences() {
+    this.editingPreferences = true;
+  }
+
+  cancelEditingPreferences() {
+    if (this.selectedCandidate) {
+      this.initializePreferencesForm(this.selectedCandidate.preferences);
+    }
+  }
+
+  async savePreferences() {
+    if (!this.selectedCandidate) return;
+
+    this.savingPreferences = true;
+    try {
+      const savedPrefs = await this.supabase.saveCandidatePreferences(
+        this.selectedCandidate.id,
+        this.editedPreferences
+      );
+
+      // Update local state
+      this.selectedCandidate.preferences = savedPrefs;
+      this.editingPreferences = false;
+
+      // Update in candidates list
+      const idx = this.candidates.findIndex(c => c.id === this.selectedCandidate!.id);
+      if (idx >= 0) {
+        this.candidates[idx].preferences = savedPrefs;
+      }
+    } catch (err: any) {
+      console.error('Failed to save preferences:', err);
+      alert('Failed to save preferences: ' + err.message);
+    } finally {
+      this.savingPreferences = false;
+    }
+  }
+
+  // Preferences array helpers
+  toggleWorkType(type: string) {
+    const arr = this.editedPreferences.preferred_work_type || [];
+    const idx = arr.indexOf(type as any);
+    if (idx >= 0) {
+      arr.splice(idx, 1);
+    } else {
+      arr.push(type as any);
+    }
+    this.editedPreferences.preferred_work_type = [...arr];
+  }
+
+  isWorkTypeSelected(type: string): boolean {
+    return (this.editedPreferences.preferred_work_type || []).includes(type as any);
+  }
+
+  toggleCompanySize(size: string) {
+    const arr = this.editedPreferences.preferred_company_size || [];
+    const idx = arr.indexOf(size as any);
+    if (idx >= 0) {
+      arr.splice(idx, 1);
+    } else {
+      arr.push(size as any);
+    }
+    this.editedPreferences.preferred_company_size = [...arr];
+  }
+
+  isCompanySizeSelected(size: string): boolean {
+    return (this.editedPreferences.preferred_company_size || []).includes(size as any);
+  }
+
+  addPreferredJobTitle(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const value = input.value.trim();
+    if (value && !this.editedPreferences.preferred_job_titles?.includes(value)) {
+      this.editedPreferences.preferred_job_titles = [
+        ...(this.editedPreferences.preferred_job_titles || []),
+        value
+      ];
+      input.value = '';
+    }
+  }
+
+  removePreferredJobTitle(title: string) {
+    this.editedPreferences.preferred_job_titles = (this.editedPreferences.preferred_job_titles || [])
+      .filter(t => t !== title);
+  }
+
+  addPreferredLocation(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const value = input.value.trim();
+    if (value && !this.editedPreferences.preferred_locations?.includes(value)) {
+      this.editedPreferences.preferred_locations = [
+        ...(this.editedPreferences.preferred_locations || []),
+        value
+      ];
+      input.value = '';
+    }
+  }
+
+  removePreferredLocation(location: string) {
+    this.editedPreferences.preferred_locations = (this.editedPreferences.preferred_locations || [])
+      .filter(l => l !== location);
+  }
+
+  addPreferredIndustry(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const value = input.value.trim();
+    if (value && !this.editedPreferences.preferred_industries?.includes(value)) {
+      this.editedPreferences.preferred_industries = [
+        ...(this.editedPreferences.preferred_industries || []),
+        value
+      ];
+      input.value = '';
+    }
+  }
+
+  removePreferredIndustry(industry: string) {
+    this.editedPreferences.preferred_industries = (this.editedPreferences.preferred_industries || [])
+      .filter(i => i !== industry);
+  }
+
+  // ============================================================================
+  // DOCUMENTS
+  // ============================================================================
+
+  async onDocumentFileSelected(event: Event) {
+    if (!this.selectedCandidate) return;
+
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file = input.files[0];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (file.size > maxSize) {
+      alert('File size must be less than 10MB');
+      input.value = '';
+      return;
+    }
+
+    this.uploadingDocument = true;
+
+    try {
+      // Upload file
+      const { url } = await this.supabase.uploadCandidateDocument(file, this.selectedCandidate.id);
+
+      // Create document record
+      const doc = await this.supabase.createCandidateDocument({
+        candidate_id: this.selectedCandidate.id,
+        document_type: this.newDocumentType,
+        document_name: this.newDocumentName || this.getDocumentTypeLabel(this.newDocumentType),
+        file_name: file.name,
+        file_url: url,
+        file_type: file.type,
+        file_size: file.size,
+        expiry_date: this.newDocumentExpiry || null,
+        notes: this.newDocumentNotes || null
+      });
+
+      // Add to local list
+      this.candidateDocuments = [doc, ...this.candidateDocuments];
+
+      // Reset form
+      this.newDocumentType = 'other';
+      this.newDocumentName = '';
+      this.newDocumentExpiry = '';
+      this.newDocumentNotes = '';
+
+    } catch (err: any) {
+      console.error('Failed to upload document:', err);
+      alert('Failed to upload document: ' + err.message);
+    } finally {
+      this.uploadingDocument = false;
+      input.value = '';
+    }
+  }
+
+  getDocumentTypeLabel(type: CandidateDocument['document_type']): string {
+    const found = this.documentTypes.find(dt => dt.value === type);
+    return found?.label || type;
+  }
+
+  getDocumentIcon(type: CandidateDocument['document_type']): string {
+    const icons: Record<CandidateDocument['document_type'], string> = {
+      drivers_license: '🚗',
+      passport: '🛂',
+      id_card: '🪪',
+      certification: '📜',
+      degree: '🎓',
+      reference: '📝',
+      portfolio: '💼',
+      other: '📎'
+    };
+    return icons[type] || '📎';
+  }
+
+  async openDocument(doc: CandidateDocument) {
+    if (!doc.file_url) return;
+
+    try {
+      // Get a signed URL for the private bucket
+      const signedUrl = await this.supabase.getSignedDocumentUrl(doc.file_url);
+      window.open(signedUrl, '_blank');
+    } catch (err: any) {
+      console.error('Failed to get document URL:', err);
+      alert('Failed to open document: ' + err.message);
+    }
+  }
+
+  async deleteDocument(doc: CandidateDocument) {
+    if (!confirm(`Delete "${doc.document_name}"?`)) return;
+
+    try {
+      await this.supabase.deleteCandidateDocument(doc.id);
+      this.candidateDocuments = this.candidateDocuments.filter(d => d.id !== doc.id);
+    } catch (err: any) {
+      console.error('Failed to delete document:', err);
+      alert('Failed to delete document: ' + err.message);
+    }
+  }
+
+  isDocumentExpired(doc: CandidateDocument): boolean {
+    if (!doc.expiry_date) return false;
+    return new Date(doc.expiry_date) < new Date();
+  }
+
+  isDocumentExpiringSoon(doc: CandidateDocument): boolean {
+    if (!doc.expiry_date) return false;
+    const expiryDate = new Date(doc.expiry_date);
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    return expiryDate > new Date() && expiryDate <= thirtyDaysFromNow;
+  }
+
+  formatFileSize(bytes: number | null): string {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  // ============================================================================
+  // HELPERS
+  // ============================================================================
 
   formatDate(dateStr: string): string {
     const date = new Date(dateStr);
