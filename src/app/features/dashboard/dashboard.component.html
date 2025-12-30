@@ -275,20 +275,60 @@
                                             <!-- Match Analysis -->
                                             <div class="optimizer-section match-section-expanded">
                                                 <h4>Match Analysis</h4>
+
+                                                <!-- Overall Assessment -->
+                                                <div class="overall-assessment-box" *ngIf="getDetailedAnalysis(app.id)?.overallAssessment">
+                                                    <p>{{ getDetailedAnalysis(app.id)?.overallAssessment }}</p>
+                                                </div>
+
                                                 <div class="match-breakdown">
                                                     <div class="match-score-large" [class.high]="app.match_score && app.match_score >= 80" [class.medium]="app.match_score && app.match_score >= 60 && app.match_score < 80" [class.low]="app.match_score && app.match_score < 60">
                                                         <span class="score-value">{{ app.match_score || 0 }}%</span>
                                                         <span class="score-label">Match Score</span>
                                                     </div>
+
+                                                    <!-- Requirements Progress -->
+                                                    <div class="requirements-progress-box" *ngIf="getDetailedAnalysis(app.id)?.requirementsFulfilled">
+                                                        <div class="progress-header">
+                                                            <span>Requirements Fulfilled</span>
+                                                            <span class="progress-percent">{{ getDetailedAnalysis(app.id)?.requirementsFulfilled?.percentage }}%</span>
+                                                        </div>
+                                                        <div class="progress-bar-container">
+                                                            <div class="progress-bar-fill" [style.width.%]="getDetailedAnalysis(app.id)?.requirementsFulfilled?.percentage"></div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Experience & Education Scores -->
+                                                    <div class="sub-scores-row" *ngIf="getDetailedAnalysis(app.id)?.experienceMatch || getDetailedAnalysis(app.id)?.educationMatch">
+                                                        <div class="sub-score-item" *ngIf="getDetailedAnalysis(app.id)?.experienceMatch">
+                                                            <div class="sub-score-header">
+                                                                <span>Experience</span>
+                                                                <span class="sub-score-badge" [class.high]="getDetailedAnalysis(app.id)!.experienceMatch!.score >= 80" [class.medium]="getDetailedAnalysis(app.id)!.experienceMatch!.score >= 60 && getDetailedAnalysis(app.id)!.experienceMatch!.score < 80" [class.low]="getDetailedAnalysis(app.id)!.experienceMatch!.score < 60">
+                                                                    {{ getDetailedAnalysis(app.id)?.experienceMatch?.score }}%
+                                                                </span>
+                                                            </div>
+                                                            <p class="sub-score-detail">{{ getDetailedAnalysis(app.id)?.experienceMatch?.details }}</p>
+                                                        </div>
+                                                        <div class="sub-score-item" *ngIf="getDetailedAnalysis(app.id)?.educationMatch">
+                                                            <div class="sub-score-header">
+                                                                <span>Education</span>
+                                                                <span class="sub-score-badge" [class.high]="getDetailedAnalysis(app.id)!.educationMatch!.score >= 80" [class.medium]="getDetailedAnalysis(app.id)!.educationMatch!.score >= 60 && getDetailedAnalysis(app.id)!.educationMatch!.score < 80" [class.low]="getDetailedAnalysis(app.id)!.educationMatch!.score < 60">
+                                                                    {{ getDetailedAnalysis(app.id)?.educationMatch?.score }}%
+                                                                </span>
+                                                            </div>
+                                                            <p class="sub-score-detail">{{ getDetailedAnalysis(app.id)?.educationMatch?.details }}</p>
+                                                        </div>
+                                                    </div>
+
                                                     <div class="skills-breakdown">
                                                         <div class="skills-group matching" *ngIf="app.matching_skills?.length">
-                                                            <span class="group-label">Matching Skills ({{ app.matching_skills?.length }})</span>
+                                                            <span class="group-label">✓ Matching Skills ({{ app.matching_skills?.length }})</span>
                                                             <div class="skills-list">
                                                                 <span class="skill-tag match" *ngFor="let skill of app.matching_skills">{{ skill }}</span>
                                                             </div>
                                                         </div>
                                                         <div class="skills-group missing" *ngIf="app.missing_skills?.length">
-                                                            <span class="group-label">Missing Skills ({{ app.missing_skills?.length }})</span>
+                                                            <span class="group-label">✗ Missing Skills ({{ app.missing_skills?.length }})</span>
                                                             <div class="skills-list">
                                                                 <span class="skill-tag missing" *ngFor="let skill of app.missing_skills">{{ skill }}</span>
                                                             </div>
@@ -303,8 +343,77 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Points to Add Section -->
-                                            <div class="optimizer-section points-to-add-section" *ngIf="app.missing_skills?.length">
+                                            <!-- Quick Wins Section -->
+                                            <div class="optimizer-section quick-wins-section" *ngIf="getDetailedAnalysis(app.id)?.quickWins?.length">
+                                                <h4>⚡ Quick Wins</h4>
+                                                <p class="section-subtitle">Easy improvements that can boost your match</p>
+                                                <div class="quick-wins-list">
+                                                    <div class="quick-win-item" *ngFor="let win of getDetailedAnalysis(app.id)?.quickWins">
+                                                        <span class="quick-win-icon">✓</span>
+                                                        <span class="quick-win-text">{{ win }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Resume Improvements Section -->
+                                            <div class="optimizer-section improvements-section" *ngIf="getDetailedAnalysis(app.id)?.resumeImprovements?.length">
+                                                <h4>📝 What to Add to Your Resume</h4>
+                                                <p class="section-subtitle">Specific points to add and where to add them</p>
+                                                <div class="improvements-list">
+                                                    <div class="improvement-card" *ngFor="let improvement of getDetailedAnalysis(app.id)?.resumeImprovements">
+                                                        <div class="improvement-header">
+                                                            <span class="improvement-section-label">{{ improvement.section }}</span>
+                                                            <span class="improvement-action-badge" [class]="'action-' + improvement.action.toLowerCase()">{{ improvement.action }}</span>
+                                                        </div>
+                                                        <div class="improvement-body">
+                                                            <p class="improvement-text">"{{ improvement.what_to_add }}"</p>
+                                                            <p class="improvement-reason">{{ improvement.reason }}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Skill Gaps Section -->
+                                            <div class="optimizer-section skill-gaps-section" *ngIf="getDetailedAnalysis(app.id)?.skillGaps?.length">
+                                                <h4>🎯 Skills to Develop</h4>
+                                                <div class="skill-gaps-list">
+                                                    <div class="skill-gap-card" *ngFor="let gap of getDetailedAnalysis(app.id)?.skillGaps">
+                                                        <div class="skill-gap-header">
+                                                            <span class="skill-gap-name">{{ gap.skill }}</span>
+                                                            <span class="skill-gap-importance" [class]="'importance-' + gap.importance.toLowerCase().replace(' ', '-')">{{ gap.importance }}</span>
+                                                        </div>
+                                                        <p class="skill-gap-suggestion">{{ gap.suggestion }}</p>
+                                                        <p class="skill-gap-alternative" *ngIf="gap.can_highlight_alternative">
+                                                            💡 Alternative: {{ gap.can_highlight_alternative }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Strengths Section -->
+                                            <div class="optimizer-section strengths-section" *ngIf="getDetailedAnalysis(app.id)?.strengths?.length">
+                                                <h4>💪 Your Strengths</h4>
+                                                <div class="strengths-list">
+                                                    <div class="strength-item" *ngFor="let strength of getDetailedAnalysis(app.id)?.strengths">
+                                                        <span class="strength-icon">★</span>
+                                                        <span>{{ strength }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Interview Tips Section -->
+                                            <div class="optimizer-section interview-tips-section" *ngIf="getDetailedAnalysis(app.id)?.interviewTips?.length">
+                                                <h4>🎯 Interview Tips</h4>
+                                                <div class="interview-tips-list">
+                                                    <div class="tip-item" *ngFor="let tip of getDetailedAnalysis(app.id)?.interviewTips; let i = index">
+                                                        <span class="tip-number">{{ i + 1 }}</span>
+                                                        <span>{{ tip }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Fallback: Points to Add Section (when no detailed analysis) -->
+                                            <div class="optimizer-section points-to-add-section" *ngIf="app.missing_skills?.length && !hasDetailedAnalysis(app.id)">
                                                 <h4>Points to Add to Your Resume</h4>
                                                 <p class="section-subtitle">Consider adding these skills or experiences to improve your match</p>
                                                 <div class="points-list">

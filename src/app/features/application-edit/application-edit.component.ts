@@ -27,6 +27,26 @@ export class ApplicationEditComponent implements OnInit {
     matching: string[];
     missing: string[];
     suggestions: string[];
+    experienceMatch?: { score: number; details: string };
+    educationMatch?: { score: number; details: string };
+    requirementsFulfilled?: { percentage: number; met: string[]; notMet: string[] };
+    resumeImprovements?: Array<{
+      section: string;
+      action: string;
+      what_to_add: string;
+      reason: string;
+    }>;
+    skillGaps?: Array<{
+      skill: string;
+      importance: string;
+      suggestion: string;
+      can_highlight_alternative?: string;
+    }>;
+    strengths?: string[];
+    concerns?: string[];
+    interviewTips?: string[];
+    overallAssessment?: string;
+    quickWins?: string[];
   } | null = null;
 
   // Form fields - initialized from application data
@@ -409,7 +429,21 @@ export class ApplicationEditComponent implements OnInit {
         score: aiMatch.match_score,
         matching: aiMatch.matching_skills || [],
         missing: aiMatch.missing_skills || [],
-        suggestions: aiMatch.recommendations || []
+        suggestions: aiMatch.recommendations || [],
+        experienceMatch: aiMatch.experience_match,
+        educationMatch: aiMatch.education_match,
+        requirementsFulfilled: aiMatch.requirements_fulfilled ? {
+          percentage: aiMatch.requirements_fulfilled.percentage,
+          met: aiMatch.requirements_fulfilled.met || [],
+          notMet: aiMatch.requirements_fulfilled.not_met || []
+        } : undefined,
+        resumeImprovements: aiMatch.resume_improvements || [],
+        skillGaps: aiMatch.skill_gaps || [],
+        strengths: aiMatch.strengths || [],
+        concerns: aiMatch.concerns || [],
+        interviewTips: aiMatch.interview_tips || [],
+        overallAssessment: aiMatch.overall_assessment,
+        quickWins: aiMatch.quick_wins || []
       };
 
       // Update application with match score
