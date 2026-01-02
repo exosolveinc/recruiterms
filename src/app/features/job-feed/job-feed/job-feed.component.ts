@@ -6,6 +6,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { Candidate, Profile, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { JobFeedService, ExternalJob, JobSearchParams, JobPlatform } from '../../../core/services/job-feed.service';
+import { VendorEmailService, VendorJob, VendorJobStats, GmailConnectionStatus, GmailSyncResult } from '../../../core/services/vendor-email.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
 interface JobWithMatch extends ExternalJob {
@@ -94,15 +95,41 @@ export class JobFeedComponent implements OnInit {
   // Search loading text
   searchLoadingText = 'Connecting to job sources...';
 
+  // Vendor Jobs
+  vendorJobs: VendorJob[] = [];
+  vendorJobStats: VendorJobStats | null = null;
+  loadingVendorJobs = false;
+  showVendorSection = false;
+  vendorStatusFilter = '';
+  showAddVendorJobModal = false;
+  vendorEmailInput = '';
+  parsingVendorEmail = false;
+  parseError = '';
+  selectedVendorJob: VendorJob | null = null;
+
+  // Gmail Integration
+  gmailStatus: GmailConnectionStatus = { connected: false };
+  gmailConnecting = false;
+  gmailSyncing = false;
+  gmailSyncResult: GmailSyncResult | null = null;
+  showGmailSettings = false;
+
   constructor(
     private supabase: SupabaseService,
     private jobFeedService: JobFeedService,
+    private vendorEmailService: VendorEmailService,
     private router: Router
   ) {}
 
   async ngOnInit() {
     await this.loadProfile();
     await this.loadCandidates();
+    await this.loadVendorJobStats();
+    await this.checkGmailStatus();
+
+    // Check for OAuth callback or successful Gmail connection
+    this.handleGmailCallback();
+    this.handleGmailConnected();
   }
 
   async loadProfile() {
@@ -778,5 +805,303 @@ export class JobFeedComponent implements OnInit {
   async logout() {
     await this.supabase.signOut();
     this.router.navigate(['/auth/login']);
+  }
+
+  // ============ Vendor Jobs Methods ============
+
+  async loadVendorJobStats() {
+    try {
+      this.vendorJobStats = await this.vendorEmailService.getVendorJobStats();
+    } catch (err) {
+      console.error('Failed to load vendor job stats:', err);
+    }
+  }
+
+  async toggleVendorSection() {
+    this.showVendorSection = !this.showVendorSection;
+    if (this.showVendorSection && this.vendorJobs.length === 0) {
+      await this.loadVendorJobs();
+    }
+  }
+
+  async loadVendorJobs() {
+    this.loadingVendorJobs = true;
+    try {
+      this.vendorJobs = await this.vendorEmailService.getVendorJobs({
+        status: this.vendorStatusFilter || undefined,
+        limit: 50
+      });
+    } catch (err) {
+      console.error('Failed to load vendor jobs:', err);
+    } finally {
+      this.loadingVendorJobs = false;
+    }
+  }
+
+  async filterVendorJobs(status: string) {
+    this.vendorStatusFilter = status;
+    await this.loadVendorJobs();
+  }
+
+  openAddVendorJobModal() {
+    this.showAddVendorJobModal = true;
+    this.vendorEmailInput = '';
+    this.parseError = '';
+  }
+
+  closeAddVendorJobModal() {
+    this.showAddVendorJobModal = false;
+    this.vendorEmailInput = '';
+    this.parseError = '';
+  }
+
+  async parseVendorEmail() {
+    if (!this.vendorEmailInput.trim()) {
+      this.parseError = 'Please paste the vendor email content';
+      return;
+    }
+
+    this.parsingVendorEmail = true;
+    this.parseError = '';
+
+    try {
+      const result = await this.vendorEmailService.parseVendorEmail({
+        emailBody: this.vendorEmailInput
+      });
+
+      if (result.success) {
+        // Refresh the vendor jobs list
+        await this.loadVendorJobs();
+        await this.loadVendorJobStats();
+        this.closeAddVendorJobModal();
+      }
+    } catch (err: any) {
+      console.error('Failed to parse vendor email:', err);
+      this.parseError = err.message || 'Failed to parse email. Please try again.';
+    } finally {
+      this.parsingVendorEmail = false;
+    }
+  }
+
+  selectVendorJob(job: VendorJob) {
+    this.selectedVendorJob = job;
+  }
+
+  closeVendorJobPreview() {
+    this.selectedVendorJob = null;
+  }
+
+  async updateVendorJobStatus(job: VendorJob, status: VendorJob['status']) {
+    try {
+      await this.vendorEmailService.updateVendorJobStatus(job.id, status);
+      job.status = status;
+      if (status === 'interested') {
+        job.is_interested = true;
+      }
+      await this.loadVendorJobStats();
+    } catch (err) {
+      console.error('Failed to update job status:', err);
+    }
+  }
+
+  async deleteVendorJob(job: VendorJob) {
+    if (!confirm('Are you sure you want to delete this job?')) return;
+
+    try {
+      await this.vendorEmailService.deleteVendorJob(job.id);
+      this.vendorJobs = this.vendorJobs.filter(j => j.id !== job.id);
+      await this.loadVendorJobStats();
+      if (this.selectedVendorJob?.id === job.id) {
+        this.selectedVendorJob = null;
+      }
+    } catch (err) {
+      console.error('Failed to delete job:', err);
+    }
+  }
+
+  getTechStackTags(techStack: VendorJob['tech_stack']): string[] {
+    if (!techStack) return [];
+    const tags: string[] = [];
+    if (techStack.frontend) tags.push(...techStack.frontend);
+    if (techStack.backend) tags.push(...techStack.backend);
+    if (techStack.cloud) tags.push(...techStack.cloud);
+    if (techStack.other) tags.push(...techStack.other);
+    return tags.slice(0, 8);
+  }
+
+  formatVendorJobDate(dateStr: string | undefined): string {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  getVendorStatusClass(status: string): string {
+    return this.vendorEmailService.getStatusClass(status);
+  }
+
+  formatEmploymentType(type: string): string {
+    return this.vendorEmailService.formatEmploymentType(type);
+  }
+
+  formatWorkArrangement(arrangement: string): string {
+    return this.vendorEmailService.formatWorkArrangement(arrangement);
+  }
+
+  // ============ Gmail Integration Methods ============
+
+  async checkGmailStatus() {
+    try {
+      this.gmailStatus = await this.vendorEmailService.getGmailStatus();
+    } catch (err) {
+      console.error('Failed to check Gmail status:', err);
+      this.gmailStatus = { connected: false };
+    }
+  }
+
+  async connectGmail() {
+    this.gmailConnecting = true;
+    try {
+      const { authUrl } = await this.vendorEmailService.getGmailAuthUrl();
+      // Store state for verification
+      localStorage.setItem('gmail_oauth_state', authUrl);
+      // Open Gmail OAuth in new window
+      window.open(authUrl, '_blank', 'width=600,height=700');
+    } catch (err: any) {
+      console.error('Failed to start Gmail OAuth:', err);
+      alert('Failed to connect Gmail: ' + err.message);
+    } finally {
+      this.gmailConnecting = false;
+    }
+  }
+
+  handleGmailCallback() {
+    // Check URL for OAuth callback params
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+
+    if (code && state) {
+      this.completeGmailAuth(code, state);
+      // Clean up URL
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }
+
+  async handleGmailConnected() {
+    // Check if redirected from Gmail callback after successful OAuth
+    const urlParams = new URLSearchParams(window.location.search);
+    const gmailParam = urlParams.get('gmail');
+
+    if (gmailParam === 'connected') {
+      // Refresh Gmail status and auto-sync
+      await this.checkGmailStatus();
+      if (this.gmailStatus?.connected) {
+        await this.syncGmailEmails();
+      }
+      // Clean up URL
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }
+
+  async completeGmailAuth(code: string, state: string) {
+    this.gmailConnecting = true;
+    try {
+      const result = await this.vendorEmailService.completeGmailAuth(code, state);
+      if (result.success) {
+        this.gmailStatus = {
+          connected: true,
+          google_email: result.email,
+          is_active: true
+        };
+        // Auto-sync after connecting
+        await this.syncGmailEmails();
+      }
+    } catch (err: any) {
+      console.error('Failed to complete Gmail OAuth:', err);
+      alert('Failed to connect Gmail: ' + err.message);
+    } finally {
+      this.gmailConnecting = false;
+    }
+  }
+
+  async disconnectGmail() {
+    if (!confirm('Are you sure you want to disconnect your Gmail account?')) return;
+
+    try {
+      await this.vendorEmailService.disconnectGmail();
+      this.gmailStatus = { connected: false };
+      this.gmailSyncResult = null;
+    } catch (err: any) {
+      console.error('Failed to disconnect Gmail:', err);
+      alert('Failed to disconnect: ' + err.message);
+    }
+  }
+
+  async syncGmailEmails() {
+    if (!this.gmailStatus.connected) {
+      alert('Please connect your Gmail account first');
+      return;
+    }
+
+    this.gmailSyncing = true;
+    this.gmailSyncResult = null;
+
+    try {
+      const result = await this.vendorEmailService.syncGmailEmails({
+        syncType: 'manual',
+        maxEmails: 50
+      });
+
+      this.gmailSyncResult = result;
+
+      if (result.success && result.jobsCreated > 0) {
+        // Refresh vendor jobs list
+        await this.loadVendorJobs();
+        await this.loadVendorJobStats();
+      }
+
+      // Update Gmail status
+      await this.checkGmailStatus();
+    } catch (err: any) {
+      console.error('Failed to sync Gmail:', err);
+      this.gmailSyncResult = {
+        success: false,
+        emailsFound: 0,
+        emailsParsed: 0,
+        emailsSkipped: 0,
+        jobsCreated: 0,
+        errors: [err.message]
+      };
+    } finally {
+      this.gmailSyncing = false;
+    }
+  }
+
+  toggleGmailSettings() {
+    this.showGmailSettings = !this.showGmailSettings;
+  }
+
+  formatLastSync(dateStr: string | undefined): string {
+    if (!dateStr) return 'Never';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   }
 }

@@ -26,6 +26,11 @@ export const routes: Routes = [
         path: 'google-callback',
         loadComponent: () => import('./auth/google-callback/google-callback.component')
           .then(m => m.GoogleCallbackComponent)
+      },
+      {
+        path: 'gmail-callback',
+        loadComponent: () => import('./auth/gmail-callback/gmail-callback.component')
+          .then(m => m.GmailCallbackComponent)
       }
     ]
   },
