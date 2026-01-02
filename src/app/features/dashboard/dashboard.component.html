@@ -115,11 +115,7 @@
                 </div>
 
                 <button class="btn-extract" (click)="extractAndSave()" [disabled]="extracting || (!jobDescription && !jobUrl)">
-                    <span *ngIf="!extracting">Extract & Analyze</span>
-                    <span *ngIf="extracting" class="loading-text">
-                        <span class="spinner-small"></span>
-                        Analyzing...
-                    </span>
+                    Extract & Analyze
                 </button>
             </div>
 
