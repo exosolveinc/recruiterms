@@ -177,7 +177,7 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    const { syncType = "manual", maxEmails = 50 } = await req.json().catch(() => ({}));
+    const { syncType = "manual", maxEmails = 50, syncAll = false } = await req.json().catch(() => ({}));
 
     // Get user from auth token
     const token = authHeader.replace("Bearer ", "");
@@ -237,10 +237,10 @@ serve(async (req) => {
     // Search for emails with job-related keywords
     const searchQuery = searchKeywords.map((k: string) => k).join(" OR ");
 
-    // Fetch messages from Gmail
-    const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
-    listUrl.searchParams.set("q", searchQuery);
-    listUrl.searchParams.set("maxResults", String(Math.min(maxEmails, 100)));
+    // Fetch messages from Gmail with pagination support
+    let messages: any[] = [];
+    let nextPageToken: string | null = null;
+    const targetEmailCount = syncAll ? 500 : maxEmails; // Limit to 500 for "sync all" to prevent timeout
 
     // Use history ID for incremental sync if available
     if (syncType === "incremental" && connection.gmail_history_id) {
@@ -260,18 +260,34 @@ serve(async (req) => {
       }
     }
 
-    const listResponse = await fetch(listUrl.toString(), {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    // Paginate through Gmail API to get all matching emails
+    do {
+      const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
+      listUrl.searchParams.set("q", searchQuery);
+      listUrl.searchParams.set("maxResults", String(Math.min(100, targetEmailCount - messages.length)));
 
-    if (!listResponse.ok) {
-      const errorText = await listResponse.text();
-      console.error("Gmail API error:", errorText);
-      throw new Error("Failed to fetch emails from Gmail");
-    }
+      if (nextPageToken) {
+        listUrl.searchParams.set("pageToken", nextPageToken);
+      }
 
-    const listData = await listResponse.json();
-    const messages = listData.messages || [];
+      const listResponse = await fetch(listUrl.toString(), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!listResponse.ok) {
+        const errorText = await listResponse.text();
+        console.error("Gmail API error:", errorText);
+        throw new Error("Failed to fetch emails from Gmail");
+      }
+
+      const listData = await listResponse.json();
+      const pageMessages = listData.messages || [];
+      messages = messages.concat(pageMessages);
+      nextPageToken = listData.nextPageToken || null;
+
+      console.log(`Fetched ${messages.length} emails so far...`);
+
+    } while (nextPageToken && messages.length < targetEmailCount);
 
     console.log(`Found ${messages.length} potential job emails`);
 
@@ -296,8 +312,8 @@ serve(async (req) => {
     let jobsCreated = 0;
     const errors: string[] = [];
 
-    // Process each new email
-    for (const msg of newMessages.slice(0, maxEmails)) {
+    // Process each new email (limit processing to targetEmailCount)
+    for (const msg of newMessages.slice(0, targetEmailCount)) {
       try {
         // Fetch full message
         const msgResponse = await fetch(

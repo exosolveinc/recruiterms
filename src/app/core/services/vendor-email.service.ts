@@ -547,14 +547,15 @@ export class VendorEmailService {
   /**
    * Sync emails from Gmail
    */
-  async syncGmailEmails(options?: { syncType?: 'full' | 'incremental' | 'manual'; maxEmails?: number }): Promise<GmailSyncResult> {
+  async syncGmailEmails(options?: { syncType?: 'full' | 'incremental' | 'manual'; maxEmails?: number; syncAll?: boolean }): Promise<GmailSyncResult> {
     const headers = await this.getHeaders();
     const response = await firstValueFrom(
       this.http.post<GmailSyncResult>(
         `${this.supabaseFunctionsUrl}/gmail-sync`,
         {
           syncType: options?.syncType || 'manual',
-          maxEmails: options?.maxEmails || 50
+          maxEmails: options?.maxEmails || 50,
+          syncAll: options?.syncAll || false
         },
         { headers }
       )
