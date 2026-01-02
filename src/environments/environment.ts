@@ -7,5 +7,7 @@ export const environment = {
   adzunaAppId: 'd4af06fa',
   adzunaApiKey: '257adac44c42b7c237a958e118f88120',
   // Google Calendar Integration
-  googleClientId: '105337480884-cddt144lh5q7efjko1soot3psbojfdll.apps.googleusercontent.com'
+  googleClientId: '105337480884-cddt144lh5q7efjko1soot3psbojfdll.apps.googleusercontent.com',
+  // Gmail OAuth (client ID only - secret is in Supabase Edge Function secrets)
+  gmailClientId: '402678728194-svps3mip1artthhuq9be13cqu42m9fjq.apps.googleusercontent.com',
 };
