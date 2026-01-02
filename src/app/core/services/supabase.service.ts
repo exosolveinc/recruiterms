@@ -1190,6 +1190,25 @@ export class SupabaseService {
     missing_skills: string[];
     recommendations: string[];
     overall_assessment: string;
+    experience_match?: { score: number; details: string };
+    education_match?: { score: number; details: string };
+    requirements_fulfilled?: { percentage: number; met: string[]; not_met: string[] };
+    resume_improvements?: Array<{
+      section: string;
+      action: string;
+      what_to_add: string;
+      reason: string;
+    }>;
+    skill_gaps?: Array<{
+      skill: string;
+      importance: string;
+      suggestion: string;
+      can_highlight_alternative?: string;
+    }>;
+    strengths?: string[];
+    concerns?: string[];
+    interview_tips?: string[];
+    quick_wins?: string[];
   }> {
     const { data, error } = await this.supabase.functions.invoke('analyze-match', {
       body: { resume, job }

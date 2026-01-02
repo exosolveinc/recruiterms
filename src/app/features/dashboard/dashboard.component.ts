@@ -78,6 +78,30 @@ export class DashboardComponent implements OnInit {
   // Reanalysis state
   reanalyzingAppId: string | null = null;
 
+  // Detailed match analysis per application
+  detailedAnalysis: Map<string, {
+    experienceMatch?: { score: number; details: string };
+    educationMatch?: { score: number; details: string };
+    requirementsFulfilled?: { percentage: number; met: string[]; notMet: string[] };
+    resumeImprovements?: Array<{
+      section: string;
+      action: string;
+      what_to_add: string;
+      reason: string;
+    }>;
+    skillGaps?: Array<{
+      skill: string;
+      importance: string;
+      suggestion: string;
+      can_highlight_alternative?: string;
+    }>;
+    strengths?: string[];
+    concerns?: string[];
+    interviewTips?: string[];
+    overallAssessment?: string;
+    quickWins?: string[];
+  }> = new Map();
+
   // Interview scheduling
   showInterviewModal = false;
   selectedAppForInterview: UserApplicationView | null = null;
@@ -997,6 +1021,24 @@ export class DashboardComponent implements OnInit {
         recommendations: aiMatch.recommendations || []
       });
 
+      // Store detailed analysis in component state
+      this.detailedAnalysis.set(app.id, {
+        experienceMatch: aiMatch.experience_match,
+        educationMatch: aiMatch.education_match,
+        requirementsFulfilled: aiMatch.requirements_fulfilled ? {
+          percentage: aiMatch.requirements_fulfilled.percentage,
+          met: aiMatch.requirements_fulfilled.met || [],
+          notMet: aiMatch.requirements_fulfilled.not_met || []
+        } : undefined,
+        resumeImprovements: aiMatch.resume_improvements || [],
+        skillGaps: aiMatch.skill_gaps || [],
+        strengths: aiMatch.strengths || [],
+        concerns: aiMatch.concerns || [],
+        interviewTips: aiMatch.interview_tips || [],
+        overallAssessment: aiMatch.overall_assessment,
+        quickWins: aiMatch.quick_wins || []
+      });
+
       // Reload applications to reflect new data
       await this.loadApplications();
 
@@ -1007,5 +1049,15 @@ export class DashboardComponent implements OnInit {
       console.error('Re-analysis failed:', err);
       alert('Failed to re-analyze: ' + (err.message || 'Unknown error'));
     }
+  }
+
+  // Helper to get detailed analysis for an application
+  getDetailedAnalysis(appId: string) {
+    return this.detailedAnalysis.get(appId);
+  }
+
+  // Helper to check if detailed analysis exists
+  hasDetailedAnalysis(appId: string): boolean {
+    return this.detailedAnalysis.has(appId);
   }
 }

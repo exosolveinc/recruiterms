@@ -43,14 +43,6 @@
             {{ wt | titlecase }}
           </span>
         </div>
-        <button
-          class="btn-search-preferences"
-          (click)="searchWithPreferences()"
-          [disabled]="searching || !selectedCandidate"
-        >
-          <span *ngIf="!searching">Search with Preferences</span>
-          <span *ngIf="searching" class="spinner-sm"></span>
-        </button>
       </div>
     </div>
 
@@ -105,9 +97,19 @@
           </div>
         </div>
         <button class="btn-search" (click)="searchJobs()" [disabled]="searching || !searchQuery.trim()">
-          <span *ngIf="!searching">Search Jobs</span>
-          <span *ngIf="searching" class="spinner"></span>
+          Search Jobs
         </button>
+      </div>
+
+      <!-- Loading Animation -->
+      <div class="loading-card" *ngIf="searching">
+        <div class="loader">
+          <div class="loader-ring"></div>
+          <div class="loader-ring"></div>
+          <div class="loader-ring"></div>
+        </div>
+        <div class="loading-title">Searching for jobs</div>
+        <div class="loading-step-text">{{ searchLoadingText }}</div>
       </div>
 
       <!-- Popular Searches -->
@@ -238,11 +240,6 @@
         </button>
       </div>
 
-      <!-- Searching State -->
-      <div class="searching-state" *ngIf="searching">
-        <div class="spinner-lg"></div>
-        <p>Searching for jobs...</p>
-      </div>
     </div>
 
     <!-- Empty State -->

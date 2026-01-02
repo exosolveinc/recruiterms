@@ -444,16 +444,64 @@
 
         <!-- Match Results -->
         <div class="match-results" *ngIf="matchResult">
-          <div class="match-score-container">
-            <div class="match-score-circle" [class]="getMatchClass(matchResult.score)">
-              <span class="score-value">{{ matchResult.score }}%</span>
-              <span class="score-label">Match</span>
+          <!-- Overall Assessment -->
+          <div class="overall-assessment" *ngIf="matchResult.overallAssessment">
+            <p>{{ matchResult.overallAssessment }}</p>
+          </div>
+
+          <!-- Score Overview -->
+          <div class="score-overview">
+            <div class="match-score-container">
+              <div class="match-score-circle" [class]="getMatchClass(matchResult.score)">
+                <span class="score-value">{{ matchResult.score }}%</span>
+                <span class="score-label">Overall Match</span>
+              </div>
+            </div>
+
+            <!-- Requirements Fulfilled -->
+            <div class="requirements-progress" *ngIf="matchResult.requirementsFulfilled">
+              <div class="progress-header">
+                <span class="progress-label">Requirements Fulfilled</span>
+                <span class="progress-value">{{ matchResult.requirementsFulfilled.percentage }}%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="matchResult.requirementsFulfilled.percentage"></div>
+              </div>
+            </div>
+
+            <!-- Experience & Education Scores -->
+            <div class="sub-scores">
+              <div class="sub-score" *ngIf="matchResult.experienceMatch">
+                <div class="sub-score-header">
+                  <span>Experience</span>
+                  <span class="sub-score-value" [class]="getMatchClass(matchResult.experienceMatch.score)">{{ matchResult.experienceMatch.score }}%</span>
+                </div>
+                <p class="sub-score-details">{{ matchResult.experienceMatch.details }}</p>
+              </div>
+              <div class="sub-score" *ngIf="matchResult.educationMatch">
+                <div class="sub-score-header">
+                  <span>Education</span>
+                  <span class="sub-score-value" [class]="getMatchClass(matchResult.educationMatch.score)">{{ matchResult.educationMatch.score }}%</span>
+                </div>
+                <p class="sub-score-details">{{ matchResult.educationMatch.details }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Wins -->
+          <div class="match-section quick-wins-section" *ngIf="matchResult.quickWins && matchResult.quickWins.length > 0">
+            <h4>⚡ Quick Wins - Easy Improvements</h4>
+            <div class="quick-wins-list">
+              <div class="quick-win-item" *ngFor="let win of matchResult.quickWins">
+                <span class="quick-win-icon">✓</span>
+                <span class="quick-win-text">{{ win }}</span>
+              </div>
             </div>
           </div>
 
           <!-- Matching Skills -->
           <div class="match-section" *ngIf="matchResult.matching.length > 0">
-            <h4>✓ Matching Skills</h4>
+            <h4>✓ Skills You Have</h4>
             <div class="skill-tags success">
               <span class="skill-tag" *ngFor="let skill of matchResult.matching">
                 {{ skill }}
@@ -461,19 +509,97 @@
             </div>
           </div>
 
-          <!-- Missing Skills -->
-          <div class="match-section" *ngIf="matchResult.missing.length > 0">
-            <h4>✗ Missing Skills</h4>
-            <div class="skill-tags danger">
-              <span class="skill-tag" *ngFor="let skill of matchResult.missing">
-                {{ skill }}
-              </span>
+          <!-- Missing Skills with Gap Analysis -->
+          <div class="match-section skill-gaps-section" *ngIf="matchResult.skillGaps && matchResult.skillGaps.length > 0">
+            <h4>✗ Skills to Develop</h4>
+            <div class="skill-gaps-list">
+              <div class="skill-gap-item" *ngFor="let gap of matchResult.skillGaps">
+                <div class="skill-gap-header">
+                  <span class="skill-gap-name">{{ gap.skill }}</span>
+                  <span class="skill-gap-importance" [class]="'importance-' + gap.importance.toLowerCase().replace(' ', '-')">
+                    {{ gap.importance }}
+                  </span>
+                </div>
+                <p class="skill-gap-suggestion">{{ gap.suggestion }}</p>
+                <p class="skill-gap-alternative" *ngIf="gap.can_highlight_alternative">
+                  💡 Alternative: {{ gap.can_highlight_alternative }}
+                </p>
+              </div>
             </div>
           </div>
 
-          <!-- AI Suggestions -->
+          <!-- Resume Improvements - What to Add Where -->
+          <div class="match-section improvements-section" *ngIf="matchResult.resumeImprovements && matchResult.resumeImprovements.length > 0">
+            <h4>📝 What to Add to Your Resume</h4>
+            <div class="improvements-list">
+              <div class="improvement-item" *ngFor="let improvement of matchResult.resumeImprovements">
+                <div class="improvement-header">
+                  <span class="improvement-section">{{ improvement.section }}</span>
+                  <span class="improvement-action" [class]="'action-' + improvement.action.toLowerCase()">{{ improvement.action }}</span>
+                </div>
+                <div class="improvement-content">
+                  <p class="improvement-text">"{{ improvement.what_to_add }}"</p>
+                  <p class="improvement-reason">{{ improvement.reason }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Requirements Met/Not Met -->
+          <div class="match-section requirements-section" *ngIf="matchResult.requirementsFulfilled">
+            <h4>📋 Requirements Breakdown</h4>
+            <div class="requirements-grid">
+              <div class="requirements-met" *ngIf="matchResult.requirementsFulfilled.met.length > 0">
+                <h5>✓ Met</h5>
+                <ul>
+                  <li *ngFor="let req of matchResult.requirementsFulfilled.met">{{ req }}</li>
+                </ul>
+              </div>
+              <div class="requirements-not-met" *ngIf="matchResult.requirementsFulfilled.notMet.length > 0">
+                <h5>✗ Not Met</h5>
+                <ul>
+                  <li *ngFor="let req of matchResult.requirementsFulfilled.notMet">{{ req }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Strengths -->
+          <div class="match-section" *ngIf="matchResult.strengths && matchResult.strengths.length > 0">
+            <h4>💪 Your Strengths</h4>
+            <div class="strengths-list">
+              <div class="strength-item" *ngFor="let strength of matchResult.strengths">
+                <span class="strength-icon">★</span>
+                <span>{{ strength }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Concerns -->
+          <div class="match-section concerns-section" *ngIf="matchResult.concerns && matchResult.concerns.length > 0">
+            <h4>⚠️ Areas of Concern</h4>
+            <div class="concerns-list">
+              <div class="concern-item" *ngFor="let concern of matchResult.concerns">
+                <span class="concern-icon">!</span>
+                <span>{{ concern }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interview Tips -->
+          <div class="match-section interview-tips-section" *ngIf="matchResult.interviewTips && matchResult.interviewTips.length > 0">
+            <h4>🎯 Interview Tips</h4>
+            <div class="tips-list">
+              <div class="tip-item" *ngFor="let tip of matchResult.interviewTips; let i = index">
+                <span class="tip-number">{{ i + 1 }}</span>
+                <span>{{ tip }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- General AI Suggestions -->
           <div class="match-section suggestions-section" *ngIf="matchResult.suggestions.length > 0">
-            <h4>💡 AI Suggestions - Where to Add What</h4>
+            <h4>💡 Additional Recommendations</h4>
             <div class="suggestions-list">
               <div class="suggestion-item" *ngFor="let suggestion of matchResult.suggestions">
                 <span class="suggestion-icon">→</span>

@@ -1,19 +1,8 @@
 {
-  "buildCommand": "ng build --configuration production",
-  "outputDirectory": "dist/recruitmentms-frontend",
-  "framework": "angular",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/recruitmentms-frontend/browser",
+  "installCommand": "npm install",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
-      ]
-    }
   ]
 }

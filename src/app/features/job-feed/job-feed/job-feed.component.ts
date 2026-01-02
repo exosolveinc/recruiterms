@@ -91,6 +91,9 @@ export class JobFeedComponent implements OnInit {
     'Full Stack Developer'
   ];
 
+  // Search loading text
+  searchLoadingText = 'Connecting to job sources...';
+
   constructor(
     private supabase: SupabaseService,
     private jobFeedService: JobFeedService,
@@ -389,6 +392,7 @@ export class JobFeedComponent implements OnInit {
     this.searchQuery = query;
     this.searchLocation = location;
     this.searching = true;
+    this.searchLoadingText = 'Connecting to job sources...';
     this.currentPage = 1;
 
     const params: JobSearchParams = {
@@ -402,6 +406,9 @@ export class JobFeedComponent implements OnInit {
     try {
       let result;
 
+      // Update loading text based on source
+      this.searchLoadingText = `Searching ${this.getSourceLabel(this.selectedSource)}...`;
+
       // Determine which search method to use based on selected source
       if (this.selectedSource === 'adzuna') {
         result = await this.jobFeedService.searchAdzunaJobs(params);
@@ -409,12 +416,14 @@ export class JobFeedComponent implements OnInit {
         result = await this.jobFeedService.searchRapidApiJobs(params);
       } else if (this.selectedSource === 'ai-search') {
         // AI search across all platforms
+        this.searchLoadingText = 'AI searching multiple platforms...';
         result = await this.jobFeedService.searchWithAI(params, this.aiSearchPlatforms);
       } else if (['dice', 'linkedin', 'indeed', 'glassdoor', 'ziprecruiter'].includes(this.selectedSource)) {
         // AI search for specific platform
         result = await this.jobFeedService.searchWithAI(params, [this.selectedSource]);
       } else if (this.selectedSource === 'all') {
         // Search all sources including AI
+        this.searchLoadingText = 'Searching all sources...';
         const [adzunaResult, aiResult] = await Promise.all([
           this.jobFeedService.searchAdzunaJobs(params),
           this.jobFeedService.searchWithAI(params, ['dice', 'indeed', 'linkedin'])
@@ -431,6 +440,8 @@ export class JobFeedComponent implements OnInit {
       } else {
         result = await this.jobFeedService.searchAllJobs(params);
       }
+
+      this.searchLoadingText = 'Processing results...';
 
       this.jobs = result.jobs.map(job => ({
         ...job,
@@ -454,6 +465,21 @@ export class JobFeedComponent implements OnInit {
     } finally {
       this.searching = false;
     }
+  }
+
+  private getSourceLabel(source: JobPlatform): string {
+    const labels: Record<JobPlatform, string> = {
+      'adzuna': 'Adzuna',
+      'rapidapi': 'JSearch',
+      'dice': 'Dice',
+      'linkedin': 'LinkedIn',
+      'indeed': 'Indeed',
+      'glassdoor': 'Glassdoor',
+      'ziprecruiter': 'ZipRecruiter',
+      'ai-search': 'AI Search',
+      'all': 'All Sources'
+    };
+    return labels[source] || source;
   }
 
   // Deduplicate jobs by title and company

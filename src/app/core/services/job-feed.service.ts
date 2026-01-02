@@ -45,6 +45,11 @@ export interface JobSearchResult {
   totalPages: number;
 }
 
+interface CacheEntry {
+  data: JobSearchResult;
+  timestamp: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -53,12 +58,70 @@ export class JobFeedService {
   private rapidApiBaseUrl = 'https://jsearch.p.rapidapi.com';
   private supabaseFunctionsUrl = `${environment.supabaseUrl}/functions/v1`;
 
+  // Cache for search results (5 minute TTL)
+  private cache = new Map<string, CacheEntry>();
+  private cacheTTL = 5 * 60 * 1000; // 5 minutes
+
+  // Track in-flight requests to prevent duplicates
+  private pendingRequests = new Map<string, Promise<JobSearchResult>>();
+
   constructor(private http: HttpClient) {}
+
+  /**
+   * Generate cache key from search params
+   */
+  private getCacheKey(source: string, params: JobSearchParams, extra?: string): string {
+    return `${source}:${params.query}:${params.location || ''}:${params.page || 1}:${extra || ''}`;
+  }
+
+  /**
+   * Get from cache if valid
+   */
+  private getFromCache(key: string): JobSearchResult | null {
+    const entry = this.cache.get(key);
+    if (entry && Date.now() - entry.timestamp < this.cacheTTL) {
+      return entry.data;
+    }
+    if (entry) {
+      this.cache.delete(key);
+    }
+    return null;
+  }
+
+  /**
+   * Save to cache
+   */
+  private saveToCache(key: string, data: JobSearchResult): void {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  /**
+   * Clear all cache
+   */
+  clearCache(): void {
+    this.cache.clear();
+  }
 
   /**
    * Search jobs from Adzuna API
    */
   async searchAdzunaJobs(params: JobSearchParams, country: string = 'us'): Promise<JobSearchResult> {
+    const cacheKey = this.getCacheKey('adzuna', params, country);
+
+    // Check cache first
+    const cached = this.getFromCache(cacheKey);
+    if (cached) {
+      console.log('Returning cached Adzuna results');
+      return cached;
+    }
+
+    // Check for pending request
+    const pending = this.pendingRequests.get(cacheKey);
+    if (pending) {
+      console.log('Returning pending Adzuna request');
+      return pending;
+    }
+
     const page = params.page || 1;
     const resultsPerPage = params.resultsPerPage || 20;
 
@@ -80,41 +143,67 @@ export class JobFeedService {
       url += `&full_time=1`;
     }
 
-    try {
-      const response: any = await firstValueFrom(this.http.get(url));
+    const request = (async () => {
+      try {
+        const response: any = await firstValueFrom(this.http.get(url));
 
-      const jobs: ExternalJob[] = (response.results || []).map((job: any) => ({
-        id: job.id || `adzuna-${Date.now()}-${Math.random()}`,
-        title: job.title || 'Unknown Title',
-        company: job.company?.display_name || 'Unknown Company',
-        location: job.location?.display_name || 'Unknown Location',
-        description: job.description || '',
-        salary_min: job.salary_min,
-        salary_max: job.salary_max,
-        salary_text: this.formatSalary(job.salary_min, job.salary_max),
-        url: job.redirect_url || '',
-        posted_date: job.created || new Date().toISOString(),
-        source: 'adzuna' as const,
-        employment_type: job.contract_type || 'Full-time',
-        category: job.category?.label || ''
-      }));
+        const jobs: ExternalJob[] = (response.results || []).map((job: any) => ({
+          id: job.id || `adzuna-${Date.now()}-${Math.random()}`,
+          title: job.title || 'Unknown Title',
+          company: job.company?.display_name || 'Unknown Company',
+          location: job.location?.display_name || 'Unknown Location',
+          description: job.description || '',
+          salary_min: job.salary_min,
+          salary_max: job.salary_max,
+          salary_text: this.formatSalary(job.salary_min, job.salary_max),
+          url: job.redirect_url || '',
+          posted_date: job.created || new Date().toISOString(),
+          source: 'adzuna' as const,
+          employment_type: job.contract_type || 'Full-time',
+          category: job.category?.label || ''
+        }));
 
-      return {
-        jobs,
-        total: response.count || 0,
-        page,
-        totalPages: Math.ceil((response.count || 0) / resultsPerPage)
-      };
-    } catch (error) {
-      console.error('Adzuna API error:', error);
-      return { jobs: [], total: 0, page: 1, totalPages: 0 };
-    }
+        const result: JobSearchResult = {
+          jobs,
+          total: response.count || 0,
+          page,
+          totalPages: Math.ceil((response.count || 0) / resultsPerPage)
+        };
+
+        this.saveToCache(cacheKey, result);
+        return result;
+      } catch (error) {
+        console.error('Adzuna API error:', error);
+        return { jobs: [], total: 0, page: 1, totalPages: 0 };
+      } finally {
+        this.pendingRequests.delete(cacheKey);
+      }
+    })();
+
+    this.pendingRequests.set(cacheKey, request);
+    return request;
   }
 
   /**
    * Search jobs from RapidAPI JSearch
    */
   async searchRapidApiJobs(params: JobSearchParams): Promise<JobSearchResult> {
+    const cacheKey = this.getCacheKey('rapidapi', params);
+
+    // Check cache first
+    const cached = this.getFromCache(cacheKey);
+    if (cached) {
+      console.log('Returning cached RapidAPI results');
+      return cached;
+    }
+
+    // Check for pending request
+    const pending = this.pendingRequests.get(cacheKey);
+    if (pending) {
+      console.log('Returning pending RapidAPI request');
+      return pending;
+    }
+
     const page = params.page || 1;
     const resultsPerPage = params.resultsPerPage || 20;
 
@@ -130,35 +219,45 @@ export class JobFeedService {
 
     const url = `${this.rapidApiBaseUrl}/search?query=${encodeURIComponent(query)}&page=${page}&num_pages=1`;
 
-    try {
-      const response: any = await firstValueFrom(this.http.get(url, { headers }));
+    const request = (async () => {
+      try {
+        const response: any = await firstValueFrom(this.http.get(url, { headers }));
 
-      const jobs: ExternalJob[] = (response.data || []).map((job: any) => ({
-        id: job.job_id || `rapid-${Date.now()}-${Math.random()}`,
-        title: job.job_title || 'Unknown Title',
-        company: job.employer_name || 'Unknown Company',
-        location: [job.job_city, job.job_state, job.job_country].filter(Boolean).join(', ') || 'Unknown Location',
-        description: job.job_description || '',
-        salary_min: job.job_min_salary,
-        salary_max: job.job_max_salary,
-        salary_text: this.formatSalary(job.job_min_salary, job.job_max_salary),
-        url: job.job_apply_link || '',
-        posted_date: job.job_posted_at_datetime_utc || new Date().toISOString(),
-        source: 'rapidapi' as const,
-        employment_type: job.job_employment_type || 'Full-time',
-        category: job.job_job_title || ''
-      }));
+        const jobs: ExternalJob[] = (response.data || []).map((job: any) => ({
+          id: job.job_id || `rapid-${Date.now()}-${Math.random()}`,
+          title: job.job_title || 'Unknown Title',
+          company: job.employer_name || 'Unknown Company',
+          location: [job.job_city, job.job_state, job.job_country].filter(Boolean).join(', ') || 'Unknown Location',
+          description: job.job_description || '',
+          salary_min: job.job_min_salary,
+          salary_max: job.job_max_salary,
+          salary_text: this.formatSalary(job.job_min_salary, job.job_max_salary),
+          url: job.job_apply_link || '',
+          posted_date: job.job_posted_at_datetime_utc || new Date().toISOString(),
+          source: 'rapidapi' as const,
+          employment_type: job.job_employment_type || 'Full-time',
+          category: job.job_job_title || ''
+        }));
 
-      return {
-        jobs,
-        total: response.data?.length || 0,
-        page,
-        totalPages: Math.ceil((response.data?.length || 0) / resultsPerPage)
-      };
-    } catch (error) {
-      console.error('RapidAPI error:', error);
-      return { jobs: [], total: 0, page: 1, totalPages: 0 };
-    }
+        const result: JobSearchResult = {
+          jobs,
+          total: response.data?.length || 0,
+          page,
+          totalPages: Math.ceil((response.data?.length || 0) / resultsPerPage)
+        };
+
+        this.saveToCache(cacheKey, result);
+        return result;
+      } catch (error) {
+        console.error('RapidAPI error:', error);
+        return { jobs: [], total: 0, page: 1, totalPages: 0 };
+      } finally {
+        this.pendingRequests.delete(cacheKey);
+      }
+    })();
+
+    this.pendingRequests.set(cacheKey, request);
+    return request;
   }
 
   /**
@@ -226,6 +325,22 @@ export class JobFeedService {
    * This uses Claude API to search across multiple job platforms
    */
   async searchWithAI(params: JobSearchParams, platforms: string[] = ['dice', 'indeed', 'linkedin']): Promise<JobSearchResult> {
+    const cacheKey = this.getCacheKey('ai-search', params, platforms.sort().join(','));
+
+    // Check cache first
+    const cached = this.getFromCache(cacheKey);
+    if (cached) {
+      console.log('Returning cached AI search results');
+      return cached;
+    }
+
+    // Check for pending request
+    const pending = this.pendingRequests.get(cacheKey);
+    if (pending) {
+      console.log('Returning pending AI search request');
+      return pending;
+    }
+
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${environment.supabaseAnonKey}`
@@ -242,40 +357,50 @@ export class JobFeedService {
       limit: params.resultsPerPage || 15
     };
 
-    try {
-      const response: any = await firstValueFrom(
-        this.http.post(`${this.supabaseFunctionsUrl}/search-jobs-ai`, requestBody, { headers })
-      );
+    const request = (async () => {
+      try {
+        const response: any = await firstValueFrom(
+          this.http.post(`${this.supabaseFunctionsUrl}/search-jobs-ai`, requestBody, { headers })
+        );
 
-      const jobs: ExternalJob[] = (response.jobs || []).map((job: any) => ({
-        id: job.id || `ai-${Date.now()}-${Math.random()}`,
-        title: job.title || 'Unknown Title',
-        company: job.company || 'Unknown Company',
-        location: job.location || 'Unknown Location',
-        description: job.description || '',
-        salary_min: job.salary_min,
-        salary_max: job.salary_max,
-        salary_text: job.salary_text || this.formatSalary(job.salary_min, job.salary_max),
-        url: job.url || '',
-        posted_date: job.posted_date || new Date().toISOString(),
-        source: this.normalizeSource(job.source),
-        employment_type: job.employment_type || 'Full-time',
-        work_type: job.work_type,
-        experience_level: job.experience_level,
-        required_skills: job.required_skills || [],
-        category: ''
-      }));
+        const jobs: ExternalJob[] = (response.jobs || []).map((job: any) => ({
+          id: job.id || `ai-${Date.now()}-${Math.random()}`,
+          title: job.title || 'Unknown Title',
+          company: job.company || 'Unknown Company',
+          location: job.location || 'Unknown Location',
+          description: job.description || '',
+          salary_min: job.salary_min,
+          salary_max: job.salary_max,
+          salary_text: job.salary_text || this.formatSalary(job.salary_min, job.salary_max),
+          url: job.url || '',
+          posted_date: job.posted_date || new Date().toISOString(),
+          source: this.normalizeSource(job.source),
+          employment_type: job.employment_type || 'Full-time',
+          work_type: job.work_type,
+          experience_level: job.experience_level,
+          required_skills: job.required_skills || [],
+          category: ''
+        }));
 
-      return {
-        jobs,
-        total: response.total || jobs.length,
-        page: params.page || 1,
-        totalPages: Math.ceil((response.total || jobs.length) / (params.resultsPerPage || 15))
-      };
-    } catch (error) {
-      console.error('AI Search error:', error);
-      return { jobs: [], total: 0, page: 1, totalPages: 0 };
-    }
+        const result: JobSearchResult = {
+          jobs,
+          total: response.total || jobs.length,
+          page: params.page || 1,
+          totalPages: Math.ceil((response.total || jobs.length) / (params.resultsPerPage || 15))
+        };
+
+        this.saveToCache(cacheKey, result);
+        return result;
+      } catch (error) {
+        console.error('AI Search error:', error);
+        return { jobs: [], total: 0, page: 1, totalPages: 0 };
+      } finally {
+        this.pendingRequests.delete(cacheKey);
+      }
+    })();
+
+    this.pendingRequests.set(cacheKey, request);
+    return request;
   }
 
   /**
