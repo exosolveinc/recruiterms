@@ -113,6 +113,13 @@ export class JobFeedComponent implements OnInit {
   gmailSyncing = false;
   gmailSyncResult: GmailSyncResult | null = null;
   showGmailSettings = false;
+  showGmailPanel = false; // For header Gmail panel
+
+  // View Toggle
+  activeView: 'search' | 'email' = 'search';
+
+  // Session state key
+  private readonly SESSION_STATE_KEY = 'jobFeed_sessionState';
 
   constructor(
     private supabase: SupabaseService,
@@ -122,6 +129,9 @@ export class JobFeedComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
+    // Restore session state first
+    this.restoreSessionState();
+
     await this.loadProfile();
     await this.loadCandidates();
     await this.loadVendorJobStats();
@@ -130,6 +140,57 @@ export class JobFeedComponent implements OnInit {
     // Check for OAuth callback or successful Gmail connection
     this.handleGmailCallback();
     this.handleGmailConnected();
+  }
+
+  // ============ Session State Management ============
+
+  private saveSessionState() {
+    const state = {
+      searchQuery: this.searchQuery,
+      searchLocation: this.searchLocation,
+      selectedSource: this.selectedSource,
+      selectedCandidateId: this.selectedCandidateId,
+      selectedResumeId: this.selectedResumeId,
+      vendorStatusFilter: this.vendorStatusFilter,
+      showVendorSection: this.showVendorSection,
+      currentPage: this.currentPage,
+      jobs: this.jobs,
+      vendorJobs: this.vendorJobs,
+      totalJobs: this.totalJobs,
+      totalPages: this.totalPages,
+      stats: this.stats,
+      activeView: this.activeView
+    };
+    sessionStorage.setItem(this.SESSION_STATE_KEY, JSON.stringify(state));
+  }
+
+  private restoreSessionState() {
+    const savedState = sessionStorage.getItem(this.SESSION_STATE_KEY);
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        this.searchQuery = state.searchQuery || '';
+        this.searchLocation = state.searchLocation || '';
+        this.selectedSource = state.selectedSource || 'adzuna';
+        this.selectedCandidateId = state.selectedCandidateId || '';
+        this.selectedResumeId = state.selectedResumeId || '';
+        this.vendorStatusFilter = state.vendorStatusFilter || '';
+        this.showVendorSection = state.showVendorSection || false;
+        this.currentPage = state.currentPage || 1;
+        this.jobs = state.jobs || [];
+        this.vendorJobs = state.vendorJobs || [];
+        this.totalJobs = state.totalJobs || 0;
+        this.totalPages = state.totalPages || 0;
+        this.stats = state.stats || { totalFound: 0, averageSalary: 0, avgMatchScore: 0 };
+        this.activeView = state.activeView || 'search';
+      } catch (e) {
+        console.error('Failed to restore session state:', e);
+      }
+    }
+  }
+
+  private clearSessionState() {
+    sessionStorage.removeItem(this.SESSION_STATE_KEY);
   }
 
   async loadProfile() {
@@ -486,6 +547,9 @@ export class JobFeedComponent implements OnInit {
       if (this.selectedResumeId && this.jobs.length > 0) {
         this.analyzeAllJobs();
       }
+
+      // Save session state after successful search
+      this.saveSessionState();
     } catch (err) {
       console.error('Search error:', err);
       this.jobs = [];
@@ -822,6 +886,19 @@ export class JobFeedComponent implements OnInit {
     if (this.showVendorSection && this.vendorJobs.length === 0) {
       await this.loadVendorJobs();
     }
+    this.saveSessionState();
+  }
+
+  toggleGmailPanel() {
+    this.showGmailPanel = !this.showGmailPanel;
+  }
+
+  switchView(view: 'search' | 'email') {
+    this.activeView = view;
+    if (view === 'email' && this.vendorJobs.length === 0) {
+      this.loadVendorJobs();
+    }
+    this.saveSessionState();
   }
 
   async loadVendorJobs() {
@@ -831,6 +908,8 @@ export class JobFeedComponent implements OnInit {
         status: this.vendorStatusFilter || undefined,
         limit: 50
       });
+      // Save session state after loading vendor jobs
+      this.saveSessionState();
     } catch (err) {
       console.error('Failed to load vendor jobs:', err);
     } finally {
@@ -841,6 +920,7 @@ export class JobFeedComponent implements OnInit {
   async filterVendorJobs(status: string) {
     this.vendorStatusFilter = status;
     await this.loadVendorJobs();
+    // State is saved in loadVendorJobs
   }
 
   openAddVendorJobModal() {
@@ -1046,9 +1126,13 @@ export class JobFeedComponent implements OnInit {
     }
   }
 
-  async syncGmailEmails() {
+  async syncGmailEmails(syncAll = false) {
     if (!this.gmailStatus.connected) {
       alert('Please connect your Gmail account first');
+      return;
+    }
+
+    if (syncAll && !confirm('This will sync up to 500 emails from your inbox. This may take several minutes. Continue?')) {
       return;
     }
 
@@ -1058,7 +1142,8 @@ export class JobFeedComponent implements OnInit {
     try {
       const result = await this.vendorEmailService.syncGmailEmails({
         syncType: 'manual',
-        maxEmails: 50
+        maxEmails: syncAll ? 500 : 50,
+        syncAll: syncAll
       });
 
       this.gmailSyncResult = result;

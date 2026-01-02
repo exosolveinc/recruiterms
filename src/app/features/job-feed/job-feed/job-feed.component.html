@@ -53,80 +53,424 @@
 
     <!-- Search Section -->
     <div class="search-section">
-      <h1>Find Your Next Opportunity</h1>
-      <p class="subtitle">Search thousands of jobs from multiple sources</p>
-
-      <div class="search-box">
-        <div class="search-inputs">
-          <div class="input-group">
-            <label>Job Title or Keywords</label>
-            <input
-              type="text"
-              [(ngModel)]="searchQuery"
-              placeholder="e.g. Software Engineer, Data Scientist"
-              (keyup.enter)="searchJobs()"
-            />
-          </div>
-          <div class="input-group">
-            <label>Location</label>
-            <input
-              type="text"
-              [(ngModel)]="searchLocation"
-              placeholder="e.g. New York, Remote"
-              (keyup.enter)="searchJobs()"
-            />
-          </div>
-          <div class="input-group source-select">
-            <label>Source</label>
-            <select [(ngModel)]="selectedSource">
-              <optgroup label="Standard APIs">
-                <option value="adzuna">Adzuna</option>
-                <option value="rapidapi">JSearch (RapidAPI)</option>
-              </optgroup>
-              <optgroup label="AI-Powered Search">
-                <option value="dice">Dice (AI)</option>
-                <option value="linkedin">LinkedIn (AI)</option>
-                <option value="indeed">Indeed (AI)</option>
-                <option value="glassdoor">Glassdoor (AI)</option>
-                <option value="ai-search">All Platforms (AI)</option>
-              </optgroup>
-              <optgroup label="Combined">
-                <option value="all">All Sources</option>
-              </optgroup>
-            </select>
-          </div>
+      <div class="search-header">
+        <div class="search-header-text">
+          <h1>Find Your Next Opportunity</h1>
+          <p class="subtitle">Search thousands of jobs from multiple sources</p>
         </div>
-        <button class="btn-search" (click)="searchJobs()" [disabled]="searching || !searchQuery.trim()">
-          Search Jobs
-        </button>
+        <div class="search-header-actions">
+          <!-- View Toggle Switch -->
+          <div class="view-toggle-switch">
+            <button
+              class="toggle-option"
+              [class.active]="activeView === 'search'"
+              (click)="switchView('search')"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M11 11L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              Job Search
+            </button>
+            <button
+              class="toggle-option"
+              [class.active]="activeView === 'email'"
+              (click)="switchView('email')"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="3" width="14" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M1 5L8 9L15 5" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+              Email Jobs
+              <span class="email-count" *ngIf="vendorJobStats?.total_jobs">{{ vendorJobStats!.total_jobs }}</span>
+            </button>
+          </div>
+
+          <!-- Gmail Integration Button -->
+          <button class="gmail-header-btn" [class.connected]="gmailStatus.connected" (click)="toggleGmailPanel()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+              <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
+              <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
+              <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
+            </svg>
+            <span *ngIf="!gmailStatus.connected">Connect Gmail</span>
+            <span *ngIf="gmailStatus.connected" class="gmail-status-indicator">
+              <span class="status-dot"></span>
+              {{ gmailStatus.emails_synced_count || 0 }} synced
+            </span>
+          </button>
+        </div>
       </div>
 
-      <!-- Loading Animation -->
-      <div class="loading-card" *ngIf="searching">
-        <div class="loader">
-          <div class="loader-ring"></div>
-          <div class="loader-ring"></div>
-          <div class="loader-ring"></div>
+      <!-- Gmail Panel (shown when toggled) -->
+      <div class="gmail-header-panel" *ngIf="showGmailPanel" (click)="$event.stopPropagation()">
+        <div class="gmail-panel-header">
+          <h3>Gmail Integration</h3>
+          <button class="close-panel-btn" (click)="showGmailPanel = false">×</button>
         </div>
-        <div class="loading-title">Searching for jobs</div>
-        <div class="loading-step-text">{{ searchLoadingText }}</div>
+
+        <!-- Not Connected State -->
+        <div class="gmail-panel-content" *ngIf="!gmailStatus.connected">
+          <div class="gmail-panel-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+              <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+              <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
+              <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
+              <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
+            </svg>
+          </div>
+          <h4>Auto-import vendor job emails</h4>
+          <p>Connect your Gmail to automatically scan and import job opportunities from recruiters and staffing agencies.</p>
+          <button class="btn-gmail-connect-panel" (click)="connectGmail()" [disabled]="gmailConnecting">
+            <span *ngIf="!gmailConnecting">Connect Gmail Account</span>
+            <span *ngIf="gmailConnecting" class="loading-text">
+              <span class="spinner-small"></span> Connecting...
+            </span>
+          </button>
+        </div>
+
+        <!-- Connected State -->
+        <div class="gmail-panel-content connected" *ngIf="gmailStatus.connected">
+          <div class="gmail-account-info">
+            <div class="gmail-panel-icon connected">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+                <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
+                <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
+                <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
+              </svg>
+              <span class="connected-badge">Connected</span>
+            </div>
+            <div class="gmail-account-details">
+              <span class="gmail-email">{{ gmailStatus.google_email }}</span>
+              <span class="gmail-stats">
+                Last sync: {{ formatLastSync(gmailStatus.last_sync_at) }}
+                <span *ngIf="gmailStatus.emails_synced_count"> · {{ gmailStatus.emails_synced_count }} imported</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="gmail-panel-actions">
+            <button class="btn-sync" (click)="syncGmailEmails(false)" [disabled]="gmailSyncing">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M8 2V5L10 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span *ngIf="!gmailSyncing">Sync Now</span>
+              <span *ngIf="gmailSyncing">Syncing...</span>
+            </button>
+            <button class="btn-sync-all" (click)="syncGmailEmails(true)" [disabled]="gmailSyncing" title="Sync up to 500 emails">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M8 2V5L10 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 8H10M8 6V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>Sync All</span>
+            </button>
+            <button class="btn-disconnect" (click)="disconnectGmail()">
+              Disconnect
+            </button>
+          </div>
+
+          <!-- Sync Result -->
+          <div class="gmail-sync-result-panel" *ngIf="gmailSyncResult">
+            <div class="sync-result" [class.success]="gmailSyncResult!.success" [class.error]="!gmailSyncResult!.success">
+              <span *ngIf="gmailSyncResult!.success">
+                Found {{ gmailSyncResult!.emailsFound }} emails · {{ gmailSyncResult!.jobsCreated }} jobs imported · {{ gmailSyncResult!.emailsSkipped }} skipped
+              </span>
+              <span *ngIf="!gmailSyncResult!.success && gmailSyncResult!.errors?.length">
+                Error: {{ gmailSyncResult!.errors![0] }}
+              </span>
+              <button class="dismiss-btn" (click)="gmailSyncResult = null">×</button>
+            </div>
+          </div>
+
+          <div class="gmail-panel-info">
+            <p>Searches for emails containing: <strong>job, position, opportunity, W2, C2C, 1099, contract, recruiter, staffing</strong></p>
+          </div>
+        </div>
       </div>
 
-      <!-- Popular Searches -->
-      <div class="popular-searches" *ngIf="jobs.length === 0 && !searching">
-        <span class="label">Popular:</span>
-        <button
-          class="quick-search"
-          *ngFor="let search of popularSearches"
-          (click)="quickSearch(search)"
-        >
-          {{ search }}
-        </button>
+      <!-- Job Search View -->
+      <div class="search-view" *ngIf="activeView === 'search'">
+        <div class="search-box">
+          <div class="search-inputs">
+            <div class="input-group">
+              <label>Job Title or Keywords</label>
+              <input
+                type="text"
+                [(ngModel)]="searchQuery"
+                placeholder="e.g. Software Engineer, Data Scientist"
+                (keyup.enter)="searchJobs()"
+              />
+            </div>
+            <div class="input-group">
+              <label>Location</label>
+              <input
+                type="text"
+                [(ngModel)]="searchLocation"
+                placeholder="e.g. New York, Remote"
+                (keyup.enter)="searchJobs()"
+              />
+            </div>
+            <div class="input-group source-select">
+              <label>Source</label>
+              <select [(ngModel)]="selectedSource">
+                <optgroup label="Standard APIs">
+                  <option value="adzuna">Adzuna</option>
+                  <option value="rapidapi">JSearch (RapidAPI)</option>
+                </optgroup>
+                <optgroup label="AI-Powered Search">
+                  <option value="dice">Dice (AI)</option>
+                  <option value="linkedin">LinkedIn (AI)</option>
+                  <option value="indeed">Indeed (AI)</option>
+                  <option value="glassdoor">Glassdoor (AI)</option>
+                  <option value="ai-search">All Platforms (AI)</option>
+                </optgroup>
+                <optgroup label="Combined">
+                  <option value="all">All Sources</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+          <button class="btn-search" (click)="searchJobs()" [disabled]="searching || !searchQuery.trim()">
+            Search Jobs
+          </button>
+        </div>
+
+        <!-- Loading Animation -->
+        <div class="loading-card" *ngIf="searching">
+          <div class="loader">
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+          </div>
+          <div class="loading-title">Searching for jobs</div>
+          <div class="loading-step-text">{{ searchLoadingText }}</div>
+        </div>
+
+        <!-- Popular Searches -->
+        <div class="popular-searches" *ngIf="jobs.length === 0 && !searching">
+          <span class="label">Popular:</span>
+          <button
+            class="quick-search"
+            *ngFor="let search of popularSearches"
+            (click)="quickSearch(search)"
+          >
+            {{ search }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Email Jobs View -->
+      <div class="email-jobs-view" *ngIf="activeView === 'email'">
+        <!-- Gmail Integration Bar (inline for email view) -->
+        <div class="gmail-integration-bar-inline" (click)="$event.stopPropagation()">
+          <div class="gmail-status">
+            <!-- Not Connected -->
+            <div class="gmail-connect" *ngIf="!gmailStatus.connected">
+              <div class="gmail-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+                  <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
+                  <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
+                  <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
+                </svg>
+              </div>
+              <div class="gmail-info">
+                <span class="gmail-title">Connect Gmail</span>
+                <span class="gmail-desc">Auto-import vendor emails from your inbox</span>
+              </div>
+              <button class="btn-gmail-connect" (click)="connectGmail()" [disabled]="gmailConnecting">
+                <span *ngIf="!gmailConnecting">Connect Gmail</span>
+                <span *ngIf="gmailConnecting" class="loading-text">
+                  <span class="spinner-small"></span> Connecting...
+                </span>
+              </button>
+            </div>
+
+            <!-- Connected -->
+            <div class="gmail-connected" *ngIf="gmailStatus.connected">
+              <div class="gmail-icon connected">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+                  <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
+                  <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
+                  <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
+                </svg>
+                <span class="connected-check">✓</span>
+              </div>
+              <div class="gmail-info">
+                <span class="gmail-title">{{ gmailStatus.google_email }}</span>
+                <span class="gmail-desc">
+                  Last sync: {{ formatLastSync(gmailStatus.last_sync_at) }}
+                  <span *ngIf="gmailStatus.emails_synced_count"> · {{ gmailStatus.emails_synced_count }} emails imported</span>
+                </span>
+              </div>
+              <div class="gmail-actions">
+                <button class="btn-gmail-sync" (click)="syncGmailEmails(false)" [disabled]="gmailSyncing">
+                  <span *ngIf="!gmailSyncing">Sync Now</span>
+                  <span *ngIf="gmailSyncing" class="loading-text">
+                    <span class="spinner-small"></span> Syncing...
+                  </span>
+                </button>
+                <button class="btn-gmail-sync-all" (click)="syncGmailEmails(true)" [disabled]="gmailSyncing" title="Sync up to 500 emails">
+                  <span>Sync All</span>
+                </button>
+                <button class="btn-add-vendor" (click)="openAddVendorJobModal()">
+                  + Add Manual
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sync Result -->
+          <div class="gmail-sync-result" *ngIf="gmailSyncResult">
+            <div class="sync-result-content" [class.success]="gmailSyncResult!.success" [class.error]="!gmailSyncResult!.success">
+              <span *ngIf="gmailSyncResult!.success">
+                Synced {{ gmailSyncResult!.emailsFound }} emails: {{ gmailSyncResult!.jobsCreated }} jobs imported, {{ gmailSyncResult!.emailsSkipped }} skipped
+              </span>
+              <span *ngIf="!gmailSyncResult!.success && gmailSyncResult!.errors?.length">
+                Sync failed: {{ gmailSyncResult!.errors![0] }}
+              </span>
+              <button class="dismiss-btn" (click)="gmailSyncResult = null">×</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="email-jobs-filters">
+          <div class="filter-tabs">
+            <button
+              class="filter-tab"
+              [class.active]="vendorStatusFilter === ''"
+              (click)="filterVendorJobs('')"
+            >All</button>
+            <button
+              class="filter-tab"
+              [class.active]="vendorStatusFilter === 'new'"
+              (click)="filterVendorJobs('new')"
+            >New</button>
+            <button
+              class="filter-tab"
+              [class.active]="vendorStatusFilter === 'interested'"
+              (click)="filterVendorJobs('interested')"
+            >Interested</button>
+            <button
+              class="filter-tab"
+              [class.active]="vendorStatusFilter === 'applied'"
+              (click)="filterVendorJobs('applied')"
+            >Applied</button>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="vendor-loading" *ngIf="loadingVendorJobs">
+          <div class="spinner"></div>
+          <span>Loading email jobs...</span>
+        </div>
+
+        <!-- Email Jobs List -->
+        <div class="vendor-jobs-list" *ngIf="!loadingVendorJobs">
+          <div
+            class="vendor-job-card"
+            *ngFor="let job of vendorJobs"
+            [class.selected]="selectedVendorJob?.id === job.id"
+            (click)="selectVendorJob(job)"
+          >
+            <div class="vendor-job-header">
+              <div class="job-main-info">
+                <h3 class="job-title">{{ job.job_title }}</h3>
+                <div class="job-companies">
+                  <span class="client-company" *ngIf="job.client_company">{{ job.client_company }}</span>
+                  <span class="vendor-company" *ngIf="job.vendor_company">via {{ job.vendor_company }}</span>
+                </div>
+              </div>
+              <div class="job-badges">
+                <span class="status-badge" [class]="getVendorStatusClass(job.status)">
+                  {{ job.status | titlecase }}
+                </span>
+                <span class="employment-badge" *ngIf="job.employment_type !== 'unknown'">
+                  {{ formatEmploymentType(job.employment_type) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="vendor-job-meta">
+              <span class="meta-item" *ngIf="job.location">{{ job.location }}</span>
+              <span class="meta-item work-type" *ngIf="job.work_arrangement !== 'unknown'">
+                {{ formatWorkArrangement(job.work_arrangement) }}
+              </span>
+              <span class="meta-item duration" *ngIf="job.duration">{{ job.duration }}</span>
+              <span class="meta-item pay" *ngIf="job.pay_rate">{{ job.pay_rate }}</span>
+              <span class="meta-item date">{{ formatVendorJobDate(job.created_at) }}</span>
+            </div>
+
+            <!-- Tech Stack Tags -->
+            <div class="tech-stack-tags" *ngIf="getTechStackTags(job.tech_stack).length > 0">
+              <span class="tech-tag" *ngFor="let tech of getTechStackTags(job.tech_stack)">
+                {{ tech }}
+              </span>
+            </div>
+
+            <!-- Special Requirements -->
+            <div class="special-requirements" *ngIf="job.special_requirements">
+              <span class="warning-icon">!</span>
+              {{ job.special_requirements }}
+            </div>
+
+            <!-- Recruiter Info -->
+            <div class="recruiter-info" *ngIf="job.recruiter_name || job.recruiter_email">
+              <span class="recruiter-name" *ngIf="job.recruiter_name">{{ job.recruiter_name }}</span>
+              <span class="recruiter-email" *ngIf="job.recruiter_email">{{ job.recruiter_email }}</span>
+              <span class="recruiter-phone" *ngIf="job.recruiter_phone">{{ job.recruiter_phone }}</span>
+            </div>
+
+            <div class="vendor-job-actions" (click)="$event.stopPropagation()">
+              <button
+                class="action-btn interested"
+                *ngIf="job.status === 'new' || job.status === 'reviewed'"
+                (click)="updateVendorJobStatus(job, 'interested')"
+              >Interested</button>
+              <button
+                class="action-btn not-interested"
+                *ngIf="job.status === 'new' || job.status === 'reviewed'"
+                (click)="updateVendorJobStatus(job, 'not_interested')"
+              >Not Interested</button>
+              <button
+                class="action-btn archive"
+                *ngIf="job.status !== 'archived'"
+                (click)="updateVendorJobStatus(job, 'archived')"
+              >Archive</button>
+              <button
+                class="action-btn delete"
+                (click)="deleteVendorJob(job)"
+              >Delete</button>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div class="vendor-empty-state" *ngIf="vendorJobs.length === 0">
+            <div class="empty-icon-large">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="4" width="20" height="16" rx="2" stroke="#d1d5db" stroke-width="1.5"/>
+                <path d="M2 8L12 14L22 8" stroke="#d1d5db" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <h3>No email jobs found</h3>
+            <p *ngIf="!gmailStatus.connected">Connect your Gmail to automatically import vendor job emails</p>
+            <p *ngIf="gmailStatus.connected && vendorStatusFilter">No jobs match the selected filter</p>
+            <p *ngIf="gmailStatus.connected && !vendorStatusFilter">Sync your Gmail to import job emails from recruiters</p>
+            <button class="btn-primary" *ngIf="!gmailStatus.connected" (click)="connectGmail()">Connect Gmail</button>
+            <button class="btn-primary" *ngIf="gmailStatus.connected" (click)="syncGmailEmails(false)">Sync Now</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Results Section -->
-    <div class="results-section" *ngIf="jobs.length > 0 || searching">
+    <!-- Results Section (only for search view) -->
+    <div class="results-section" *ngIf="activeView === 'search' && (jobs.length > 0 || searching)">
       <!-- Stats Bar -->
       <div class="stats-bar" *ngIf="jobs.length > 0">
         <div class="stat">
@@ -242,24 +586,24 @@
 
     </div>
 
-    <!-- Empty State -->
-    <div class="empty-state" *ngIf="jobs.length === 0 && !searching && searchQuery">
+    <!-- Empty State (only for search view) -->
+    <div class="empty-state" *ngIf="activeView === 'search' && jobs.length === 0 && !searching && searchQuery">
       <div class="empty-icon">No Results</div>
       <h3>No jobs found</h3>
       <p>Try adjusting your search terms or location</p>
     </div>
 
-    <!-- Vendor Jobs Section -->
-    <div class="vendor-jobs-section">
+    <!-- Vendor Jobs Section (Hidden - now using view toggle) -->
+    <div class="vendor-jobs-section" *ngIf="false">
       <div class="vendor-section-header" (click)="toggleVendorSection()">
         <div class="vendor-header-left">
           <h2>Vendor/Recruiter Emails</h2>
           <div class="vendor-stats" *ngIf="vendorJobStats">
-            <span class="stat-badge new" *ngIf="vendorJobStats.new_jobs > 0">
-              {{ vendorJobStats.new_jobs }} New
+            <span class="stat-badge new" *ngIf="vendorJobStats!.new_jobs > 0">
+              {{ vendorJobStats!.new_jobs }} New
             </span>
             <span class="stat-badge total">
-              {{ vendorJobStats.total_jobs }} Total
+              {{ vendorJobStats!.total_jobs }} Total
             </span>
           </div>
         </div>
@@ -314,10 +658,16 @@
               </span>
             </div>
             <div class="gmail-actions">
-              <button class="btn-gmail-sync" (click)="syncGmailEmails()" [disabled]="gmailSyncing">
+              <button class="btn-gmail-sync" (click)="syncGmailEmails(false)" [disabled]="gmailSyncing">
                 <span *ngIf="!gmailSyncing">Sync Now</span>
                 <span *ngIf="gmailSyncing" class="loading-text">
                   <span class="spinner-small"></span> Syncing...
+                </span>
+              </button>
+              <button class="btn-gmail-sync-all" (click)="syncGmailEmails(true)" [disabled]="gmailSyncing" title="Sync up to 500 emails">
+                <span *ngIf="!gmailSyncing">Sync All</span>
+                <span *ngIf="gmailSyncing" class="loading-text">
+                  <span class="spinner-small"></span>
                 </span>
               </button>
               <button class="btn-gmail-settings" (click)="toggleGmailSettings()">
@@ -335,12 +685,12 @@
 
         <!-- Sync Result -->
         <div class="gmail-sync-result" *ngIf="gmailSyncResult">
-          <div class="sync-result-content" [class.success]="gmailSyncResult.success" [class.error]="!gmailSyncResult.success">
-            <span *ngIf="gmailSyncResult.success">
-              Synced {{ gmailSyncResult.emailsFound }} emails: {{ gmailSyncResult.jobsCreated }} jobs imported, {{ gmailSyncResult.emailsSkipped }} skipped
+          <div class="sync-result-content" [class.success]="gmailSyncResult!.success" [class.error]="!gmailSyncResult!.success">
+            <span *ngIf="gmailSyncResult!.success">
+              Synced {{ gmailSyncResult!.emailsFound }} emails: {{ gmailSyncResult!.jobsCreated }} jobs imported, {{ gmailSyncResult!.emailsSkipped }} skipped
             </span>
-            <span *ngIf="!gmailSyncResult.success && gmailSyncResult.errors?.length">
-              Sync failed: {{ gmailSyncResult.errors![0] }}
+            <span *ngIf="!gmailSyncResult!.success && gmailSyncResult!.errors?.length">
+              Sync failed: {{ gmailSyncResult!.errors![0] }}
             </span>
             <button class="dismiss-btn" (click)="gmailSyncResult = null">×</button>
           </div>
