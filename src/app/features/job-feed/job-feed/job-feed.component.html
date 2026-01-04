@@ -465,6 +465,59 @@
             <button class="btn-primary" *ngIf="!gmailStatus.connected" (click)="connectGmail()">Connect Gmail</button>
             <button class="btn-primary" *ngIf="gmailStatus.connected" (click)="syncGmailEmails(false)">Sync Now</button>
           </div>
+
+          <!-- Pagination -->
+          <div class="vendor-jobs-pagination" *ngIf="vendorJobsTotalPages > 1">
+            <div class="pagination-info">
+              Showing {{ ((vendorJobsPage - 1) * vendorJobsPerPage) + 1 }} - {{ Math.min(vendorJobsPage * vendorJobsPerPage, vendorJobsTotal) }} of {{ vendorJobsTotal }} jobs
+            </div>
+            <div class="pagination-controls">
+              <button
+                class="pagination-btn prev"
+                [disabled]="vendorJobsPage === 1"
+                (click)="previousVendorJobsPage()"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Previous
+              </button>
+
+              <div class="pagination-pages">
+                <button
+                  *ngIf="getVendorJobsPageNumbers()[0] > 1"
+                  class="pagination-page"
+                  (click)="goToVendorJobsPage(1)"
+                >1</button>
+                <span *ngIf="getVendorJobsPageNumbers()[0] > 2" class="pagination-ellipsis">...</span>
+
+                <button
+                  *ngFor="let page of getVendorJobsPageNumbers()"
+                  class="pagination-page"
+                  [class.active]="page === vendorJobsPage"
+                  (click)="goToVendorJobsPage(page)"
+                >{{ page }}</button>
+
+                <span *ngIf="getVendorJobsPageNumbers()[getVendorJobsPageNumbers().length - 1] < vendorJobsTotalPages - 1" class="pagination-ellipsis">...</span>
+                <button
+                  *ngIf="getVendorJobsPageNumbers()[getVendorJobsPageNumbers().length - 1] < vendorJobsTotalPages"
+                  class="pagination-page"
+                  (click)="goToVendorJobsPage(vendorJobsTotalPages)"
+                >{{ vendorJobsTotalPages }}</button>
+              </div>
+
+              <button
+                class="pagination-btn next"
+                [disabled]="vendorJobsPage === vendorJobsTotalPages"
+                (click)="nextVendorJobsPage()"
+              >
+                Next
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
