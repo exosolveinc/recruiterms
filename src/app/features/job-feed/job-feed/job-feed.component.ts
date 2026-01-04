@@ -25,6 +25,8 @@ interface JobWithMatch extends ExternalJob {
   styleUrl: './job-feed.component.scss'
 })
 export class JobFeedComponent implements OnInit {
+  Math = Math; // Expose Math for template
+
   profile: Profile | null = null;
   jobs: JobWithMatch[] = [];
   loading = false;
@@ -107,6 +109,12 @@ export class JobFeedComponent implements OnInit {
   parseError = '';
   selectedVendorJob: VendorJob | null = null;
 
+  // Vendor Jobs Pagination
+  vendorJobsPage = 1;
+  vendorJobsPerPage = 10;
+  vendorJobsTotal = 0;
+  vendorJobsTotalPages = 0;
+
   // Gmail Integration
   gmailStatus: GmailConnectionStatus = { connected: false };
   gmailConnecting = false;
@@ -159,7 +167,10 @@ export class JobFeedComponent implements OnInit {
       totalJobs: this.totalJobs,
       totalPages: this.totalPages,
       stats: this.stats,
-      activeView: this.activeView
+      activeView: this.activeView,
+      vendorJobsPage: this.vendorJobsPage,
+      vendorJobsTotal: this.vendorJobsTotal,
+      vendorJobsTotalPages: this.vendorJobsTotalPages
     };
     sessionStorage.setItem(this.SESSION_STATE_KEY, JSON.stringify(state));
   }
@@ -183,6 +194,9 @@ export class JobFeedComponent implements OnInit {
         this.totalPages = state.totalPages || 0;
         this.stats = state.stats || { totalFound: 0, averageSalary: 0, avgMatchScore: 0 };
         this.activeView = state.activeView || 'search';
+        this.vendorJobsPage = state.vendorJobsPage || 1;
+        this.vendorJobsTotal = state.vendorJobsTotal || 0;
+        this.vendorJobsTotalPages = state.vendorJobsTotalPages || 0;
       } catch (e) {
         console.error('Failed to restore session state:', e);
       }
@@ -904,10 +918,26 @@ export class JobFeedComponent implements OnInit {
   async loadVendorJobs() {
     this.loadingVendorJobs = true;
     try {
+      // First, get total count for pagination
+      const allJobs = await this.vendorEmailService.getVendorJobs({
+        status: this.vendorStatusFilter || undefined
+      });
+      this.vendorJobsTotal = allJobs.length;
+      this.vendorJobsTotalPages = Math.ceil(this.vendorJobsTotal / this.vendorJobsPerPage);
+
+      // Ensure current page is valid
+      if (this.vendorJobsPage > this.vendorJobsTotalPages && this.vendorJobsTotalPages > 0) {
+        this.vendorJobsPage = this.vendorJobsTotalPages;
+      }
+
+      // Get paginated results
+      const offset = (this.vendorJobsPage - 1) * this.vendorJobsPerPage;
       this.vendorJobs = await this.vendorEmailService.getVendorJobs({
         status: this.vendorStatusFilter || undefined,
-        limit: 50
+        limit: this.vendorJobsPerPage,
+        offset: offset
       });
+
       // Save session state after loading vendor jobs
       this.saveSessionState();
     } catch (err) {
@@ -917,8 +947,47 @@ export class JobFeedComponent implements OnInit {
     }
   }
 
+  // Vendor Jobs Pagination Methods
+  goToVendorJobsPage(page: number) {
+    if (page < 1 || page > this.vendorJobsTotalPages || page === this.vendorJobsPage) {
+      return;
+    }
+    this.vendorJobsPage = page;
+    this.loadVendorJobs();
+  }
+
+  previousVendorJobsPage() {
+    if (this.vendorJobsPage > 1) {
+      this.goToVendorJobsPage(this.vendorJobsPage - 1);
+    }
+  }
+
+  nextVendorJobsPage() {
+    if (this.vendorJobsPage < this.vendorJobsTotalPages) {
+      this.goToVendorJobsPage(this.vendorJobsPage + 1);
+    }
+  }
+
+  getVendorJobsPageNumbers(): number[] {
+    const pages: number[] = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, this.vendorJobsPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(this.vendorJobsTotalPages, startPage + maxPagesToShow - 1);
+
+    // Adjust start if we're near the end
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }
+
   async filterVendorJobs(status: string) {
     this.vendorStatusFilter = status;
+    this.vendorJobsPage = 1; // Reset to first page when filtering
     await this.loadVendorJobs();
     // State is saved in loadVendorJobs
   }

@@ -3580,3 +3580,130 @@
     transform: rotate(360deg);
   }
 }
+
+// Vendor Jobs Pagination
+.vendor-jobs-pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+
+  .pagination-info {
+    font-size: 14px;
+    color: #6b7280;
+  }
+
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .pagination-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.15s;
+
+      &:hover:not(:disabled) {
+        background: #f9fafb;
+        border-color: #d1d5db;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+
+    .pagination-pages {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .pagination-page {
+        min-width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.15s;
+
+        &:hover:not(.active) {
+          background: #f9fafb;
+          border-color: #d1d5db;
+        }
+
+        &.active {
+          background: #111;
+          border-color: #111;
+          color: white;
+        }
+      }
+
+      .pagination-ellipsis {
+        width: 40px;
+        text-align: center;
+        color: #9ca3af;
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+// Responsive pagination
+@media (max-width: 640px) {
+  .vendor-jobs-pagination {
+    .pagination-controls {
+      flex-wrap: wrap;
+      justify-content: center;
+
+      .pagination-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+
+        &.prev svg,
+        &.next svg {
+          display: none;
+        }
+      }
+
+      .pagination-pages {
+        order: -1;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 8px;
+
+        .pagination-page {
+          min-width: 36px;
+          height: 36px;
+          font-size: 13px;
+        }
+      }
+    }
+  }
+}
