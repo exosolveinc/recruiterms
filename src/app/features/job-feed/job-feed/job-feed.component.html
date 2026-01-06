@@ -103,6 +103,87 @@
         </div>
       </div>
 
+      <!-- Auto-Refresh Status Bar -->
+      <div class="auto-refresh-bar" *ngIf="selectedCandidate">
+        <div class="refresh-status">
+          <span class="last-updated" *ngIf="lastRefreshTime">
+            Last updated: {{ lastRefreshTime | date:'shortTime' }}
+          </span>
+          <span class="next-refresh" *ngIf="!isRefreshing && !autoRefreshPaused">
+            Next refresh in {{ refreshCountdown }}
+          </span>
+          <span class="refreshing" *ngIf="isRefreshing">
+            <span class="spinner-small"></span> Refreshing...
+          </span>
+          <span class="paused" *ngIf="autoRefreshPaused && !isRefreshing">Auto-refresh paused</span>
+        </div>
+
+        <div class="refresh-controls">
+          <button class="btn-refresh" (click)="manualRefresh()" [disabled]="isRefreshing">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M8 2V5L10 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Refresh Now
+          </button>
+          <button class="btn-pause" (click)="toggleAutoRefresh()">
+            {{ autoRefreshPaused ? 'Resume' : 'Pause' }}
+          </button>
+        </div>
+
+        <div class="new-jobs-badge" *ngIf="newJobsCount > 0" (click)="scrollToNewJobs()">
+          {{ newJobsCount }} new job{{ newJobsCount > 1 ? 's' : '' }}
+        </div>
+      </div>
+
+      <!-- Global Analysis Progress -->
+      <div class="analysis-progress-global" *ngIf="analysisInProgress">
+        <div class="progress-info">
+          <span class="progress-label">Analyzing jobs...</span>
+          <span class="progress-count">{{ analyzedCount }}/{{ totalToAnalyze }}</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="analysisProgress"></div>
+        </div>
+      </div>
+
+      <!-- Unified Feed Controls -->
+      <div class="feed-controls" *ngIf="unifiedJobs.length > 0 || selectedCandidate">
+        <div class="source-filters">
+          <button
+            class="source-btn"
+            [class.active]="sourceFilter === 'all'"
+            (click)="filterBySource('all')"
+          >
+            All Sources
+            <span class="count" *ngIf="unifiedJobs.length">{{ unifiedJobs.length }}</span>
+          </button>
+          <button
+            class="source-btn"
+            [class.active]="sourceFilter === 'api'"
+            (click)="filterBySource('api')"
+          >
+            Job Boards
+          </button>
+          <button
+            class="source-btn"
+            [class.active]="sourceFilter === 'email'"
+            (click)="filterBySource('email')"
+          >
+            Email Jobs
+          </button>
+        </div>
+
+        <div class="sort-controls">
+          <label>Sort by:</label>
+          <select [(ngModel)]="sortBy" (change)="sortJobsBy(sortBy)">
+            <option value="date">Newest First</option>
+            <option value="match">Best Match</option>
+            <option value="salary">Highest Salary</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Gmail Panel (shown when toggled) -->
       <div class="gmail-header-panel" *ngIf="showGmailPanel" (click)="$event.stopPropagation()">
         <div class="gmail-panel-header">
@@ -517,6 +598,92 @@
                 </svg>
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unified Feed Section (real-time job feed) -->
+    <div class="unified-feed-section" *ngIf="unifiedJobs.length > 0">
+      <div class="unified-job-list">
+        <div
+          class="job-card unified-job-card"
+          *ngFor="let job of unifiedJobs"
+          [class.is-new]="job.is_new"
+          [class.high-match]="job.match_score !== undefined && job.match_score >= 80"
+          [class.medium-match]="job.match_score !== undefined && job.match_score >= 60 && job.match_score < 80"
+          [class.low-match]="job.match_score !== undefined && job.match_score < 60"
+          (click)="markUnifiedJobAsSeen(job.id)"
+        >
+          <!-- New Badge -->
+          <span class="new-badge" *ngIf="job.is_new">NEW</span>
+
+          <div class="job-card-header">
+            <div class="job-main">
+              <h3 class="job-title">{{ job.title }}</h3>
+              <p class="job-company">{{ job.company }}</p>
+            </div>
+            <div class="job-badges">
+              <!-- Match Score Badge -->
+              <div class="match-badge" *ngIf="job.match_score !== undefined" [class]="getMatchClass(job.match_score)">
+                <span class="score">{{ job.match_score }}%</span>
+                <span class="label">Match</span>
+              </div>
+              <!-- Analyzing Spinner -->
+              <div class="analyzing-badge" *ngIf="job.analyzing">
+                <span class="spinner-sm"></span>
+              </div>
+              <!-- Source Badge -->
+              <span class="source-badge" [class]="job.source_type">
+                {{ job.source_platform }}
+              </span>
+            </div>
+          </div>
+
+          <div class="job-meta">
+            <span class="meta-item location" *ngIf="job.location">{{ job.location }}</span>
+            <span class="meta-item salary" *ngIf="job.salary_text || job.salary_min">
+              {{ job.salary_text || ('$' + (job.salary_min | number) + (job.salary_max ? ' - $' + (job.salary_max | number) : '')) }}
+            </span>
+            <span class="meta-item type" *ngIf="job.employment_type">{{ job.employment_type }}</span>
+            <span class="meta-item work-arrangement" *ngIf="job.work_arrangement && job.work_arrangement !== 'unknown'">
+              {{ job.work_arrangement | titlecase }}
+            </span>
+            <span class="meta-item date">{{ formatDate(job.posted_date) }}</span>
+          </div>
+
+          <!-- Matching Skills Preview -->
+          <div class="skills-preview" *ngIf="job.matching_skills && job.matching_skills.length > 0">
+            <span class="skill-tag matching" *ngFor="let skill of job.matching_skills.slice(0, 4)">
+              {{ skill }}
+            </span>
+            <span class="more-skills" *ngIf="job.matching_skills.length > 4">
+              +{{ job.matching_skills.length - 4 }} more
+            </span>
+          </div>
+
+          <!-- Email-specific info -->
+          <div class="email-job-info" *ngIf="job.source_type === 'email'">
+            <span class="recruiter" *ngIf="job.recruiter_name">
+              From: {{ job.recruiter_name }}
+              <span *ngIf="job.vendor_company"> ({{ job.vendor_company }})</span>
+            </span>
+          </div>
+
+          <p class="job-description">{{ truncateDescription(job.description, 150) }}</p>
+
+          <div class="job-card-footer">
+            <button class="btn-view" *ngIf="job.url" (click)="openJobUrl(job.url); $event.stopPropagation()">
+              View Job
+            </button>
+            <button class="btn-apply" *ngIf="job.url" (click)="openJobUrl(job.url); $event.stopPropagation()">
+              Apply Now
+            </button>
+            <button class="btn-contact" *ngIf="job.recruiter_email" (click)="$event.stopPropagation()">
+              <a [href]="'mailto:' + job.recruiter_email" style="color: inherit; text-decoration: none;">
+                Contact Recruiter
+              </a>
+            </button>
           </div>
         </div>
       </div>

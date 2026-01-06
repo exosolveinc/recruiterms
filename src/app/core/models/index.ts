@@ -371,3 +371,6 @@ export interface UserApplicationView {
   outcome: string | null;
   notes: string | null;
 }
+
+// Re-export unified job models
+export * from './unified-job.model';
