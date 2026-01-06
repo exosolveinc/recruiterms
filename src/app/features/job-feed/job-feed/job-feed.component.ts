@@ -1,12 +1,17 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
-import { Candidate, Profile, Resume } from '../../../core/models';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { Candidate, Profile, Resume, UnifiedJob } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { JobFeedService, ExternalJob, JobSearchParams, JobPlatform } from '../../../core/services/job-feed.service';
 import { VendorEmailService, VendorJob, VendorJobStats, GmailConnectionStatus, GmailSyncResult } from '../../../core/services/vendor-email.service';
+import { AutoRefreshService } from '../../../core/services/auto-refresh.service';
+import { UnifiedFeedService } from '../../../core/services/unified-feed.service';
+import { AnalysisQueueService } from '../../../core/services/analysis-queue.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
 interface JobWithMatch extends ExternalJob {
@@ -24,13 +29,31 @@ interface JobWithMatch extends ExternalJob {
   templateUrl: './job-feed.component.html',
   styleUrl: './job-feed.component.scss'
 })
-export class JobFeedComponent implements OnInit {
+export class JobFeedComponent implements OnInit, OnDestroy {
   Math = Math; // Expose Math for template
+  private destroy$ = new Subject<void>();
 
   profile: Profile | null = null;
   jobs: JobWithMatch[] = [];
   loading = false;
   searching = false;
+
+  // Unified Feed
+  unifiedJobs: UnifiedJob[] = [];
+  sourceFilter: 'all' | 'api' | 'email' = 'all';
+  sortBy: 'date' | 'match' | 'salary' = 'date';
+  newJobsCount = 0;
+
+  // Auto-Refresh State
+  isRefreshing = false;
+  lastRefreshTime: Date | null = null;
+  refreshCountdown = '';
+  autoRefreshPaused = false;
+
+  // Analysis Progress
+  analysisInProgress = false;
+  analysisProgress = 0;
+  totalToAnalyze = 0;
 
   // Candidates & Resumes
   candidates: Candidate[] = [];
@@ -133,12 +156,21 @@ export class JobFeedComponent implements OnInit {
     private supabase: SupabaseService,
     private jobFeedService: JobFeedService,
     private vendorEmailService: VendorEmailService,
+    private autoRefreshService: AutoRefreshService,
+    private unifiedFeedService: UnifiedFeedService,
+    private analysisQueueService: AnalysisQueueService,
     private router: Router
   ) {}
 
   async ngOnInit() {
     // Restore session state first
     this.restoreSessionState();
+
+    // Setup unified feed subscriptions early
+    this.setupUnifiedFeedSubscriptions();
+
+    // Try to load persisted unified feed state from localStorage
+    const hasPersistedFeed = this.unifiedFeedService.loadState();
 
     await this.loadProfile();
     await this.loadCandidates();
@@ -148,6 +180,16 @@ export class JobFeedComponent implements OnInit {
     // Check for OAuth callback or successful Gmail connection
     this.handleGmailCallback();
     this.handleGmailConnected();
+
+    // Start auto-refresh if candidate is already selected
+    if (this.selectedCandidateId) {
+      this.autoRefreshService.startTimer();
+
+      // Restore analysis from cache for persisted jobs
+      if (hasPersistedFeed && this.selectedResume) {
+        this.restoreAnalysisFromCache();
+      }
+    }
   }
 
   // ============ Session State Management ============
@@ -170,7 +212,12 @@ export class JobFeedComponent implements OnInit {
       activeView: this.activeView,
       vendorJobsPage: this.vendorJobsPage,
       vendorJobsTotal: this.vendorJobsTotal,
-      vendorJobsTotalPages: this.vendorJobsTotalPages
+      vendorJobsTotalPages: this.vendorJobsTotalPages,
+      // Unified feed state
+      unifiedJobs: this.unifiedJobs,
+      sourceFilter: this.sourceFilter,
+      sortBy: this.sortBy,
+      lastRefreshTime: this.lastRefreshTime?.toISOString() || null
     };
     sessionStorage.setItem(this.SESSION_STATE_KEY, JSON.stringify(state));
   }
@@ -197,6 +244,19 @@ export class JobFeedComponent implements OnInit {
         this.vendorJobsPage = state.vendorJobsPage || 1;
         this.vendorJobsTotal = state.vendorJobsTotal || 0;
         this.vendorJobsTotalPages = state.vendorJobsTotalPages || 0;
+
+        // Restore unified feed state
+        this.sourceFilter = state.sourceFilter || 'all';
+        this.sortBy = state.sortBy || 'date';
+        if (state.lastRefreshTime) {
+          this.lastRefreshTime = new Date(state.lastRefreshTime);
+        }
+
+        // Restore unified jobs and sync to service
+        if (state.unifiedJobs?.length > 0) {
+          this.unifiedJobs = state.unifiedJobs;
+          this.unifiedFeedService.setJobs(state.unifiedJobs);
+        }
       } catch (e) {
         console.error('Failed to restore session state:', e);
       }
@@ -1257,5 +1317,240 @@ export class JobFeedComponent implements OnInit {
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  }
+
+  // ============ Unified Feed & Auto-Refresh Methods ============
+
+  ngOnDestroy() {
+    // Save state before destroying to preserve data on navigation
+    this.saveSessionState();
+    this.unifiedFeedService.saveState();
+
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.autoRefreshService.stopTimer();
+  }
+
+  private setupUnifiedFeedSubscriptions() {
+    // Subscribe to unified feed jobs
+    this.unifiedFeedService.jobs$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(jobs => {
+        this.unifiedJobs = this.applySourceFilter(jobs);
+        this.applySorting();
+      });
+
+    // Subscribe to new jobs count
+    this.unifiedFeedService.newJobsCount$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(count => {
+        this.newJobsCount = count;
+      });
+
+    // Subscribe to auto-refresh state
+    this.autoRefreshService.state$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(state => {
+        this.isRefreshing = state.isRefreshing;
+        this.lastRefreshTime = state.lastRefreshTime;
+        this.autoRefreshPaused = state.isPaused;
+        this.refreshCountdown = this.formatCountdown(state.secondsUntilRefresh);
+      });
+
+    // Subscribe to refresh triggers
+    this.autoRefreshService.refreshTrigger$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.performUnifiedRefresh();
+      });
+
+    // Subscribe to analysis progress
+    this.analysisQueueService.progress$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(progress => {
+        this.analysisInProgress = progress.isProcessing;
+        this.analysisProgress = progress.progress;
+        this.totalToAnalyze = progress.totalJobs;
+        this.analyzedCount = progress.analyzedCount;
+      });
+  }
+
+  async performUnifiedRefresh() {
+    if (this.isRefreshing) return;
+
+    this.autoRefreshService.setRefreshing(true);
+
+    try {
+      // Build preferences from candidate if available
+      const preferences = this.selectedCandidate?.preferences || null;
+
+      // Refresh both API jobs and email jobs
+      await this.unifiedFeedService.refreshFeed(preferences, {
+        maxJobsPerSource: 50,
+        syncGmail: true
+      });
+
+      // Start analysis queue if resume is selected
+      if (this.selectedResume) {
+        const unanalyzedJobs = this.unifiedFeedService.getState().jobs
+          .filter(j => !j.analyzed && !j.analyzing)
+          .map(j => j.id);
+
+        if (unanalyzedJobs.length > 0) {
+          this.analysisQueueService.addToQueue(unanalyzedJobs);
+          this.analysisQueueService.processQueue(this.selectedResume);
+        }
+      }
+    } catch (error) {
+      console.error('Refresh error:', error);
+    } finally {
+      this.autoRefreshService.setRefreshing(false);
+    }
+  }
+
+  manualRefresh() {
+    // Directly call performUnifiedRefresh to ensure it works
+    this.performUnifiedRefresh();
+  }
+
+  toggleAutoRefresh() {
+    if (this.autoRefreshPaused) {
+      this.autoRefreshService.resume();
+    } else {
+      this.autoRefreshService.pause();
+    }
+  }
+
+  filterBySource(source: 'all' | 'api' | 'email') {
+    this.sourceFilter = source;
+    this.unifiedJobs = this.applySourceFilter(this.unifiedFeedService.getState().jobs);
+    this.applySorting();
+  }
+
+  private applySourceFilter(jobs: UnifiedJob[]): UnifiedJob[] {
+    if (this.sourceFilter === 'all') {
+      return jobs;
+    }
+    return jobs.filter(job => job.source_type === this.sourceFilter);
+  }
+
+  sortJobsBy(sortBy: 'date' | 'match' | 'salary') {
+    this.sortBy = sortBy;
+    this.applySorting();
+  }
+
+  private applySorting() {
+    const jobs = [...this.unifiedJobs];
+
+    switch (this.sortBy) {
+      case 'date':
+        jobs.sort((a, b) => {
+          const dateA = new Date(a.discovered_at || a.posted_date || 0).getTime();
+          const dateB = new Date(b.discovered_at || b.posted_date || 0).getTime();
+          return dateB - dateA;
+        });
+        break;
+      case 'match':
+        jobs.sort((a, b) => {
+          const scoreA = a.match_score ?? -1;
+          const scoreB = b.match_score ?? -1;
+          return scoreB - scoreA;
+        });
+        break;
+      case 'salary':
+        jobs.sort((a, b) => {
+          const salaryA = a.salary_max || a.salary_min || 0;
+          const salaryB = b.salary_max || b.salary_min || 0;
+          return salaryB - salaryA;
+        });
+        break;
+    }
+
+    this.unifiedJobs = jobs;
+  }
+
+  scrollToNewJobs() {
+    // Find first new job and scroll to it
+    const newJobElement = document.querySelector('.job-card.is-new');
+    if (newJobElement) {
+      newJobElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    // Mark all as seen after scrolling
+    this.unifiedFeedService.markAllAsSeen();
+  }
+
+  markUnifiedJobAsSeen(jobId: string) {
+    this.unifiedFeedService.markAsSeen(jobId);
+  }
+
+  private formatCountdown(seconds: number): string {
+    if (seconds <= 0) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  // Open job URL in new tab
+  openJobUrl(url: string) {
+    if (url) {
+      window.open(url, '_blank');
+    }
+  }
+
+  // Start the unified feed when candidate is selected
+  async startUnifiedFeed() {
+    if (!this.selectedCandidate) return;
+
+    // Setup subscriptions if not already done
+    this.setupUnifiedFeedSubscriptions();
+
+    // Start auto-refresh timer
+    this.autoRefreshService.startTimer();
+
+    // Perform initial refresh
+    await this.performUnifiedRefresh();
+  }
+
+  // Handle resume change - invalidate analysis cache
+  onResumeChangeForUnifiedFeed() {
+    if (this.selectedResume) {
+      // Clear the analysis cache for previous resume
+      this.analysisQueueService.clearQueue();
+
+      // Re-analyze all jobs with new resume
+      const jobIds = this.unifiedFeedService.getState().jobs.map(j => j.id);
+      this.analysisQueueService.addToQueue(jobIds);
+      this.analysisQueueService.processQueue(this.selectedResume);
+    }
+  }
+
+  // Restore analysis results from cache for persisted jobs
+  private restoreAnalysisFromCache() {
+    if (!this.selectedResume) return;
+
+    const jobs = this.unifiedFeedService.getState().jobs;
+    const jobsToAnalyze: string[] = [];
+
+    for (const job of jobs) {
+      // Check if analysis is cached
+      const cached = this.analysisQueueService.getCachedAnalysis(
+        job.id,
+        this.selectedResume.id
+      );
+
+      if (cached) {
+        // Restore from cache
+        this.unifiedFeedService.updateJobAnalysis(job.id, cached.result);
+      } else if (!job.analyzed && !job.analyzing) {
+        // Queue for analysis
+        jobsToAnalyze.push(job.id);
+      }
+    }
+
+    // Process any queued jobs
+    if (jobsToAnalyze.length > 0) {
+      this.analysisQueueService.addToQueue(jobsToAnalyze);
+      this.analysisQueueService.processQueue(this.selectedResume);
+    }
   }
 }

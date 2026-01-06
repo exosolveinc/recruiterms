@@ -107,6 +107,18 @@ export class DashboardComponent implements OnInit {
   selectedAppForInterview: UserApplicationView | null = null;
   upcomingInterviews: ScheduledInterview[] = [];
 
+  // Resume dropdown
+  openResumeDropdownId: string | null = null;
+  openDropdownSections: Set<string> = new Set();
+
+  // Inline suggestions cache (per app)
+  appSuggestionsCache: Map<string, string[]> = new Map();
+  loadingSuggestionsForApp: string | null = null;
+
+  // Job details cache (for expanded rows)
+  jobDetailsCache: Map<string, Job> = new Map();
+  loadingJobDetailsFor: string | null = null;
+
   constructor(
     private supabase: SupabaseService,
     private router: Router,
@@ -487,7 +499,16 @@ export class DashboardComponent implements OnInit {
 
   toggleExpand(appId: string, event: Event) {
     event.stopPropagation();
-    this.expandedAppId = this.expandedAppId === appId ? null : appId;
+    if (this.expandedAppId === appId) {
+      this.expandedAppId = null;
+    } else {
+      this.expandedAppId = appId;
+      // Load job details when expanding
+      const app = this.applications.find(a => a.id === appId);
+      if (app) {
+        this.loadJobDetailsIfNeeded(app);
+      }
+    }
   }
 
   isExpanded(appId: string): boolean {
@@ -703,6 +724,27 @@ export class DashboardComponent implements OnInit {
   formatDate(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  formatAppliedDate(dateStr: string | null): string {
+    if (!dateStr) return '—';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  openJobUrl(url: string): void {
+    if (url && !url.startsWith('manual')) {
+      window.open(url, '_blank');
+    }
   }
 
   // Auto-detect platform from URL
@@ -1059,5 +1101,177 @@ export class DashboardComponent implements OnInit {
   // Helper to check if detailed analysis exists
   hasDetailedAnalysis(appId: string): boolean {
     return this.detailedAnalysis.has(appId);
+  }
+
+  // ============================================================================
+  // RESUME DROPDOWN ACTIONS
+  // ============================================================================
+
+  toggleResumeDropdown(appId: string, event: Event) {
+    event.stopPropagation();
+    if (this.openResumeDropdownId === appId) {
+      this.openResumeDropdownId = null;
+      this.openDropdownSections.clear();
+    } else {
+      this.openResumeDropdownId = appId;
+      this.openDropdownSections.clear();
+      // Auto-expand resume section by default
+      this.openDropdownSections.add('resume-' + appId);
+    }
+  }
+
+  closeResumeDropdown() {
+    this.openResumeDropdownId = null;
+    this.openDropdownSections.clear();
+  }
+
+  toggleDropdownSection(sectionId: string) {
+    if (this.openDropdownSections.has(sectionId)) {
+      this.openDropdownSections.delete(sectionId);
+    } else {
+      this.openDropdownSections.add(sectionId);
+    }
+  }
+
+  isDropdownSectionOpen(sectionId: string): boolean {
+    return this.openDropdownSections.has(sectionId);
+  }
+
+  // Load analysis when section is opened (if not already loaded)
+  loadAnalysisIfNeeded(app: UserApplicationView) {
+    if (!app.match_score && !app.matching_skills?.length && app.resume_id) {
+      // Trigger analysis if not already done
+      if (this.reanalyzingAppId !== app.id) {
+        this.reanalyzeApplication(app);
+      }
+    }
+  }
+
+  // Load suggestions when section is opened
+  async loadSuggestionsIfNeeded(app: UserApplicationView) {
+    // Check if already cached
+    if (this.appSuggestionsCache.has(app.id)) {
+      return;
+    }
+
+    if (!app.resume_id) {
+      this.appSuggestionsCache.set(app.id, ['No resume attached. Please upload a resume first.']);
+      return;
+    }
+
+    const resume = this.getResumeForApp(app);
+    if (!resume) {
+      this.appSuggestionsCache.set(app.id, ['Could not load resume.']);
+      return;
+    }
+
+    this.loadingSuggestionsForApp = app.id;
+
+    try {
+      const job = await this.supabase.getJob(app.job_id);
+      if (!job) {
+        throw new Error('Could not find job details');
+      }
+
+      // Check if we already have detailed analysis
+      const existingAnalysis = this.getDetailedAnalysis(app.id);
+      let suggestions: string[] = [];
+
+      if (existingAnalysis?.resumeImprovements?.length) {
+        suggestions = existingAnalysis.resumeImprovements.map(
+          imp => `${imp.section}: ${imp.what_to_add}`
+        );
+      } else {
+        // Run analysis to get suggestions
+        const aiMatch = await this.supabase.analyzeMatchWithAI(resume, job);
+
+        // Store the analysis
+        this.detailedAnalysis.set(app.id, {
+          experienceMatch: aiMatch.experience_match,
+          educationMatch: aiMatch.education_match,
+          requirementsFulfilled: aiMatch.requirements_fulfilled ? {
+            percentage: aiMatch.requirements_fulfilled.percentage,
+            met: aiMatch.requirements_fulfilled.met || [],
+            notMet: aiMatch.requirements_fulfilled.not_met || []
+          } : undefined,
+          resumeImprovements: aiMatch.resume_improvements || [],
+          skillGaps: aiMatch.skill_gaps || [],
+          strengths: aiMatch.strengths || [],
+          concerns: aiMatch.concerns || [],
+          interviewTips: aiMatch.interview_tips || [],
+          overallAssessment: aiMatch.overall_assessment,
+          quickWins: aiMatch.quick_wins || []
+        });
+
+        if (aiMatch.resume_improvements?.length) {
+          suggestions = aiMatch.resume_improvements.map(
+            (imp: any) => `${imp.section}: ${imp.what_to_add}`
+          );
+        } else if (aiMatch.quick_wins?.length) {
+          suggestions = aiMatch.quick_wins;
+        } else if (app.missing_skills?.length) {
+          suggestions = app.missing_skills.slice(0, 5).map(
+            skill => `Add experience demonstrating ${skill}`
+          );
+        } else {
+          suggestions = ['Your resume appears well-matched to this role.'];
+        }
+      }
+
+      this.appSuggestionsCache.set(app.id, suggestions);
+    } catch (err: any) {
+      console.error('Failed to get suggestions:', err);
+      this.appSuggestionsCache.set(app.id, ['Failed to generate suggestions.']);
+    } finally {
+      this.loadingSuggestionsForApp = null;
+    }
+  }
+
+  getAppSuggestions(appId: string): string[] {
+    return this.appSuggestionsCache.get(appId) || [];
+  }
+
+  // ============================================================================
+  // JOB DETAILS FOR EXPANDED ROW
+  // ============================================================================
+
+  async loadJobDetailsIfNeeded(app: UserApplicationView) {
+    // Check if already cached
+    if (this.jobDetailsCache.has(app.job_id)) {
+      return;
+    }
+
+    this.loadingJobDetailsFor = app.id;
+
+    try {
+      const job = await this.supabase.getJob(app.job_id);
+      if (job) {
+        this.jobDetailsCache.set(app.job_id, job);
+      }
+    } catch (err) {
+      console.error('Failed to load job details:', err);
+    } finally {
+      this.loadingJobDetailsFor = null;
+    }
+  }
+
+  getJobDetails(jobId: string): Job | null {
+    return this.jobDetailsCache.get(jobId) || null;
+  }
+
+  getJobDescription(jobId: string): string | null {
+    const job = this.jobDetailsCache.get(jobId);
+    if (!job) return null;
+    return job.description_full || job.description_summary || null;
+  }
+
+  getJobResponsibilities(jobId: string): string[] {
+    const job = this.jobDetailsCache.get(jobId);
+    return job?.responsibilities || [];
+  }
+
+  getJobQualifications(jobId: string): string[] {
+    const job = this.jobDetailsCache.get(jobId);
+    return job?.qualifications || [];
   }
 }
