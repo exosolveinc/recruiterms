@@ -168,8 +168,9 @@ export class DashboardComponent implements OnInit {
   }
 
   calculateStats() {
-    this.stats.applied = this.applications.length;
-    this.stats.interviews = this.applications.filter(a =>
+    const apps = this.filteredApplications;
+    this.stats.applied = apps.length;
+    this.stats.interviews = apps.filter(a =>
       ['interviewing', 'screening', 'offer', 'accepted'].includes(a.status)
     ).length;
     this.stats.interviewRate = this.stats.applied > 0
@@ -178,12 +179,27 @@ export class DashboardComponent implements OnInit {
   }
 
   get filteredApplications(): UserApplicationView[] {
-    if (!this.searchTerm) return this.applications;
-    const term = this.searchTerm.toLowerCase();
-    return this.applications.filter(app =>
-      app.company_name?.toLowerCase().includes(term) ||
-      app.job_title?.toLowerCase().includes(term)
-    );
+    // First filter by selected candidate's resumes
+    let filtered = this.applications;
+
+    if (this.selectedCandidateId) {
+      const candidate = this.candidates.find(c => c.id === this.selectedCandidateId);
+      if (candidate) {
+        const candidateResumeIds = new Set(candidate.resumes.map(r => r.id));
+        filtered = filtered.filter(app => app.resume_id && candidateResumeIds.has(app.resume_id));
+      }
+    }
+
+    // Then apply search filter
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(app =>
+        app.company_name?.toLowerCase().includes(term) ||
+        app.job_title?.toLowerCase().includes(term)
+      );
+    }
+
+    return filtered;
   }
 
   get selectedResume(): Resume | null {
@@ -799,6 +815,8 @@ export class DashboardComponent implements OnInit {
     } else {
       this.selectedResumeId = '';
     }
+    // Recalculate stats for the selected candidate's applications
+    this.calculateStats();
   }
 
   getInitials(name: string): string {
@@ -1273,5 +1291,9 @@ export class DashboardComponent implements OnInit {
   getJobQualifications(jobId: string): string[] {
     const job = this.jobDetailsCache.get(jobId);
     return job?.qualifications || [];
+  }
+
+  goToAdminDashboard() {
+    this.router.navigate(['/admin']);
   }
 }
