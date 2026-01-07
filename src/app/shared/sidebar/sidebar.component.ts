@@ -26,7 +26,6 @@ export class SidebarComponent implements OnInit {
   isAdmin = false;
 
   allNavItems: NavItem[] = [
-    { icon: '📊', label: 'Dashboard', route: '/admin', id: 'admin', adminOnly: true },
     { icon: '📋', label: 'Applications', route: '/dashboard', id: 'dashboard' },
     { icon: '📄', label: 'Resumes', route: '/resumes', id: 'resumes' },
     { icon: '👥', label: 'Candidates', route: '/candidates', id: 'candidates' },
