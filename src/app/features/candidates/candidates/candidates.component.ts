@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Candidate, CandidateDocument, CandidatePreferences, Profile, Resume } from '../../../core/models';
+import { Candidate, CandidateDocument, CandidatePreferences, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { AppStateService } from '../../../core/services/app-state.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
 @Component({
@@ -14,7 +15,13 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
   styleUrl: './candidates.component.scss'
 })
 export class CandidatesComponent implements OnInit {
-  profile: Profile | null = null;
+  private appState = inject(AppStateService);
+
+  // Use signals from AppStateService
+  readonly profile = this.appState.profile;
+  readonly isAdmin = this.appState.isAdmin;
+
+  // Local candidates - can be different from appState for admin view
   candidates: Candidate[] = [];
   loading = true;
   searchTerm = '';
@@ -80,21 +87,38 @@ export class CandidatesComponent implements OnInit {
   }
 
   async loadProfile() {
+    // Check if profile is already loaded in AppStateService
+    if (this.appState.profileLoaded()) {
+      const profile = this.profile();
+      if (!profile?.organization_id) {
+        this.router.navigate(['/setup']);
+      }
+      return;
+    }
+
     const profile = await this.supabase.getProfile();
     if (!profile?.organization_id) {
       this.router.navigate(['/setup']);
       return;
     }
-    this.profile = profile;
+    this.appState.setProfile(profile);
   }
 
   async loadCandidates() {
     try {
       // Use org-level for admin, user-level otherwise
-      if (this.profile?.role === 'admin') {
+      if (this.isAdmin()) {
+        // Admin sees all org candidates - load fresh
         this.candidates = await this.supabase.getAllCandidatesForOrg();
       } else {
-        this.candidates = await this.supabase.getCandidates();
+        // Regular users - use cached state if available
+        if (this.appState.candidatesLoaded()) {
+          this.candidates = this.appState.candidates();
+        } else {
+          const candidates = await this.supabase.getCandidates();
+          this.appState.setCandidates(candidates);
+          this.candidates = candidates;
+        }
       }
       this.calculateStats();
     } catch (err) {

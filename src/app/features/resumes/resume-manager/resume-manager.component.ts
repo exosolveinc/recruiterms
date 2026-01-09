@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Profile, Resume } from '../../../core/models';
+import { Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { AppStateService } from '../../../core/services/app-state.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
 @Component({
@@ -14,7 +15,12 @@ import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
   styleUrls: ['./resume-manager.component.scss']
 })
 export class ResumeManagerComponent implements OnInit {
-  profile: Profile | null = null;
+  private appState = inject(AppStateService);
+
+  // Use signals from AppStateService
+  readonly profile = this.appState.profile;
+
+  // Local resumes array for component state
   resumes: Resume[] = [];
   loading = true;
   uploading = false;
@@ -41,15 +47,36 @@ export class ResumeManagerComponent implements OnInit {
   }
 
   async loadProfile() {
-    this.profile = await this.supabase.getProfile();
-    if (!this.profile?.organization_id) {
-      this.router.navigate(['/setup']);
+    // Check if profile is already loaded in AppStateService
+    if (this.appState.profileLoaded()) {
+      const profile = this.profile();
+      if (!profile?.organization_id) {
+        this.router.navigate(['/setup']);
+      }
+      return;
     }
+
+    const profile = await this.supabase.getProfile();
+    if (!profile?.organization_id) {
+      this.router.navigate(['/setup']);
+      return;
+    }
+    this.appState.setProfile(profile);
   }
 
   async loadResumes() {
     try {
-      this.resumes = await this.supabase.getResumes();
+      // Use cached resumes from AppStateService if available
+      if (this.appState.resumesLoaded()) {
+        this.resumes = this.appState.resumes();
+      } else {
+        // Load candidates which also populates resumes
+        if (!this.appState.candidatesLoaded()) {
+          const candidates = await this.supabase.getCandidates();
+          this.appState.setCandidates(candidates);
+        }
+        this.resumes = this.appState.resumes();
+      }
     } catch (err) {
       console.error('Failed to load resumes:', err);
     }
@@ -103,6 +130,11 @@ export class ResumeManagerComponent implements OnInit {
       const updatedResume = await this.supabase.updateResume(resume.id, extractedData);
       this.resumes.unshift(updatedResume);
 
+      // Invalidate and refresh candidates to include new resume
+      this.appState.invalidateCandidates();
+      const candidates = await this.supabase.getCandidates();
+      this.appState.setCandidates(candidates);
+
     } catch (err: any) {
       alert('Failed to upload resume: ' + err.message);
     } finally {
@@ -141,16 +173,22 @@ export class ResumeManagerComponent implements OnInit {
   async saveLabel() {
     if (!this.selectedResume || !this.newLabel.trim()) return;
 
+    const resumeId = this.selectedResume.id;
+    const newLabel = this.newLabel.trim();
+
     try {
-      await this.supabase.updateResume(this.selectedResume.id, { label: this.newLabel.trim() });
-      this.selectedResume.label = this.newLabel.trim();
-      
-      // Update in list
-      const index = this.resumes.findIndex(r => r.id === this.selectedResume!.id);
+      await this.supabase.updateResume(resumeId, { label: newLabel });
+      this.selectedResume.label = newLabel;
+
+      // Update in local list
+      const index = this.resumes.findIndex(r => r.id === resumeId);
       if (index !== -1) {
-        this.resumes[index].label = this.newLabel.trim();
+        this.resumes[index].label = newLabel;
       }
-      
+
+      // Update in AppStateService
+      this.appState.updateResume(resumeId, { label: newLabel });
+
       this.editingLabel = false;
     } catch (err: any) {
       alert('Failed to save label: ' + err.message);
@@ -192,12 +230,18 @@ export class ResumeManagerComponent implements OnInit {
   async deleteResume() {
     if (!this.resumeToDelete) return;
 
+    const resumeId = this.resumeToDelete.id;
+
     try {
-      await this.supabase.deleteResume(this.resumeToDelete.id);
-      this.resumes = this.resumes.filter(r => r.id !== this.resumeToDelete!.id);
+      await this.supabase.deleteResume(resumeId);
+      this.resumes = this.resumes.filter(r => r.id !== resumeId);
+
+      // Update AppStateService
+      this.appState.removeResume(resumeId);
+
       this.cancelDelete();
-      
-      if (this.selectedResume?.id === this.resumeToDelete.id) {
+
+      if (this.selectedResume?.id === resumeId) {
         this.closeModal();
       }
     } catch (err: any) {

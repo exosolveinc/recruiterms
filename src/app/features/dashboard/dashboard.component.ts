@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Candidate, Job, Profile, Resume, UserApplicationView } from '../../core/models';
+import { Job, Resume, UserApplicationView } from '../../core/models';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { InterviewService, ScheduledInterview } from '../../core/services/interview.service';
+import { AppStateService } from '../../core/services/app-state.service';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 import { InterviewModalComponent } from '../../shared/interview-modal/interview-modal.component';
 
@@ -16,20 +17,38 @@ import { InterviewModalComponent } from '../../shared/interview-modal/interview-
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit {
-  profile: Profile | null = null;
+  // Inject AppStateService
+  private appState = inject(AppStateService);
 
-  // Stats
-  stats = {
-    applied: 0,
-    interviews: 0,
-    interviewRate: 0
-  };
+  // Use signals from AppStateService
+  readonly profile = this.appState.profile;
+  readonly candidates = this.appState.candidates;
+  readonly resumes = this.appState.resumes;
+  readonly applications = this.appState.applications;
+  readonly selectedCandidate = this.appState.selectedCandidate;
+  readonly selectedResume = this.appState.selectedResume;
+  readonly candidateResumes = this.appState.candidateResumes;
+  readonly candidateStats = this.appState.candidateStats;
+  readonly selectedCandidateId = this.appState.selectedCandidateId;
+  readonly selectedResumeId = this.appState.selectedResumeId;
 
-  // Candidates & Resumes
-  candidates: Candidate[] = [];
-  selectedCandidateId = '';
-  resumes: Resume[] = [];  // All resumes (for backward compat)
-  selectedResumeId = '';
+  // Computed filtered applications with search
+  readonly filteredApplications = computed(() => {
+    let filtered = this.appState.filteredApplications();
+
+    // Apply search filter
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(app =>
+        app.company_name?.toLowerCase().includes(term) ||
+        app.job_title?.toLowerCase().includes(term)
+      );
+    }
+
+    return filtered;
+  });
+
+  // Local state that doesn't need to be shared
   uploadingResume = false;
 
   // Job Extractor
@@ -64,8 +83,7 @@ export class DashboardComponent implements OnInit {
   } | null = null;
   pendingJob: Partial<Job> | null = null;
 
-  // Applications
-  applications: UserApplicationView[] = [];
+  // Search term (local state)
   searchTerm = '';
   loading = true;
 
@@ -140,70 +158,37 @@ export class DashboardComponent implements OnInit {
       this.router.navigate(['/setup']);
       return;
     }
-    this.profile = profile;
+    this.appState.setProfile(profile);
   }
 
   async loadCandidates() {
-    try {
-      this.candidates = await this.supabase.getCandidates();
-      // Also load all resumes for backward compat
-      this.resumes = await this.supabase.getResumes();
+    if (this.appState.candidatesLoaded()) return; // Skip if already loaded
 
-      // Auto-select first candidate if available
-      if (this.candidates.length > 0) {
-        this.selectCandidate(this.candidates[0].id);
-      }
+    try {
+      this.appState.setCandidatesLoading(true);
+      const candidates = await this.supabase.getCandidates();
+      this.appState.setCandidates(candidates);
     } catch (err) {
       console.error('Failed to load candidates:', err);
     }
   }
 
   async loadApplications() {
+    if (this.appState.applicationsLoaded()) return; // Skip if already loaded
+
     try {
-      this.applications = await this.supabase.getApplicationsWithDetails();
+      this.appState.setApplicationsLoading(true);
+      const applications = await this.supabase.getApplicationsWithDetails();
+      this.appState.setApplications(applications);
     } catch (err) {
       console.error('Failed to load applications:', err);
-      this.applications = [];
+      this.appState.setApplications([]);
     }
   }
 
   calculateStats() {
-    const apps = this.filteredApplications;
-    this.stats.applied = apps.length;
-    this.stats.interviews = apps.filter(a =>
-      ['interviewing', 'screening', 'offer', 'accepted'].includes(a.status)
-    ).length;
-    this.stats.interviewRate = this.stats.applied > 0
-      ? Math.round((this.stats.interviews / this.stats.applied) * 100)
-      : 0;
-  }
-
-  get filteredApplications(): UserApplicationView[] {
-    // First filter by selected candidate's resumes
-    let filtered = this.applications;
-
-    if (this.selectedCandidateId) {
-      const candidate = this.candidates.find(c => c.id === this.selectedCandidateId);
-      if (candidate) {
-        const candidateResumeIds = new Set(candidate.resumes.map(r => r.id));
-        filtered = filtered.filter(app => app.resume_id && candidateResumeIds.has(app.resume_id));
-      }
-    }
-
-    // Then apply search filter
-    if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(app =>
-        app.company_name?.toLowerCase().includes(term) ||
-        app.job_title?.toLowerCase().includes(term)
-      );
-    }
-
-    return filtered;
-  }
-
-  get selectedResume(): Resume | null {
-    return this.resumes.find(r => r.id === this.selectedResumeId) || null;
+    // Stats are now computed automatically via candidateStats signal
+    // This method is kept for backward compatibility but does nothing
   }
 
   // ============================================================================
@@ -257,11 +242,12 @@ export class DashboardComponent implements OnInit {
       // Step 4: Update resume with extracted data
       const updatedResume = await this.supabase.updateResume(resume.id, extractedData);
 
-      // Step 5: Reload candidates to refresh the UI
+      // Step 5: Invalidate and reload candidates to refresh the UI
+      this.appState.invalidateCandidates();
       await this.loadCandidates();
 
       // Select the newly uploaded resume
-      this.selectedResumeId = updatedResume.id;
+      this.appState.selectResume(updatedResume.id);
 
 
     } catch (err: any) {
@@ -278,7 +264,7 @@ export class DashboardComponent implements OnInit {
   // ============================================================================
 
   async extractAndSave() {
-    if (!this.selectedResumeId) {
+    if (!this.selectedResumeId()) {
       this.extractError = 'Please select or upload a resume first';
       return;
     }
@@ -317,7 +303,7 @@ export class DashboardComponent implements OnInit {
       // Step 2: Analyzing resume
       this.currentLoadingStep = 1;
       await this.delay(300); // Brief pause for visual feedback
-      const resume = this.selectedResume;
+      const resume = this.selectedResume();
       this.completedSteps.push(1);
 
       // Step 3: Comparing skills
@@ -447,14 +433,14 @@ export class DashboardComponent implements OnInit {
       // Create application
       const newApplication = await this.supabase.createApplication({
         job_id: job.id,
-        resume_id: this.selectedResumeId,
+        resume_id: this.selectedResumeId(),
         status: 'extracted',
         application_method: 'Direct'
       });
 
-      // Refresh data
+      // Refresh data - invalidate and reload
+      this.appState.invalidateApplications();
       await this.loadApplications();
-      this.calculateStats();
 
       // Expand the newly created application row
       this.expandedAppId = newApplication.id;
@@ -520,7 +506,7 @@ export class DashboardComponent implements OnInit {
     } else {
       this.expandedAppId = appId;
       // Load job details when expanding
-      const app = this.applications.find(a => a.id === appId);
+      const app = this.applications().find(a => a.id === appId);
       if (app) {
         this.loadJobDetailsIfNeeded(app);
       }
@@ -569,8 +555,7 @@ export class DashboardComponent implements OnInit {
 
     try {
       await this.supabase.deleteApplication(app.id);
-      this.applications = this.applications.filter(a => a.id !== app.id);
-      this.calculateStats();
+      this.appState.removeApplication(app.id);
     } catch (err: any) {
       alert('Failed to delete: ' + err.message);
     }
@@ -587,7 +572,7 @@ export class DashboardComponent implements OnInit {
       return this.resumeCache.get(app.resume_id) || null;
     }
 
-    const resume = this.resumes.find(r => r.id === app.resume_id);
+    const resume = this.resumes().find(r => r.id === app.resume_id);
     if (resume) {
       this.resumeCache.set(app.resume_id, resume);
       return resume;
@@ -687,9 +672,10 @@ export class DashboardComponent implements OnInit {
 
   // Delete selected resume
   async deleteSelectedResume() {
-    if (!this.selectedResumeId) return;
+    const resumeId = this.selectedResumeId();
+    if (!resumeId) return;
 
-    const resume = this.resumes.find(r => r.id === this.selectedResumeId);
+    const resume = this.resumes().find(r => r.id === resumeId);
     if (!resume) return;
 
     const confirmMsg = `Delete resume "${resume.candidate_name || resume.file_name}"?\n\nThis will also remove it from any applications.`;
@@ -698,17 +684,10 @@ export class DashboardComponent implements OnInit {
 
     try {
       // Delete from database
-      await this.supabase.deleteResume(this.selectedResumeId);
+      await this.supabase.deleteResume(resumeId);
 
-      // Remove from local array
-      this.resumes = this.resumes.filter(r => r.id !== this.selectedResumeId);
-
-      // Select another resume or clear selection
-      if (this.resumes.length > 0) {
-        this.selectedResumeId = this.resumes[0].id;
-      } else {
-        this.selectedResumeId = '';
-      }
+      // Remove from state - this will also update candidates and handle selection
+      this.appState.removeResume(resumeId);
 
       console.log('Resume deleted successfully');
     } catch (err: any) {
@@ -795,28 +774,8 @@ export class DashboardComponent implements OnInit {
   // CANDIDATE SELECTOR HELPERS
   // ============================================================================
 
-  get selectedCandidate(): Candidate | null {
-    return this.candidates.find(c => c.id === this.selectedCandidateId) || null;
-  }
-
-  get candidateResumes(): Resume[] {
-    const candidate = this.selectedCandidate;
-    if (!candidate) return [];
-    return candidate.resumes || [];
-  }
-
   selectCandidate(candidateId: string) {
-    this.selectedCandidateId = candidateId;
-    // Auto-select primary resume or first resume for this candidate
-    const candidate = this.candidates.find(c => c.id === candidateId);
-    if (candidate && candidate.resumes.length > 0) {
-      const primary = candidate.resumes.find(r => r.is_primary);
-      this.selectedResumeId = primary?.id || candidate.resumes[0].id;
-    } else {
-      this.selectedResumeId = '';
-    }
-    // Recalculate stats for the selected candidate's applications
-    this.calculateStats();
+    this.appState.selectCandidate(candidateId);
   }
 
   getInitials(name: string): string {
@@ -837,43 +796,29 @@ export class DashboardComponent implements OnInit {
   }
 
   selectResume(resumeId: string) {
-    this.selectedResumeId = resumeId;
+    this.appState.selectResume(resumeId);
   }
 
   getAvgMatch(): number {
-    const appsWithMatch = this.applications.filter(a => a.match_score);
+    const appsWithMatch = this.applications().filter(a => a.match_score);
     if (appsWithMatch.length === 0) return 0;
     const total = appsWithMatch.reduce((sum, a) => sum + (a.match_score || 0), 0);
     return Math.round(total / appsWithMatch.length);
   }
 
-  // Get applications for selected candidate
+  // Get applications for selected candidate - uses computed signal
   getCandidateApplications(): number {
-    if (!this.selectedCandidateId) return 0;
-    const candidateResumeIds = this.candidateResumes.map(r => r.id);
-    return this.applications.filter(a => a.resume_id && candidateResumeIds.includes(a.resume_id)).length;
+    return this.candidateStats().applied;
   }
 
-  // Get interviews for selected candidate
+  // Get interviews for selected candidate - uses computed signal
   getCandidateInterviews(): number {
-    if (!this.selectedCandidateId) return 0;
-    const candidateResumeIds = this.candidateResumes.map(r => r.id);
-    return this.applications.filter(a =>
-      a.resume_id && candidateResumeIds.includes(a.resume_id) &&
-      ['interviewing', 'screening', 'offer', 'accepted'].includes(a.status)
-    ).length;
+    return this.candidateStats().interviews;
   }
 
-  // Get average match for selected candidate
+  // Get average match for selected candidate - uses computed signal
   getCandidateAvgMatch(): number {
-    if (!this.selectedCandidateId) return 0;
-    const candidateResumeIds = this.candidateResumes.map(r => r.id);
-    const candidateApps = this.applications.filter(a =>
-      a.resume_id && candidateResumeIds.includes(a.resume_id) && a.match_score
-    );
-    if (candidateApps.length === 0) return 0;
-    const total = candidateApps.reduce((sum, a) => sum + (a.match_score || 0), 0);
-    return Math.round(total / candidateApps.length);
+    return this.candidateStats().avgMatch;
   }
 
   getCompanyColor(companyName: string | null): string {
@@ -908,7 +853,7 @@ export class DashboardComponent implements OnInit {
 
   getResumeNameForApp(app: UserApplicationView): string {
     if (!app.resume_id) return '—';
-    const resume = this.resumes.find(r => r.id === app.resume_id);
+    const resume = this.resumes().find(r => r.id === app.resume_id);
     if (!resume) return '—';
     return this.getResumeLabel(resume);
   }
@@ -965,6 +910,8 @@ export class DashboardComponent implements OnInit {
       await this.supabase.updateApplication(app.id, { resume_id: updatedResume.id });
 
       // Step 6: Reload data
+      this.appState.invalidateCandidates();
+      this.appState.invalidateApplications();
       await this.loadCandidates();
       await this.loadApplications();
 
@@ -1006,8 +953,8 @@ export class DashboardComponent implements OnInit {
   async onInterviewScheduled(interview: ScheduledInterview) {
     this.closeInterviewModal();
     await this.loadUpcomingInterviews();
+    this.appState.invalidateApplications();
     await this.loadApplications();
-    this.calculateStats();
   }
 
   getInterviewsForApp(app: UserApplicationView): ScheduledInterview[] {
@@ -1100,6 +1047,7 @@ export class DashboardComponent implements OnInit {
       });
 
       // Reload applications to reflect new data
+      this.appState.invalidateApplications();
       await this.loadApplications();
 
       // Keep the row expanded
