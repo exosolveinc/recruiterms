@@ -5,7 +5,7 @@
             <h1>Applications</h1>
             <p class="page-sub">Track and optimize your job applications</p>
         </div>
-        <button class="btn-admin" *ngIf="profile?.role === 'admin'" (click)="goToAdminDashboard()">
+        <button class="btn-admin" *ngIf="profile()?.role === 'admin'" (click)="goToAdminDashboard()">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M8 1L10 5H14L11 8L12 12L8 10L4 12L5 8L2 5H6L8 1Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -18,15 +18,15 @@
         <div class="extract-box">
             <div class="extract-header">
                 <!-- Candidate Avatar -->
-                <div class="extract-avatar" *ngIf="selectedCandidate">
-                    {{ getInitials(selectedCandidate.name || 'C') }}
+                <div class="extract-avatar" *ngIf="selectedCandidate()">
+                    {{ getInitials(selectedCandidate()?.name || 'C') }}
                 </div>
-                <div class="extract-avatar empty" *ngIf="!selectedCandidate">?</div>
+                <div class="extract-avatar empty" *ngIf="!selectedCandidate()">?</div>
 
                 <div class="extract-info">
                     <div class="candidate-header-row">
-                        <h3>{{ selectedCandidate?.name || 'Select a Candidate' }}</h3>
-                        <div class="candidate-stats" *ngIf="selectedCandidate">
+                        <h3>{{ selectedCandidate()?.name || 'Select a Candidate' }}</h3>
+                        <div class="candidate-stats" *ngIf="selectedCandidate()">
                             <span class="stat-pill applications">
                                 <span class="stat-number">{{ getCandidateApplications() }}</span>
                                 <span class="stat-text">Applications</span>
@@ -41,17 +41,17 @@
                             </span>
                         </div>
                     </div>
-                    <p>{{ selectedCandidate?.current_title || 'Upload or select a candidate to get started' }}
-                        <span *ngIf="selectedCandidate?.years_of_experience"> · {{ selectedCandidate?.years_of_experience }} years</span>
+                    <p>{{ selectedCandidate()?.current_title || 'Upload or select a candidate to get started' }}
+                        <span *ngIf="selectedCandidate()?.years_of_experience"> · {{ selectedCandidate()?.years_of_experience }} years</span>
                     </p>
 
                     <!-- Resume Chips (for selected candidate) -->
-                    <div class="resume-chips" *ngIf="selectedCandidate && candidateResumes.length > 0">
+                    <div class="resume-chips" *ngIf="selectedCandidate() && candidateResumes().length > 0">
                         <span class="resume-label">Resume:</span>
                         <span
                             class="resume-chip"
-                            *ngFor="let resume of candidateResumes"
-                            [class.active]="selectedResumeId === resume.id"
+                            *ngFor="let resume of candidateResumes()"
+                            [class.active]="selectedResumeId() === resume.id"
                             (click)="selectResume(resume.id)"
                         >
                             <span class="dot" *ngIf="resume.is_primary"></span>
@@ -66,7 +66,7 @@
                     </div>
 
                     <!-- Upload when no candidates -->
-                    <div class="resume-chips" *ngIf="candidates.length === 0">
+                    <div class="resume-chips" *ngIf="candidates().length === 0">
                         <label class="resume-chip upload-chip" [class.uploading]="uploadingResume">
                             <span *ngIf="!uploadingResume">+ Upload Resume</span>
                             <span *ngIf="uploadingResume" class="spinner-tiny"></span>
@@ -162,7 +162,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <ng-container *ngFor="let app of filteredApplications">
+                    <ng-container *ngFor="let app of filteredApplications()">
                         <!-- Main Row -->
                         <tr class="app-row" [class.expanded]="isExpanded(app.id)" (click)="toggleExpand(app.id, $event)">
                             <td>
@@ -744,7 +744,7 @@
             </table>
 
             <!-- Empty State -->
-            <div class="empty-state" *ngIf="applications.length === 0">
+            <div class="empty-state" *ngIf="applications().length === 0">
                 <div class="empty-icon">📋</div>
                 <p>No applications yet. Extract your first job above!</p>
             </div>
@@ -838,8 +838,8 @@
             <div class="candidates-list">
                 <div
                     class="candidate-item"
-                    *ngFor="let candidate of candidates"
-                    [class.active]="selectedCandidateId === candidate.id"
+                    *ngFor="let candidate of candidates()"
+                    [class.active]="selectedCandidateId() === candidate.id"
                     (click)="selectCandidateAndClose(candidate.id)"
                 >
                     <div class="candidate-avatar">
@@ -855,7 +855,7 @@
                             {{ candidate.resume_count }} resume{{ candidate.resume_count > 1 ? 's' : '' }}
                         </div>
                     </div>
-                    <div class="candidate-check" *ngIf="selectedCandidateId === candidate.id">
+                    <div class="candidate-check" *ngIf="selectedCandidateId() === candidate.id">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
                         </svg>
@@ -863,7 +863,7 @@
                 </div>
 
                 <!-- Empty State -->
-                <div class="drawer-empty" *ngIf="candidates.length === 0">
+                <div class="drawer-empty" *ngIf="candidates().length === 0">
                     <p>No candidates yet</p>
                     <label class="btn-upload-drawer">
                         <span>Upload Resume</span>
@@ -873,7 +873,7 @@
             </div>
 
             <!-- Upload New -->
-            <div class="drawer-upload" *ngIf="candidates.length > 0">
+            <div class="drawer-upload" *ngIf="candidates().length > 0">
                 <label class="upload-area" [class.uploading]="uploadingResume">
                     <span *ngIf="!uploadingResume">+ Upload New Resume</span>
                     <span *ngIf="uploadingResume" class="loading-text">
