@@ -118,12 +118,36 @@ export interface VendorJobStats {
 
 export interface GmailConnectionStatus {
   connected: boolean;
+  connection_id?: string;
+  candidate_id?: string;
   google_email?: string;
   is_active?: boolean;
   last_sync_at?: string;
   last_sync_status?: string;
   emails_synced_count?: number;
   auto_sync_enabled?: boolean;
+  connections_count?: number; // Number of Gmail accounts for this candidate
+}
+
+export interface CandidateGmailAccount {
+  connection_id: string;
+  google_email: string;
+  is_active: boolean;
+  last_sync_at: string | null;
+  last_sync_status: string | null;
+  emails_synced_count: number;
+  auto_sync_enabled: boolean;
+  created_at: string;
+}
+
+export interface CandidateEmailStats {
+  total_emails: number;
+  job_emails: number;
+  new_jobs: number;
+  interested_jobs: number;
+  applied_jobs: number;
+  last_sync_at: string | null;
+  gmail_count?: number; // Number of Gmail accounts connected
 }
 
 export interface GmailSyncResult {
@@ -484,13 +508,13 @@ export class VendorEmailService {
   // ============================================================================
 
   /**
-   * Get Gmail authorization URL to start OAuth flow
+   * Get Gmail authorization URL to start OAuth flow for a specific candidate
    */
-  async getGmailAuthUrl(): Promise<{ authUrl: string; state: string }> {
+  async getGmailAuthUrl(candidateId: string): Promise<{ authUrl: string; state: string }> {
     const headers = await this.getHeaders();
     const response = await firstValueFrom(
       this.http.get<{ authUrl: string; state: string }>(
-        `${this.supabaseFunctionsUrl}/gmail-oauth?action=authorize`,
+        `${this.supabaseFunctionsUrl}/gmail-oauth?action=authorize&candidateId=${encodeURIComponent(candidateId)}`,
         { headers }
       )
     );
@@ -498,14 +522,14 @@ export class VendorEmailService {
   }
 
   /**
-   * Complete Gmail OAuth callback and save tokens
+   * Complete Gmail OAuth callback and save tokens for a candidate
    */
-  async completeGmailAuth(code: string, state: string): Promise<{ success: boolean; email: string; name: string }> {
+  async completeGmailAuth(code: string, state: string, candidateId?: string): Promise<{ success: boolean; email: string; name: string }> {
     const headers = await this.getHeaders();
     const response = await firstValueFrom(
       this.http.post<{ success: boolean; email: string; name: string }>(
         `${this.supabaseFunctionsUrl}/gmail-oauth?action=callback`,
-        { code, state },
+        { code, state, candidateId },
         { headers }
       )
     );
@@ -513,7 +537,150 @@ export class VendorEmailService {
   }
 
   /**
-   * Get Gmail connection status
+   * Get Gmail connection status for a specific candidate (returns first/primary connection)
+   */
+  async getCandidateGmailStatus(candidateId: string): Promise<GmailConnectionStatus> {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
+
+      const { data, error } = await supabase.rpc('get_candidate_gmail_status', {
+        p_candidate_id: candidateId
+      });
+
+      if (error || !data || data.length === 0) {
+        return { connected: false, connections_count: 0 };
+      }
+
+      const connection = data[0];
+      return {
+        connected: connection.is_connected,
+        connection_id: connection.connection_id,
+        candidate_id: candidateId,
+        google_email: connection.google_email,
+        is_active: connection.is_connected,
+        last_sync_at: connection.last_sync_at,
+        last_sync_status: connection.last_sync_status,
+        emails_synced_count: connection.emails_synced_count,
+        auto_sync_enabled: connection.auto_sync_enabled,
+        connections_count: connection.connections_count || 1
+      };
+    } catch (error) {
+      console.error('Candidate Gmail status error:', error);
+      return { connected: false, connections_count: 0 };
+    }
+  }
+
+  /**
+   * Get all Gmail accounts for a specific candidate (up to 3)
+   */
+  async getCandidateGmailAccounts(candidateId: string): Promise<CandidateGmailAccount[]> {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
+
+      const { data, error } = await supabase.rpc('get_candidate_gmail_connections', {
+        p_candidate_id: candidateId
+      });
+
+      if (error || !data) {
+        console.error('Error fetching candidate Gmail accounts:', error);
+        return [];
+      }
+
+      return data.map((conn: any) => ({
+        connection_id: conn.connection_id,
+        google_email: conn.google_email,
+        is_active: conn.is_active,
+        last_sync_at: conn.last_sync_at,
+        last_sync_status: conn.last_sync_status,
+        emails_synced_count: conn.emails_synced_count,
+        auto_sync_enabled: conn.auto_sync_enabled,
+        created_at: conn.created_at
+      }));
+    } catch (error) {
+      console.error('Error fetching candidate Gmail accounts:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if candidate can add more Gmail accounts
+   */
+  async canAddGmailForCandidate(candidateId: string): Promise<{ canAdd: boolean; currentCount: number; maxAllowed: number }> {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
+
+      const { data, error } = await supabase.rpc('can_add_gmail_for_candidate', {
+        p_candidate_id: candidateId
+      });
+
+      if (error || !data || data.length === 0) {
+        return { canAdd: true, currentCount: 0, maxAllowed: 3 };
+      }
+
+      return {
+        canAdd: data[0].can_add,
+        currentCount: data[0].current_count,
+        maxAllowed: data[0].max_allowed
+      };
+    } catch (error) {
+      console.error('Error checking Gmail limit:', error);
+      return { canAdd: true, currentCount: 0, maxAllowed: 3 };
+    }
+  }
+
+  /**
+   * Disconnect a specific Gmail account by connection ID
+   */
+  async disconnectGmailConnection(connectionId: string): Promise<boolean> {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
+
+      const { data, error } = await supabase.rpc('disconnect_gmail_connection', {
+        p_connection_id: connectionId
+      });
+
+      if (error) {
+        console.error('Error disconnecting Gmail:', error);
+        return false;
+      }
+
+      return data === true;
+    } catch (error) {
+      console.error('Error disconnecting Gmail:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Sync emails from a specific Gmail connection
+   */
+  async syncGmailConnection(connectionId: string, options?: {
+    syncType?: 'full' | 'incremental' | 'manual';
+    maxEmails?: number;
+    syncAll?: boolean
+  }): Promise<GmailSyncResult> {
+    const headers = await this.getHeaders();
+    const response = await firstValueFrom(
+      this.http.post<GmailSyncResult>(
+        `${this.supabaseFunctionsUrl}/gmail-sync`,
+        {
+          connectionId,
+          syncType: options?.syncType || 'manual',
+          maxEmails: options?.maxEmails || 50,
+          syncAll: options?.syncAll || false
+        },
+        { headers }
+      )
+    );
+    return response;
+  }
+
+  /**
+   * Get Gmail connection status (legacy - for backward compatibility)
    */
   async getGmailStatus(): Promise<GmailConnectionStatus> {
     try {
@@ -532,7 +699,52 @@ export class VendorEmailService {
   }
 
   /**
-   * Disconnect Gmail account
+   * Get all Gmail connections for the current user
+   */
+  async getAllGmailConnections(): Promise<GmailConnectionStatus[]> {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
+
+      const { data, error } = await supabase.rpc('get_all_gmail_connections');
+
+      if (error) {
+        console.error('Error fetching all Gmail connections:', error);
+        return [];
+      }
+
+      return (data || []).map((conn: any) => ({
+        connected: conn.is_active,
+        connection_id: conn.id,
+        candidate_id: conn.candidate_id,
+        google_email: conn.google_email,
+        is_active: conn.is_active,
+        last_sync_at: conn.last_sync_at,
+        last_sync_status: conn.last_sync_status,
+        emails_synced_count: conn.emails_synced_count,
+        auto_sync_enabled: conn.auto_sync_enabled
+      }));
+    } catch (error) {
+      console.error('Error getting all Gmail connections:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Disconnect Gmail account for a specific candidate
+   */
+  async disconnectCandidateGmail(candidateId: string): Promise<void> {
+    const headers = await this.getHeaders();
+    await firstValueFrom(
+      this.http.get(
+        `${this.supabaseFunctionsUrl}/gmail-oauth?action=disconnect&candidateId=${encodeURIComponent(candidateId)}`,
+        { headers }
+      )
+    );
+  }
+
+  /**
+   * Disconnect Gmail account (legacy - for backward compatibility)
    */
   async disconnectGmail(): Promise<void> {
     const headers = await this.getHeaders();
@@ -545,7 +757,31 @@ export class VendorEmailService {
   }
 
   /**
-   * Sync emails from Gmail
+   * Sync emails from Gmail for a specific candidate
+   */
+  async syncCandidateEmails(candidateId: string, options?: {
+    syncType?: 'full' | 'incremental' | 'manual';
+    maxEmails?: number;
+    syncAll?: boolean
+  }): Promise<GmailSyncResult> {
+    const headers = await this.getHeaders();
+    const response = await firstValueFrom(
+      this.http.post<GmailSyncResult>(
+        `${this.supabaseFunctionsUrl}/gmail-sync`,
+        {
+          candidateId,
+          syncType: options?.syncType || 'manual',
+          maxEmails: options?.maxEmails || 50,
+          syncAll: options?.syncAll || false
+        },
+        { headers }
+      )
+    );
+    return response;
+  }
+
+  /**
+   * Sync emails from Gmail (legacy - for backward compatibility)
    */
   async syncGmailEmails(options?: { syncType?: 'full' | 'incremental' | 'manual'; maxEmails?: number; syncAll?: boolean }): Promise<GmailSyncResult> {
     const headers = await this.getHeaders();
@@ -564,7 +800,110 @@ export class VendorEmailService {
   }
 
   /**
-   * Get Gmail sync history
+   * Get vendor jobs for a specific candidate
+   */
+  async getCandidateVendorJobs(candidateId: string, options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+    search?: string;
+  }): Promise<VendorJob[]> {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
+
+    let query = supabase
+      .from('vendor_job_email_details')
+      .select('*')
+      .eq('candidate_id', candidateId)
+      .order('created_at', { ascending: false });
+
+    if (options?.status) {
+      query = query.eq('status', options.status);
+    }
+
+    if (options?.search) {
+      query = query.or(`job_title.ilike.%${options.search}%,client_company.ilike.%${options.search}%,vendor_company.ilike.%${options.search}%`);
+    }
+
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    if (options?.offset) {
+      query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching candidate vendor jobs:', error);
+      throw error;
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Get email statistics for a specific candidate
+   */
+  async getCandidateEmailStats(candidateId: string): Promise<CandidateEmailStats> {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
+
+      const { data, error } = await supabase.rpc('get_candidate_email_stats', {
+        p_candidate_id: candidateId
+      });
+
+      if (error || !data || data.length === 0) {
+        return {
+          total_emails: 0,
+          job_emails: 0,
+          new_jobs: 0,
+          interested_jobs: 0,
+          applied_jobs: 0,
+          last_sync_at: null
+        };
+      }
+
+      return data[0];
+    } catch (error) {
+      console.error('Error fetching candidate email stats:', error);
+      return {
+        total_emails: 0,
+        job_emails: 0,
+        new_jobs: 0,
+        interested_jobs: 0,
+        applied_jobs: 0,
+        last_sync_at: null
+      };
+    }
+  }
+
+  /**
+   * Get Gmail sync history for a specific candidate
+   */
+  async getCandidateSyncHistory(candidateId: string, limit = 10): Promise<any[]> {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
+
+    const { data, error } = await supabase
+      .from('gmail_sync_logs')
+      .select('*')
+      .eq('candidate_id', candidateId)
+      .order('started_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching candidate sync history:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Get Gmail sync history (legacy - for backward compatibility)
    */
   async getGmailSyncHistory(limit = 10): Promise<any[]> {
     const { createClient } = await import('@supabase/supabase-js');
