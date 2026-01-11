@@ -176,7 +176,7 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    const { syncType = "manual", maxEmails = 50, syncAll = false } = await req.json().catch(() => ({}));
+    const { syncType = "manual", maxEmails = 50, syncAll = false, candidateId = null, connectionId: requestConnectionId = null } = await req.json().catch(() => ({}));
 
     // Get user from auth token
     const token = authHeader.replace("Bearer ", "");
@@ -188,13 +188,38 @@ serve(async (req) => {
 
     userId = user.id;
 
-    // Get Gmail connection
-    const { data: connection, error: connError } = await supabase
-      .from("gmail_connections")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .single();
+    let connection;
+    let connError;
+
+    // If connectionId is provided, use it directly
+    if (requestConnectionId) {
+      const result = await supabase
+        .from("gmail_connections")
+        .select("*")
+        .eq("id", requestConnectionId)
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .single();
+      connection = result.data;
+      connError = result.error;
+    } else {
+      // Get Gmail connection - for specific candidate if provided
+      let connectionQuery = supabase
+        .from("gmail_connections")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+
+      if (candidateId) {
+        connectionQuery = connectionQuery.eq("candidate_id", candidateId);
+      } else {
+        connectionQuery = connectionQuery.is("candidate_id", null);
+      }
+
+      const result = await connectionQuery.single();
+      connection = result.data;
+      connError = result.error;
+    }
 
     if (connError || !connection) {
       throw new Error("Gmail not connected. Please connect your Gmail account first.");
@@ -208,6 +233,7 @@ serve(async (req) => {
       .insert({
         gmail_connection_id: connection.id,
         user_id: user.id,
+        candidate_id: candidateId || connection.candidate_id,
         sync_type: syncType,
         status: "running",
       })
@@ -339,6 +365,7 @@ serve(async (req) => {
           await supabase.from("gmail_processed_emails").insert({
             gmail_connection_id: connection.id,
             user_id: user.id,
+            candidate_id: candidateId || connection.candidate_id,
             gmail_message_id: message.id,
             gmail_thread_id: message.threadId,
             was_job_email: false,
@@ -420,6 +447,7 @@ Return ONLY the JSON object.`;
           await supabase.from("gmail_processed_emails").insert({
             gmail_connection_id: connection.id,
             user_id: user.id,
+            candidate_id: candidateId || connection.candidate_id,
             gmail_message_id: message.id,
             gmail_thread_id: message.threadId,
             was_job_email: false,
@@ -501,6 +529,7 @@ Return ONLY the JSON object.`;
           .from("vendor_job_emails")
           .insert({
             user_id: user.id,
+            candidate_id: candidateId || connection.candidate_id,
             vendor_id: vendorId,
             vendor_contact_id: vendorContactId,
             email_id: message.id,
@@ -543,6 +572,7 @@ Return ONLY the JSON object.`;
         await supabase.from("gmail_processed_emails").insert({
           gmail_connection_id: connection.id,
           user_id: user.id,
+          candidate_id: candidateId || connection.candidate_id,
           gmail_message_id: message.id,
           gmail_thread_id: message.threadId,
           was_job_email: true,

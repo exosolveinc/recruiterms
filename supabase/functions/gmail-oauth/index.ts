@@ -30,11 +30,20 @@ serve(async (req) => {
       throw new Error("Google OAuth credentials not configured");
     }
 
+    // Get candidateId from query params or body
+    const candidateId = url.searchParams.get("candidateId");
+
     // Handle different OAuth actions
     switch (action) {
       case "authorize": {
         // Generate authorization URL
-        const state = crypto.randomUUID();
+        // Include candidateId in state for callback
+        const stateObj = {
+          nonce: crypto.randomUUID(),
+          candidateId: candidateId || null,
+        };
+        const state = btoa(JSON.stringify(stateObj));
+
         const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
         authUrl.searchParams.set("client_id", clientId);
         authUrl.searchParams.set("redirect_uri", redirectUri);
@@ -57,7 +66,21 @@ serve(async (req) => {
           throw new Error("Missing authorization header");
         }
 
-        const { code, state } = await req.json();
+        const body = await req.json();
+        const { code, state } = body;
+        // candidateId can come from body or decoded from state
+        let callbackCandidateId = body.candidateId;
+
+        // Try to decode candidateId from state if not in body
+        if (!callbackCandidateId && state) {
+          try {
+            const stateObj = JSON.parse(atob(state));
+            callbackCandidateId = stateObj.candidateId;
+          } catch (e) {
+            // State might be old format (just a UUID), ignore
+          }
+        }
+
         if (!code) {
           throw new Error("Authorization code is required");
         }
@@ -119,12 +142,20 @@ serve(async (req) => {
           Date.now() + (tokens.expires_in || 3600) * 1000
         ).toISOString();
 
-        // Save or update Gmail connection
-        const { data: existingConnection } = await supabase
+        // Save or update Gmail connection for this candidate
+        // Look for existing connection for this user+candidate combo
+        let query = supabase
           .from("gmail_connections")
           .select("id")
-          .eq("user_id", user.id)
-          .single();
+          .eq("user_id", user.id);
+
+        if (callbackCandidateId) {
+          query = query.eq("candidate_id", callbackCandidateId);
+        } else {
+          query = query.is("candidate_id", null);
+        }
+
+        const { data: existingConnection } = await query.single();
 
         if (existingConnection) {
           // Update existing connection
@@ -151,6 +182,7 @@ serve(async (req) => {
             .from("gmail_connections")
             .insert({
               user_id: user.id,
+              candidate_id: callbackCandidateId || null,
               google_email: userInfo.email,
               google_user_id: userInfo.id,
               access_token: tokens.access_token,
@@ -193,7 +225,8 @@ serve(async (req) => {
         }
 
         // Deactivate the connection (keep data for reference)
-        const { error: updateError } = await supabase
+        // If candidateId is provided, only disconnect that specific connection
+        let disconnectQuery = supabase
           .from("gmail_connections")
           .update({
             is_active: false,
@@ -202,6 +235,12 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
+
+        if (candidateId) {
+          disconnectQuery = disconnectQuery.eq("candidate_id", candidateId);
+        }
+
+        const { error: updateError } = await disconnectQuery;
 
         if (updateError) {
           throw new Error(`Failed to disconnect: ${updateError.message}`);

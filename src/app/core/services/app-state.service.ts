@@ -1,5 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { Candidate, Resume, UserApplicationView, Profile } from '../models';
+import { Candidate, Resume, UserApplicationView, Profile, CandidateGmailConnection, CandidateEmailStats } from '../models';
+import { VendorJob, GmailConnectionStatus, CandidateGmailAccount } from './vendor-email.service';
 
 /**
  * Centralized state management service using Angular Signals.
@@ -60,6 +61,27 @@ export class AppStateService {
 
   readonly selectedCandidateId = this._selectedCandidateId.asReadonly();
   readonly selectedResumeId = this._selectedResumeId.asReadonly();
+
+  // ============================================================================
+  // CANDIDATE EMAIL STATE
+  // ============================================================================
+  private _candidateGmailStatus = signal<GmailConnectionStatus | null>(null);
+  private _candidateGmailAccounts = signal<CandidateGmailAccount[]>([]);
+  private _candidateEmailStats = signal<CandidateEmailStats | null>(null);
+  private _candidateVendorJobs = signal<VendorJob[]>([]);
+  private _candidateEmailsLoading = signal(false);
+  private _candidateEmailsSyncing = signal(false);
+
+  readonly candidateGmailStatus = this._candidateGmailStatus.asReadonly();
+  readonly candidateGmailAccounts = this._candidateGmailAccounts.asReadonly();
+  readonly candidateEmailStats = this._candidateEmailStats.asReadonly();
+  readonly candidateVendorJobs = this._candidateVendorJobs.asReadonly();
+  readonly candidateEmailsLoading = this._candidateEmailsLoading.asReadonly();
+  readonly candidateEmailsSyncing = this._candidateEmailsSyncing.asReadonly();
+
+  readonly candidateGmailConnected = computed(() => this._candidateGmailStatus()?.connected ?? false);
+  readonly candidateGmailCount = computed(() => this._candidateGmailAccounts().length);
+  readonly canAddMoreGmail = computed(() => this._candidateGmailAccounts().length < 3);
 
   readonly selectedCandidate = computed(() => {
     const id = this._selectedCandidateId();
@@ -269,6 +291,76 @@ export class AppStateService {
   }
 
   // ============================================================================
+  // CANDIDATE EMAIL METHODS
+  // ============================================================================
+
+  setCandidateGmailStatus(status: GmailConnectionStatus | null) {
+    this._candidateGmailStatus.set(status);
+  }
+
+  setCandidateGmailAccounts(accounts: CandidateGmailAccount[]) {
+    this._candidateGmailAccounts.set(accounts);
+  }
+
+  addCandidateGmailAccount(account: CandidateGmailAccount) {
+    this._candidateGmailAccounts.update(accounts => [...accounts, account]);
+  }
+
+  removeCandidateGmailAccount(connectionId: string) {
+    this._candidateGmailAccounts.update(accounts =>
+      accounts.filter(a => a.connection_id !== connectionId)
+    );
+  }
+
+  updateCandidateGmailAccount(connectionId: string, updates: Partial<CandidateGmailAccount>) {
+    this._candidateGmailAccounts.update(accounts =>
+      accounts.map(a => a.connection_id === connectionId ? { ...a, ...updates } : a)
+    );
+  }
+
+  setCandidateEmailStats(stats: CandidateEmailStats | null) {
+    this._candidateEmailStats.set(stats);
+  }
+
+  setCandidateVendorJobs(jobs: VendorJob[]) {
+    this._candidateVendorJobs.set(jobs);
+  }
+
+  setCandidateEmailsLoading(loading: boolean) {
+    this._candidateEmailsLoading.set(loading);
+  }
+
+  setCandidateEmailsSyncing(syncing: boolean) {
+    this._candidateEmailsSyncing.set(syncing);
+  }
+
+  addCandidateVendorJob(job: VendorJob) {
+    this._candidateVendorJobs.update(jobs => [job, ...jobs]);
+  }
+
+  updateCandidateVendorJob(jobId: string, updates: Partial<VendorJob>) {
+    this._candidateVendorJobs.update(jobs =>
+      jobs.map(j => j.id === jobId ? { ...j, ...updates } : j)
+    );
+  }
+
+  removeCandidateVendorJob(jobId: string) {
+    this._candidateVendorJobs.update(jobs => jobs.filter(j => j.id !== jobId));
+  }
+
+  /**
+   * Clear candidate email state (called when candidate changes)
+   */
+  clearCandidateEmailState() {
+    this._candidateGmailStatus.set(null);
+    this._candidateGmailAccounts.set([]);
+    this._candidateEmailStats.set(null);
+    this._candidateVendorJobs.set([]);
+    this._candidateEmailsLoading.set(false);
+    this._candidateEmailsSyncing.set(false);
+  }
+
+  // ============================================================================
   // UTILITY METHODS
   // ============================================================================
 
@@ -309,5 +401,7 @@ export class AppStateService {
     this._applicationsLoading.set(false);
     this._selectedCandidateId.set('');
     this._selectedResumeId.set('');
+    // Clear email state
+    this.clearCandidateEmailState();
   }
 }

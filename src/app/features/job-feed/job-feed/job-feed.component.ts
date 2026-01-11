@@ -1167,7 +1167,12 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   async checkGmailStatus() {
     try {
-      this.gmailStatus = await this.vendorEmailService.getGmailStatus();
+      // Use candidate-specific Gmail status if a candidate is selected
+      if (this.selectedCandidateId) {
+        this.gmailStatus = await this.vendorEmailService.getCandidateGmailStatus(this.selectedCandidateId);
+      } else {
+        this.gmailStatus = await this.vendorEmailService.getGmailStatus();
+      }
     } catch (err) {
       console.error('Failed to check Gmail status:', err);
       this.gmailStatus = { connected: false };
@@ -1175,9 +1180,16 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   }
 
   async connectGmail() {
+    if (!this.selectedCandidateId) {
+      alert('Please select a candidate first');
+      return;
+    }
+
     this.gmailConnecting = true;
     try {
-      const { authUrl } = await this.vendorEmailService.getGmailAuthUrl();
+      const { authUrl } = await this.vendorEmailService.getGmailAuthUrl(this.selectedCandidateId);
+      // Store candidate ID for OAuth callback
+      sessionStorage.setItem('gmail_oauth_candidate_id', this.selectedCandidateId);
       // Store state for verification
       localStorage.setItem('gmail_oauth_state', authUrl);
       // Open Gmail OAuth in new window
@@ -1246,7 +1258,12 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     if (!confirm('Are you sure you want to disconnect your Gmail account?')) return;
 
     try {
-      await this.vendorEmailService.disconnectGmail();
+      // Use candidate-specific disconnect if a candidate is selected
+      if (this.selectedCandidateId) {
+        await this.vendorEmailService.disconnectCandidateGmail(this.selectedCandidateId);
+      } else {
+        await this.vendorEmailService.disconnectGmail();
+      }
       this.gmailStatus = { connected: false };
       this.gmailSyncResult = null;
     } catch (err: any) {
@@ -1269,11 +1286,18 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     this.gmailSyncResult = null;
 
     try {
-      const result = await this.vendorEmailService.syncGmailEmails({
-        syncType: 'manual',
-        maxEmails: syncAll ? 500 : 50,
-        syncAll: syncAll
-      });
+      // Use candidate-specific sync if a candidate is selected
+      const result = this.selectedCandidateId
+        ? await this.vendorEmailService.syncCandidateEmails(this.selectedCandidateId, {
+            syncType: 'manual',
+            maxEmails: syncAll ? 500 : 50,
+            syncAll: syncAll
+          })
+        : await this.vendorEmailService.syncGmailEmails({
+            syncType: 'manual',
+            maxEmails: syncAll ? 500 : 50,
+            syncAll: syncAll
+          });
 
       this.gmailSyncResult = result;
 

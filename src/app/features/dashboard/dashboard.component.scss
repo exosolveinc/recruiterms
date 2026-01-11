@@ -3165,6 +3165,184 @@ table {
 // RESPONSIVE
 // ============================================================================
 
+// ============================================================================
+// GMAIL INTEGRATION
+// ============================================================================
+
+.gmail-integration {
+  margin-top: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gmail-accounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gmail-account {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gmail-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gmail-connected {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #16a34a;
+
+  svg {
+    flex-shrink: 0;
+    color: #22c55e;
+  }
+}
+
+.btn-gmail-connect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  svg {
+    flex-shrink: 0;
+    color: #666;
+  }
+
+  &:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #111;
+
+    svg {
+      color: #333;
+    }
+  }
+}
+
+.btn-gmail-sync {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: #3b82f6;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #2563eb;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.btn-gmail-sync-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #2563eb;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.btn-gmail-disconnect {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+}
+
+.gmail-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #666;
+}
+
+// Email Jobs Stat Pill
+.stat-pill.email-jobs {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+
+  .stat-number {
+    color: #2563eb;
+  }
+
+  .stat-text {
+    color: #3b82f6;
+  }
+}
+
+// ============================================================================
+// RESPONSIVE
+// ============================================================================
+
 @media (max-width: 1024px) {
   .optimizer-grid {
     grid-template-columns: 1fr 1fr;

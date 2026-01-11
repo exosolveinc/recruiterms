@@ -322,6 +322,31 @@ export interface CandidateDocument {
   updated_at: string;
 }
 
+// Gmail Connection Status for a Candidate
+export interface CandidateGmailConnection {
+  id: string;
+  candidate_id: string;
+  google_email: string;
+  is_active: boolean;
+  auto_sync_enabled: boolean;
+  last_sync_at: string | null;
+  last_sync_status: string | null;
+  emails_synced_count: number;
+  jobs_count?: number;
+  created_at?: string;
+}
+
+// Email statistics for a candidate
+export interface CandidateEmailStats {
+  total_emails: number;
+  job_emails: number;
+  new_jobs: number;
+  interested_jobs: number;
+  applied_jobs: number;
+  last_sync_at: string | null;
+  gmail_count?: number; // Number of Gmail accounts connected
+}
+
 // Candidate (aggregated from resumes)
 export interface Candidate {
   id: string; // Generated unique ID for the candidate
@@ -342,6 +367,9 @@ export interface Candidate {
   // New fields for preferences and documents
   preferences: CandidatePreferences | null;
   documents: CandidateDocument[];
+  // Gmail integration (supports up to 3 accounts per candidate)
+  gmail_connections?: CandidateGmailConnection[];
+  email_stats?: CandidateEmailStats | null;
 }
 
 export interface UserApplicationView {
