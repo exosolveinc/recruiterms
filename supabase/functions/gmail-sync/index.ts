@@ -530,6 +530,7 @@ Return ONLY the JSON object.`;
           .insert({
             user_id: user.id,
             candidate_id: candidateId || connection.candidate_id,
+            gmail_connection_id: connection.id,
             vendor_id: vendorId,
             vendor_contact_id: vendorContactId,
             email_id: message.id,
