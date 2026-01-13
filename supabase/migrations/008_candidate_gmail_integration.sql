@@ -242,6 +242,62 @@ FROM gmail_connections gc
 WHERE gc.is_active = true;
 
 -- ============================================================================
+-- UPDATE VIEW: Vendor job emails with source Gmail account
+-- ============================================================================
+
+DROP VIEW IF EXISTS vendor_job_email_details;
+CREATE OR REPLACE VIEW vendor_job_email_details AS
+SELECT
+  vje.id,
+  vje.user_id,
+  vje.candidate_id,
+  vje.gmail_connection_id,
+  vje.email_subject,
+  vje.email_from,
+  vje.email_received_at,
+  vje.job_title,
+  vje.client_company,
+  vje.location,
+  vje.work_arrangement,
+  vje.employment_type,
+  vje.duration,
+  vje.pay_rate,
+  vje.pay_rate_min,
+  vje.pay_rate_max,
+  vje.required_skills,
+  vje.years_experience,
+  vje.special_requirements,
+  vje.tech_stack,
+  vje.job_description,
+  vje.recruiter_name,
+  vje.recruiter_email,
+  vje.recruiter_phone,
+  vje.recruiter_title,
+  vje.is_interested,
+  vje.is_applied,
+  vje.status,
+  vje.notes,
+  vje.created_at,
+  vje.updated_at,
+  -- Vendor info
+  v.company_name AS vendor_company,
+  v.website AS vendor_website,
+  v.rating AS vendor_rating,
+  v.is_blocked AS vendor_blocked,
+  -- Contact info
+  vc.name AS contact_name,
+  vc.email AS contact_email,
+  vc.phone AS contact_phone,
+  -- Source Gmail account
+  gc.google_email AS source_gmail
+FROM vendor_job_emails vje
+LEFT JOIN vendors v ON vje.vendor_id = v.id
+LEFT JOIN vendor_contacts vc ON vje.vendor_contact_id = vc.id
+LEFT JOIN gmail_connections gc ON vje.gmail_connection_id = gc.id;
+
+GRANT SELECT ON vendor_job_email_details TO authenticated;
+
+-- ============================================================================
 -- FUNCTION: Get email statistics for a candidate (aggregated across all Gmail accounts)
 -- ============================================================================
 

@@ -75,6 +75,11 @@ export interface VendorJob {
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
+
+  // Source Gmail account (from view)
+  candidate_id?: string;
+  gmail_connection_id?: string;
+  source_gmail?: string;
 }
 
 export interface Vendor {

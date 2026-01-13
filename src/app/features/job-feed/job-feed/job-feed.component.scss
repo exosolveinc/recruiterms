@@ -2904,6 +2904,18 @@
       &.date {
         color: #9ca3af;
       }
+
+      &.source-gmail {
+        color: #2563eb;
+        background: #eff6ff;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+
+        svg {
+          color: #3b82f6;
+        }
+      }
     }
   }
 

@@ -347,6 +347,17 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     if (this.usePreferences && candidate) {
       this.fillSearchFromPreferences(candidate);
     }
+
+    // Reload vendor jobs for the new candidate
+    this.loadVendorJobs();
+
+    // Check Gmail status for new candidate
+    this.checkGmailStatus();
+
+    // Search for jobs based on new candidate's preferences
+    if (candidate) {
+      this.searchWithPreferences();
+    }
   }
 
   // Fill search fields from candidate preferences
@@ -978,8 +989,16 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   async loadVendorJobs() {
     this.loadingVendorJobs = true;
     try {
+      // Only load vendor jobs for the selected candidate
+      if (!this.selectedCandidateId) {
+        this.vendorJobs = [];
+        this.vendorJobsTotal = 0;
+        this.vendorJobsTotalPages = 0;
+        return;
+      }
+
       // First, get total count for pagination
-      const allJobs = await this.vendorEmailService.getVendorJobs({
+      const allJobs = await this.vendorEmailService.getCandidateVendorJobs(this.selectedCandidateId, {
         status: this.vendorStatusFilter || undefined
       });
       this.vendorJobsTotal = allJobs.length;
@@ -992,7 +1011,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
       // Get paginated results
       const offset = (this.vendorJobsPage - 1) * this.vendorJobsPerPage;
-      this.vendorJobs = await this.vendorEmailService.getVendorJobs({
+      this.vendorJobs = await this.vendorEmailService.getCandidateVendorJobs(this.selectedCandidateId, {
         status: this.vendorStatusFilter || undefined,
         limit: this.vendorJobsPerPage,
         offset: offset
