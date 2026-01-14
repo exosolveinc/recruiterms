@@ -1464,6 +1464,26 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     }
   }
 
+  clearAllCaches() {
+    if (!confirm('This will clear all cached job data and analysis results. You will need to refresh to get jobs again. Continue?')) {
+      return;
+    }
+
+    // Clear unified feed state
+    this.unifiedFeedService.clearState();
+
+    // Clear analysis cache
+    this.analysisQueueService.clearCache();
+
+    // Clear local state
+    this.unifiedJobs = [];
+    this.jobs = [];
+    this.newJobsCount = 0;
+
+    console.log('All caches cleared successfully');
+    alert('Cache cleared! Click "Refresh Now" to fetch fresh jobs.');
+  }
+
   filterBySource(source: 'all' | 'api' | 'email') {
     this.sourceFilter = source;
     this.unifiedJobs = this.applySourceFilter(this.unifiedFeedService.getState().jobs);
