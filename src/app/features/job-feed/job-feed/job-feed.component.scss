@@ -1199,6 +1199,20 @@
     }
   }
 
+  .gmail-account-card {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #f9fafb 100%);
+    border: 1px solid #e0f2fe;
+    border-radius: 12px;
+
+    .gmail-account-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+  }
+
   .gmail-account-info {
     display: flex;
     align-items: center;
@@ -1210,6 +1224,30 @@
     .gmail-account-details {
       flex: 1;
 
+      .connected-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #10b981;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+
+        svg {
+          flex-shrink: 0;
+        }
+      }
+
+      .gmail-email-display {
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 6px;
+        word-break: break-all;
+      }
+
       .gmail-email {
         display: block;
         font-weight: 600;
@@ -1218,10 +1256,18 @@
       }
 
       .gmail-stats {
-        display: block;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
         font-size: 12px;
         color: #6b7280;
         margin-top: 4px;
+
+        .sync-count {
+          color: #10b981;
+          font-weight: 500;
+        }
       }
     }
   }
@@ -1282,20 +1328,34 @@
       }
     }
 
-    .btn-disconnect {
+    .btn-disconnect,
+    .btn-disconnect-gmail {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       padding: 10px 14px;
       background: transparent;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #fca5a5;
       border-radius: 8px;
-      color: #6b7280;
+      color: #dc2626;
       font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
       transition: all 0.15s;
+
+      svg {
+        flex-shrink: 0;
+      }
 
       &:hover {
         border-color: #ef4444;
         color: #ef4444;
         background: #fef2f2;
+      }
+
+      &:active {
+        transform: scale(0.98);
       }
     }
   }
@@ -3821,6 +3881,35 @@
         background: #f8fafc;
         border-color: #cbd5e1;
         color: #475569;
+      }
+    }
+
+    .btn-clear-cache {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: white;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      color: #dc2626;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+
+      svg {
+        flex-shrink: 0;
+      }
+
+      &:hover {
+        background: #fef2f2;
+        border-color: #f87171;
+        color: #b91c1c;
+      }
+
+      &:active {
+        transform: scale(0.98);
       }
     }
   }

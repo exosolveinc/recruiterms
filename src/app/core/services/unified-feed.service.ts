@@ -494,9 +494,24 @@ export class UnifiedFeedService {
 
   private generateJobKey(job: UnifiedJob): string {
     // Normalize title and company for comparison
-    const normalizedTitle = job.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const normalizedCompany = job.company.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return `${normalizedTitle}-${normalizedCompany}`;
+    // Keep spaces to maintain better title differentiation
+    const normalizedTitle = job.title.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')  // Keep spaces
+      .replace(/\s+/g, ' ')           // Normalize multiple spaces to single space
+      .trim();
+    const normalizedCompany = job.company.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Include location as well to differentiate same title/company in different locations
+    const normalizedLocation = (job.location || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return `${normalizedTitle}|${normalizedCompany}|${normalizedLocation}`;
   }
 
   private markNewJobs(jobs: UnifiedJob[]): number {

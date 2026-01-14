@@ -129,6 +129,16 @@
           <button class="btn-pause" (click)="toggleAutoRefresh()">
             {{ autoRefreshPaused ? 'Resume' : 'Pause' }}
           </button>
+          <button class="btn-clear-cache" (click)="clearAllCaches()" title="Clear cached analysis data">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M6 2H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M3 4L4 14H12L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6 7V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M10 7V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            Clear Cache
+          </button>
         </div>
 
         <div class="new-jobs-badge" *ngIf="newJobsCount > 0" (click)="scrollToNewJobs()">
@@ -213,22 +223,33 @@
 
         <!-- Connected State -->
         <div class="gmail-panel-content connected" *ngIf="gmailStatus.connected">
-          <div class="gmail-account-info">
-            <div class="gmail-panel-icon connected">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
-                <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
-                <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
-                <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
-              </svg>
-              <span class="connected-badge">Connected</span>
-            </div>
-            <div class="gmail-account-details">
-              <span class="gmail-email">{{ gmailStatus.google_email }}</span>
-              <span class="gmail-stats">
-                Last sync: {{ formatLastSync(gmailStatus.last_sync_at) }}
-                <span *ngIf="gmailStatus.emails_synced_count"> · {{ gmailStatus.emails_synced_count }} imported</span>
-              </span>
+          <div class="gmail-account-card">
+            <div class="gmail-account-header">
+              <div class="gmail-panel-icon connected">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                  <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+                  <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
+                  <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
+                  <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
+                </svg>
+              </div>
+              <div class="gmail-account-details">
+                <div class="connected-label">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="6" fill="#10b981" stroke="white" stroke-width="2"/>
+                  </svg>
+                  Connected Gmail Account
+                </div>
+                <div class="gmail-email-display">{{ gmailStatus.google_email || 'No email available' }}</div>
+                <div class="gmail-stats">
+                  <span *ngIf="gmailStatus.last_sync_at">
+                    Last sync: {{ formatLastSync(gmailStatus.last_sync_at) }}
+                  </span>
+                  <span *ngIf="gmailStatus.emails_synced_count" class="sync-count">
+                    · {{ gmailStatus.emails_synced_count }} email{{ gmailStatus.emails_synced_count > 1 ? 's' : '' }} imported
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -238,8 +259,10 @@
                 <path d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 <path d="M8 2V5L10 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span *ngIf="!gmailSyncing">Sync Now</span>
-              <span *ngIf="gmailSyncing">Syncing...</span>
+              <span *ngIf="!gmailSyncing">Sync Now (50 emails)</span>
+              <span *ngIf="gmailSyncing" class="loading-text">
+                <span class="spinner-small"></span> Syncing...
+              </span>
             </button>
             <button class="btn-sync-all" (click)="syncGmailEmails(true)" [disabled]="gmailSyncing" title="Sync up to 500 emails">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -247,9 +270,12 @@
                 <path d="M8 2V5L10 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M6 8H10M8 6V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
-              <span>Sync All</span>
+              <span>Full Sync (500 emails)</span>
             </button>
-            <button class="btn-disconnect" (click)="disconnectGmail()">
+            <button class="btn-disconnect-gmail" (click)="disconnectGmail()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M4 4L12 12M4 12L12 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
               Disconnect
             </button>
           </div>
