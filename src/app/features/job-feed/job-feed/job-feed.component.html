@@ -409,20 +409,48 @@
                 <span class="connected-check">✓</span>
               </div>
               <div class="gmail-info">
-                <span class="gmail-title">{{ gmailStatus.google_email }}</span>
+                <div class="gmail-title-row">
+                  <span class="gmail-title">
+                    <span *ngIf="gmailStatus.google_email">{{ gmailStatus.google_email }}</span>
+                    <span *ngIf="!gmailStatus.google_email" class="no-email-warning">
+                      Gmail Connected (Email not available)
+                    </span>
+                  </span>
+                  <button class="btn-gmail-disconnect-inline" (click)="disconnectGmail()" title="Disconnect Gmail">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M3 3L11 11M3 11L11 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                  </button>
+                </div>
                 <span class="gmail-desc">
-                  Last sync: {{ formatLastSync(gmailStatus.last_sync_at) }}
-                  <span *ngIf="gmailStatus.emails_synced_count"> · {{ gmailStatus.emails_synced_count }} emails imported</span>
+                  <span *ngIf="gmailStatus.last_sync_at">Last sync: {{ formatLastSync(gmailStatus.last_sync_at) }}</span>
+                  <span *ngIf="!gmailStatus.last_sync_at">Not synced yet</span>
+                  <span *ngIf="gmailStatus.emails_synced_count" class="sync-count-highlight"> · {{ gmailStatus.emails_synced_count }} emails imported</span>
+                  <span *ngIf="!gmailStatus.google_email" class="debug-info">
+                    · Connection ID: {{ gmailStatus.connection_id || 'N/A' }}
+                    <button class="btn-refresh-status-inline" (click)="checkGmailStatus()" title="Refresh Gmail status">
+                      🔄 Refresh
+                    </button>
+                  </span>
                 </span>
               </div>
               <div class="gmail-actions">
                 <button class="btn-gmail-sync" (click)="syncGmailEmails(false)" [disabled]="gmailSyncing">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M12 7C12 9.76142 9.76142 12 7 12C4.23858 12 2 9.76142 2 7C2 4.23858 4.23858 2 7 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M7 2V4.5L9 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
                   <span *ngIf="!gmailSyncing">Sync Now</span>
                   <span *ngIf="gmailSyncing" class="loading-text">
                     <span class="spinner-small"></span> Syncing...
                   </span>
                 </button>
                 <button class="btn-gmail-sync-all" (click)="syncGmailEmails(true)" [disabled]="gmailSyncing" title="Sync up to 500 emails">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M12 7C12 9.76142 9.76142 12 7 12C4.23858 12 2 9.76142 2 7C2 4.23858 4.23858 2 7 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M7 2V4.5L9 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M5 7H9M7 5V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
                   <span>Sync All</span>
                 </button>
                 <button class="btn-add-vendor" (click)="openAddVendorJobModal()">
