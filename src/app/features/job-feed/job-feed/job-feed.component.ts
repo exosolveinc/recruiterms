@@ -1192,6 +1192,15 @@ export class JobFeedComponent implements OnInit, OnDestroy {
       } else {
         this.gmailStatus = await this.vendorEmailService.getGmailStatus();
       }
+
+      // Debug logging to help troubleshoot
+      console.log('Gmail Status:', {
+        connected: this.gmailStatus.connected,
+        email: this.gmailStatus.google_email,
+        candidateId: this.selectedCandidateId,
+        lastSync: this.gmailStatus.last_sync_at,
+        emailsCount: this.gmailStatus.emails_synced_count
+      });
     } catch (err) {
       console.error('Failed to check Gmail status:', err);
       this.gmailStatus = { connected: false };
@@ -1255,13 +1264,20 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   async completeGmailAuth(code: string, state: string) {
     this.gmailConnecting = true;
     try {
-      const result = await this.vendorEmailService.completeGmailAuth(code, state);
+      // Get candidateId from sessionStorage (set during connectGmail)
+      const candidateId = sessionStorage.getItem('gmail_oauth_candidate_id') || this.selectedCandidateId;
+
+      console.log('Completing Gmail OAuth with candidateId:', candidateId);
+
+      const result = await this.vendorEmailService.completeGmailAuth(code, state, candidateId || undefined);
       if (result.success) {
         this.gmailStatus = {
           connected: true,
           google_email: result.email,
           is_active: true
         };
+        // Clean up session storage
+        sessionStorage.removeItem('gmail_oauth_candidate_id');
         // Auto-sync after connecting
         await this.syncGmailEmails();
       }

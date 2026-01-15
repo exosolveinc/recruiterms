@@ -554,6 +554,29 @@ export class VendorEmailService {
       });
 
       if (error || !data || data.length === 0) {
+        // Fallback: Check for legacy connection (candidate_id = null)
+        console.log('No candidate-specific Gmail connection found, checking for legacy connection...');
+        const legacyStatus = await this.getGmailStatus();
+
+        if (legacyStatus.connected && legacyStatus.connection_id) {
+          // Auto-migrate: Update the legacy connection to link it to this candidate
+          console.log('Found legacy connection, auto-migrating to candidate:', candidateId);
+          const { error: updateError } = await supabase
+            .from('gmail_connections')
+            .update({ candidate_id: candidateId })
+            .eq('id', legacyStatus.connection_id)
+            .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+          if (!updateError) {
+            console.log('Successfully migrated legacy Gmail connection to candidate');
+            // Return the migrated connection
+            return {
+              ...legacyStatus,
+              candidate_id: candidateId
+            };
+          }
+        }
+
         return { connected: false, connections_count: 0 };
       }
 
