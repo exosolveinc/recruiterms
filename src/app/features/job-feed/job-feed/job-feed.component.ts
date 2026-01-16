@@ -140,6 +140,8 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   // Gmail Integration
   gmailStatus: GmailConnectionStatus = { connected: false };
+  gmailAccounts: any[] = []; // CandidateGmailAccount[]
+  canAddMoreGmail = false;
   gmailConnecting = false;
   gmailSyncing = false;
   gmailSyncResult: GmailSyncResult | null = null;
@@ -1189,8 +1191,24 @@ export class JobFeedComponent implements OnInit, OnDestroy {
       // Use candidate-specific Gmail status if a candidate is selected
       if (this.selectedCandidateId) {
         this.gmailStatus = await this.vendorEmailService.getCandidateGmailStatus(this.selectedCandidateId);
+
+        // Also load all Gmail accounts for this candidate
+        this.gmailAccounts = await this.vendorEmailService.getCandidateGmailAccounts(this.selectedCandidateId);
+
+        // Check if can add more Gmail accounts
+        const limitCheck = await this.vendorEmailService.canAddGmailForCandidate(this.selectedCandidateId);
+        this.canAddMoreGmail = limitCheck.canAdd;
+
+        console.log('Gmail Accounts:', {
+          primaryEmail: this.gmailStatus.google_email,
+          totalAccounts: this.gmailAccounts.length,
+          canAddMore: this.canAddMoreGmail,
+          accounts: this.gmailAccounts
+        });
       } else {
         this.gmailStatus = await this.vendorEmailService.getGmailStatus();
+        this.gmailAccounts = [];
+        this.canAddMoreGmail = false;
       }
 
       // Debug logging to help troubleshoot
@@ -1204,6 +1222,8 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     } catch (err) {
       console.error('Failed to check Gmail status:', err);
       this.gmailStatus = { connected: false };
+      this.gmailAccounts = [];
+      this.canAddMoreGmail = false;
     }
   }
 
@@ -1300,7 +1320,27 @@ export class JobFeedComponent implements OnInit, OnDestroy {
         await this.vendorEmailService.disconnectGmail();
       }
       this.gmailStatus = { connected: false };
+      this.gmailAccounts = [];
       this.gmailSyncResult = null;
+      await this.checkGmailStatus();
+    } catch (err: any) {
+      console.error('Failed to disconnect Gmail:', err);
+      alert('Failed to disconnect: ' + err.message);
+    }
+  }
+
+  async disconnectSpecificGmail(connectionId: string, email: string) {
+    if (!confirm(`Disconnect ${email}?`)) return;
+
+    try {
+      const success = await this.vendorEmailService.disconnectGmailConnection(connectionId);
+      if (success) {
+        // Refresh Gmail status after disconnecting
+        await this.checkGmailStatus();
+        console.log(`Successfully disconnected ${email}`);
+      } else {
+        alert('Failed to disconnect Gmail account');
+      }
     } catch (err: any) {
       console.error('Failed to disconnect Gmail:', err);
       alert('Failed to disconnect: ' + err.message);
