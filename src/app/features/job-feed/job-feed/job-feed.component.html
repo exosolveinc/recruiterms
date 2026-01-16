@@ -457,6 +457,37 @@
                   + Add Manual
                 </button>
               </div>
+
+              <!-- Multiple Gmail Accounts Section -->
+              <div class="gmail-accounts-section" *ngIf="gmailAccounts.length > 1">
+                <div class="accounts-header-small">
+                  <span class="accounts-label">All Connected Accounts ({{ gmailAccounts.length }}/3)</span>
+                  <button class="btn-add-gmail-small" *ngIf="canAddMoreGmail" (click)="connectGmail()" [disabled]="gmailConnecting">
+                    + Add Gmail
+                  </button>
+                </div>
+                <div class="accounts-list-compact">
+                  <div class="account-compact-item" *ngFor="let account of gmailAccounts.slice(1)">
+                    <span class="account-email-compact">{{ account.google_email }}</span>
+                    <button class="btn-disconnect-compact" (click)="disconnectSpecificGmail(account.connection_id, account.google_email)" title="Disconnect">
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Add Gmail Button (when under limit) -->
+              <div class="add-gmail-section" *ngIf="gmailStatus.connected && gmailAccounts.length < 3">
+                <button class="btn-add-another-gmail" (click)="connectGmail()" [disabled]="gmailConnecting">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                  <span *ngIf="!gmailConnecting">Connect Another Gmail ({{ gmailAccounts.length || 1 }}/3)</span>
+                  <span *ngIf="gmailConnecting">
+                    <span class="spinner-small"></span> Connecting...
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
 

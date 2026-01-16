@@ -869,7 +869,9 @@
 
       .btn-gmail-disconnect-inline {
         flex-shrink: 0;
-        padding: 4px;
+        width: 24px;
+        height: 24px;
+        padding: 0;
         background: transparent;
         border: 1px solid #fca5a5;
         border-radius: 4px;
@@ -879,6 +881,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
+
+        svg {
+          width: 14px;
+          height: 14px;
+        }
 
         &:hover {
           background: #fef2f2;
@@ -991,6 +998,137 @@
           cursor: not-allowed;
         }
       }
+    }
+
+    // Multiple Gmail Accounts Section
+    .gmail-accounts-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+
+      .accounts-header-small {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+
+        .accounts-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .btn-add-gmail-small {
+          padding: 4px 10px;
+          background: #3b82f6;
+          border: none;
+          border-radius: 4px;
+          color: white;
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s;
+
+          &:hover {
+            background: #2563eb;
+          }
+
+          &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+        }
+      }
+
+      .accounts-list-compact {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        .account-compact-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 12px;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          transition: all 0.15s;
+
+          &:hover {
+            background: #f3f4f6;
+          }
+
+          .account-email-compact {
+            font-size: 13px;
+            color: #374151;
+            font-weight: 500;
+          }
+
+          .btn-disconnect-compact {
+            padding: 2px 6px;
+            background: transparent;
+            border: 1px solid #fca5a5;
+            border-radius: 4px;
+            color: #dc2626;
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.15s;
+
+            &:hover {
+              background: #fef2f2;
+              border-color: #f87171;
+            }
+          }
+        }
+      }
+    }
+
+    .add-gmail-section {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+
+      .btn-add-another-gmail {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 10px;
+        background: #eff6ff;
+        border: 1px dashed #3b82f6;
+        border-radius: 6px;
+        color: #3b82f6;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+
+        svg {
+          flex-shrink: 0;
+        }
+
+        &:hover {
+          background: #dbeafe;
+          border-color: #2563eb;
+          color: #2563eb;
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+    }
+
+    .gmail-actions {
+      display: flex;
+      align-items: center;
 
       .btn-add-vendor {
         padding: 8px 14px;
