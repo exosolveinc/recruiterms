@@ -1,17 +1,17 @@
-import { CommonModule, DatePipe } from '@angular/common';
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { HttpClientModule } from '@angular/common/http';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { HttpClientModule } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Candidate, Profile, Resume, UnifiedJob } from '../../../core/models';
-import { SupabaseService } from '../../../core/services/supabase.service';
-import { JobFeedService, ExternalJob, JobSearchParams, JobPlatform } from '../../../core/services/job-feed.service';
-import { VendorEmailService, VendorJob, VendorJobStats, GmailConnectionStatus, GmailSyncResult } from '../../../core/services/vendor-email.service';
-import { AutoRefreshService } from '../../../core/services/auto-refresh.service';
-import { UnifiedFeedService } from '../../../core/services/unified-feed.service';
 import { AnalysisQueueService } from '../../../core/services/analysis-queue.service';
+import { AutoRefreshService } from '../../../core/services/auto-refresh.service';
+import { ExternalJob, JobFeedService, JobPlatform, JobSearchParams } from '../../../core/services/job-feed.service';
+import { SupabaseService } from '../../../core/services/supabase.service';
+import { UnifiedFeedService } from '../../../core/services/unified-feed.service';
+import { GmailConnectionStatus, GmailSyncResult, VendorEmailService, VendorJob, VendorJobStats } from '../../../core/services/vendor-email.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
 interface JobWithMatch extends ExternalJob {
