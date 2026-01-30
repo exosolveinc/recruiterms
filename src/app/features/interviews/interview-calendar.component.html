@@ -10,20 +10,16 @@
           <p class="subtitle">Manage and view all scheduled interviews</p>
         </div>
         <div class="page-header-right">
-          <div class="candidate-selector">
-            <label>Candidate</label>
-            <select
-              (change)="selectCandidate($any($event.target).value)"
-              class="candidate-dropdown"
+          <div class="candidate-tags">
+            Candidates:
+            <span
+              *ngFor="let candidate of candidates()"
+              class="candidate-tag"
+              [class.active]="candidate.id === selectedCandidateId()"
+              (click)="selectCandidate(candidate.id)"
             >
-              <option
-                *ngFor="let candidate of candidates()"
-                [value]="candidate.id"
-                [selected]="candidate.id === selectedCandidateId()"
-              >
-                {{ candidate.name }}
-              </option>
-            </select>
+              {{ candidate.name }}
+            </span>
           </div>
         </div>
       </div>

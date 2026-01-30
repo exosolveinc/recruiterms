@@ -61,49 +61,42 @@
   }
 }
 
-// Candidate Selector
-.candidate-selector {
+// Candidate Tags
+.candidate-tags {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
-.candidate-dropdown {
-  appearance: none;
-  background: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 8px 32px 8px 12px;
-  font-size: 14px;
+.candidate-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #111;
+  color: #374151;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
   cursor: pointer;
-  min-width: 180px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: all 0.15s ease;
+  user-select: none;
 
   &:hover {
-    border-color: #9ca3af;
+    background: #e5e7eb;
+    border-color: #d1d5db;
   }
 
-  &:focus {
-    outline: none;
+  &.active {
+    background: #111;
+    color: #fff;
     border-color: #111;
-    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
-  }
 
-  option {
-    padding: 8px;
+    &:hover {
+      background: #333;
+      border-color: #333;
+    }
   }
 }
 
@@ -639,12 +632,9 @@
     }
   }
 
-  .candidate-selector {
+  .candidate-tags {
     width: 100%;
-  }
-
-  .candidate-dropdown {
-    width: 100%;
+    justify-content: flex-start;
   }
 
   .calendar-header {
