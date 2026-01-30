@@ -69,8 +69,8 @@ export class InterviewModalComponent implements OnInit {
   constructor(private interviewService: InterviewService) {}
 
   ngOnInit() {
-    // Set default timezone
-    this.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // Set default timezone to America/New_York
+    this.timezone = 'America/New_York';
 
     // Set default title
     if (this.application) {
@@ -117,14 +117,14 @@ export class InterviewModalComponent implements OnInit {
     this.error = '';
 
     try {
-      // Combine date and time
-      const scheduledAt = new Date(`${this.scheduledDate}T${this.scheduledTime}`);
+      // Convert date/time from America/New_York to UTC for storage
+      const scheduledAt = this.convertToUTC(this.scheduledDate, this.scheduledTime, this.timezone);
 
       const request: CreateInterviewRequest = {
         application_id: this.application.id,
         title: this.title,
         interview_type: this.interviewType,
-        scheduled_at: scheduledAt.toISOString(),
+        scheduled_at: scheduledAt,
         duration_minutes: this.duration,
         timezone: this.timezone,
         location: this.location || undefined,
@@ -275,5 +275,54 @@ export class InterviewModalComponent implements OnInit {
       event.preventDefault();
       this.sendAiMessage();
     }
+  }
+
+  /**
+   * Convert a date and time in a specific timezone to UTC ISO string.
+   * The user selects a time they see as being in America/New_York,
+   * and we convert that to UTC for storage.
+   */
+  private convertToUTC(date: string, time: string, timezone: string): string {
+    // Parse the date and time components
+    const [year, month, day] = date.split('-').map(Number);
+    const [hours, minutes] = time.split(':').map(Number);
+
+    // Formatter for the target timezone
+    const tzFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+
+    // Find the UTC time when target timezone shows our desired time
+    // Start with a reasonable guess (UTC time matching the input)
+    let guessDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+
+    // Iterate to find the correct UTC time (handles DST)
+    for (let i = 0; i < 3; i++) {
+      const tzParts = tzFormatter.formatToParts(guessDate);
+      const getPart = (type: string) => parseInt(tzParts.find(p => p.type === type)?.value || '0', 10);
+
+      const tzHour = getPart('hour');
+      const tzMinute = getPart('minute');
+      const tzDay = getPart('day');
+
+      const hourDiff = hours - tzHour;
+      const minuteDiff = minutes - tzMinute;
+      const dayDiff = day - tzDay;
+
+      if (hourDiff === 0 && minuteDiff === 0 && dayDiff === 0) {
+        break;
+      }
+
+      // Adjust by the difference
+      guessDate = new Date(guessDate.getTime() +
+        (dayDiff * 24 * 60 * 60 * 1000) +
+        (hourDiff * 60 * 60 * 1000) +
+        (minuteDiff * 60 * 1000)
+      );
+    }
+
+    return guessDate.toISOString();
   }
 }

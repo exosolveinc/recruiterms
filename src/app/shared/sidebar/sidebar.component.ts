@@ -29,7 +29,8 @@ export class SidebarComponent implements OnInit {
     { icon: '📋', label: 'Applications', route: '/dashboard', id: 'dashboard' },
     { icon: '📄', label: 'Resumes', route: '/resumes', id: 'resumes' },
     { icon: '👥', label: 'Candidates', route: '/candidates', id: 'candidates' },
-    { icon: '🔍', label: 'Job Feed', route: '/job-feed', id: 'job-feed' }
+    { icon: '🔍', label: 'Job Feed', route: '/job-feed', id: 'job-feed' },
+    {icon: '🗓️', label:'Interview Management', route:'/interviews', id:'interviews'},
   ];
 
   get navItems(): NavItem[] {

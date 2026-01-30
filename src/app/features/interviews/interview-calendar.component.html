@@ -1,0 +1,256 @@
+<div class="app-layout">
+  <app-sidebar></app-sidebar>
+
+  <main class="main-content">
+    <div class="calendar-page">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Interview Calendar</h1>
+          <p class="subtitle">Manage and view all scheduled interviews</p>
+        </div>
+        <div class="page-header-right">
+          <div class="candidate-selector">
+            <label>Candidate</label>
+            <select
+              (change)="selectCandidate($any($event.target).value)"
+              class="candidate-dropdown"
+            >
+              <option
+                *ngFor="let candidate of candidates()"
+                [value]="candidate.id"
+                [selected]="candidate.id === selectedCandidateId()"
+              >
+                {{ candidate.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-state" *ngIf="loading">
+        <div class="spinner"></div>
+        <p>Loading interviews...</p>
+      </div>
+
+      <!-- Error State -->
+      <div class="error-state" *ngIf="error && !loading">
+        <p>{{ error }}</p>
+        <button class="retry-btn" (click)="loadInterviews()">Retry</button>
+      </div>
+
+      <!-- Calendar -->
+      <div class="calendar-container" *ngIf="!loading && !error">
+        <div class="calendar-header">
+          <div class="calendar-header-col">
+            <div class="calendar-btn-group">
+              <div
+                class="calendar-btn calendar-btn-primary"
+                mwlCalendarPreviousView
+                [view]="view"
+                [(viewDate)]="viewDate"
+                (viewDateChange)="closeOpenMonthViewDay()"
+              >
+                Previous
+              </div>
+              <div
+                class="calendar-btn calendar-btn-secondary"
+                mwlCalendarToday
+                [(viewDate)]="viewDate"
+              >
+                Today
+              </div>
+              <div
+                class="calendar-btn calendar-btn-primary"
+                mwlCalendarNextView
+                [view]="view"
+                [(viewDate)]="viewDate"
+                (viewDateChange)="closeOpenMonthViewDay()"
+              >
+                Next
+              </div>
+            </div>
+          </div>
+          <div class="calendar-header-col">
+            <h3>{{ viewDate | calendarDate:(view + 'ViewTitle'):'en' }}</h3>
+          </div>
+          <div class="calendar-header-col">
+            <div class="calendar-btn-group">
+              <div
+                class="calendar-btn calendar-btn-primary"
+                (click)="setView(CalendarView.Month)"
+                [class.active]="view === CalendarView.Month"
+              >
+                Month
+              </div>
+              <div
+                class="calendar-btn calendar-btn-primary"
+                (click)="setView(CalendarView.Week)"
+                [class.active]="view === CalendarView.Week"
+              >
+                Week
+              </div>
+              <div
+                class="calendar-btn calendar-btn-primary"
+                (click)="setView(CalendarView.Day)"
+                [class.active]="view === CalendarView.Day"
+              >
+                Day
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div [ngSwitch]="view">
+          <mwl-calendar-month-view
+            *ngSwitchCase="CalendarView.Month"
+            [viewDate]="viewDate"
+            [events]="events"
+            [refresh]="refresh"
+            [activeDayIsOpen]="activeDayIsOpen"
+            (dayClicked)="dayClicked($event.day)"
+            (eventClicked)="handleEvent('Clicked', $event.event)"
+          >
+          </mwl-calendar-month-view>
+
+          <mwl-calendar-week-view
+            *ngSwitchCase="CalendarView.Week"
+            [viewDate]="viewDate"
+            [events]="events"
+            [refresh]="refresh"
+            [dayStartHour]="9"
+            [dayEndHour]="18"
+            (eventClicked)="handleEvent('Clicked', $event.event)"
+          >
+          </mwl-calendar-week-view>
+
+          <mwl-calendar-day-view
+            *ngSwitchCase="CalendarView.Day"
+            [viewDate]="viewDate"
+            [events]="events"
+            [refresh]="refresh"
+            [dayStartHour]="9"
+            [dayEndHour]="18"
+            (eventClicked)="handleEvent('Clicked', $event.event)"
+          >
+          </mwl-calendar-day-view>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Interview Detail Modal -->
+<div class="detail-overlay" *ngIf="selectedInterview" (click)="closeDetail()">
+  <div class="detail-modal" (click)="$event.stopPropagation()">
+    <div class="detail-header">
+      <h3>{{ selectedInterview.title }}</h3>
+      <button class="btn-close" (click)="closeDetail()">×</button>
+    </div>
+
+    <div class="detail-body">
+      <!-- View Mode Status -->
+      <div class="detail-status" *ngIf="!isEditing" [ngClass]="getStatusClass(selectedInterview.status)">
+        {{ selectedInterview.status | titlecase }}
+      </div>
+
+      <!-- Edit Mode Status -->
+      <div class="detail-row" *ngIf="isEditing">
+        <strong>Status</strong>
+        <select [(ngModel)]="editStatus" class="edit-input status-select">
+          <option value="pending">Pending</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="rescheduled">Rescheduled</option>
+          <option value="no_show">No Show</option>
+        </select>
+      </div>
+
+      <div class="detail-row" *ngIf="getCandidateNameForInterview(selectedInterview)">
+        <strong>Candidate</strong>
+        <span>{{ getCandidateNameForInterview(selectedInterview) }}</span>
+      </div>
+
+      <!-- View Mode -->
+      <div class="detail-row" *ngIf="!isEditing">
+        <strong>Date & Time</strong>
+        <span>{{ formatDate(selectedInterview.scheduled_at) }}</span>
+        <span class="detail-time">{{ formatTime(selectedInterview.scheduled_at) }} ({{ selectedInterview.duration_minutes }} min)</span>
+      </div>
+
+      <!-- Edit Mode -->
+      <div class="detail-row edit-row" *ngIf="isEditing">
+        <strong>Date & Time</strong>
+        <div class="edit-inputs">
+          <input
+            type="date"
+            [(ngModel)]="editDate"
+            class="edit-input"
+          />
+          <input
+            type="time"
+            [(ngModel)]="editTime"
+            class="edit-input"
+          />
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <strong>Type</strong>
+        <span>{{ getInterviewTypeLabel(selectedInterview.interview_type) }}</span>
+      </div>
+
+      <div class="detail-row" *ngIf="selectedInterview.interviewer_name">
+        <strong>Interviewer</strong>
+        <span>{{ selectedInterview.interviewer_name }}</span>
+        <span class="detail-email" *ngIf="selectedInterview.interviewer_email">{{ selectedInterview.interviewer_email }}</span>
+      </div>
+
+      <div class="detail-row" *ngIf="selectedInterview.meeting_link">
+        <strong>Meeting Link</strong>
+        <a [href]="selectedInterview.meeting_link" target="_blank" class="meeting-link">
+          Join Meeting
+        </a>
+      </div>
+
+      <div class="detail-row" *ngIf="selectedInterview.location">
+        <strong>Location</strong>
+        <span>{{ selectedInterview.location }}</span>
+      </div>
+
+      <div class="detail-notes" *ngIf="selectedInterview.notes">
+        <strong>Notes</strong>
+        <p>{{ selectedInterview.notes }}</p>
+      </div>
+
+      <div class="detail-row" *ngIf="selectedInterview.google_event_link">
+        <a [href]="selectedInterview.google_event_link" target="_blank" class="google-link">
+          View in Google Calendar
+        </a>
+      </div>
+    </div>
+
+    <div class="detail-footer">
+      <ng-container *ngIf="!isEditing">
+        <button
+          class="delete-btn"
+          (click)="deleteInterview()"
+          [disabled]="saving"
+        >
+          Delete
+        </button>
+        <div class="footer-spacer"></div>
+        <button class="edit-btn" (click)="startEditing()">Edit</button>
+        <button class="close-btn" (click)="closeDetail()">Close</button>
+      </ng-container>
+      <ng-container *ngIf="isEditing">
+        <button class="cancel-btn" (click)="cancelEditing()" [disabled]="saving">Cancel</button>
+        <button class="save-btn" (click)="saveChanges()" [disabled]="saving">
+          {{ saving ? 'Saving...' : 'Save' }}
+        </button>
+      </ng-container>
+    </div>
+  </div>
+</div>

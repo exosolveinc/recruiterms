@@ -73,6 +73,11 @@ export const routes: Routes = [
   loadComponent: () => import('./features/job-feed/job-feed/job-feed.component').then(m => m.JobFeedComponent),
   canActivate: [AuthGuard]
 },
+{
+  path: 'interviews',
+  loadComponent: () => import('./features/interviews/interview-calendar.component').then(m => m.InterviewCalendarComponent),
+  canActivate: [AuthGuard]
+},
   {
     path: '**',
     redirectTo: 'dashboard'
