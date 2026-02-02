@@ -14,10 +14,11 @@ import {
   CalendarEventTitleFormatter
 } from 'angular-calendar';
 import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
-import { InterviewService, ScheduledInterview } from '../../core/services/interview.service';
+import { InterviewService, ScheduledInterview, ScheduleAssistantMessage, SuggestedSlot, CreateInterviewRequest } from '../../core/services/interview.service';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { AppStateService } from '../../core/services/app-state.service';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
+import { InterviewModalComponent } from '../../shared/interview-modal/interview-modal.component';
 import { UserApplicationView } from '../../core/models';
 
 interface InterviewCalendarEvent extends CalendarEvent {
@@ -31,7 +32,8 @@ interface InterviewCalendarEvent extends CalendarEvent {
     CommonModule,
     FormsModule,
     SidebarComponent,
-    CalendarModule
+    CalendarModule,
+    InterviewModalComponent
   ],
   templateUrl: './interview-calendar.component.html',
   styleUrls: ['./interview-calendar.component.scss'],
@@ -80,6 +82,25 @@ export class InterviewCalendarComponent implements OnInit {
   editStatus = '';
   saving = false;
 
+  // AI Scheduling Assistant state
+  showAiPanel = true;
+  aiMessages: ScheduleAssistantMessage[] = [];
+  aiUserInput = '';
+  aiLoading = false;
+  aiError = '';
+  selectedSlot: SuggestedSlot | null = null;
+  aiDuration = 60;
+
+  // Confirmation dialog state
+  showConfirmDialog = false;
+  pendingSlot: SuggestedSlot | null = null;
+  schedulingInterview = false;
+
+  // Schedule Interview Modal (for clicking empty slots)
+  showScheduleModal = false;
+  clickedDate: Date | null = null;
+  availableAppsForSchedule: UserApplicationView[] = [];
+
   // Effect to reload when candidate changes
   private candidateEffect = effect(() => {
     const candidateId = this.selectedCandidateId();
@@ -97,6 +118,15 @@ export class InterviewCalendarComponent implements OnInit {
     await this.loadCandidates();
     await this.loadApplications();
     await this.loadInterviews();
+
+    // Show welcome message in AI panel
+    if (this.showAiPanel && this.aiMessages.length === 0) {
+      this.aiMessages.push({
+        role: 'assistant',
+        content: `Hi! I can help schedule interviews, find optimal slots, and coordinate with your team.\n\nTry asking:\n• "Find 3 slots next week for a technical interview"\n• "Propose a schedule for Google"\n• "When is the best time for a 1-hour interview tomorrow?"`,
+        timestamp: new Date()
+      });
+    }
   }
 
   async loadCandidates() {
@@ -528,5 +558,277 @@ export class InterviewCalendarComponent implements OnInit {
       this.saving = false;
       this.cdr.markForCheck();
     }
+  }
+
+  // ============================================================================
+  // AI SCHEDULING ASSISTANT
+  // ============================================================================
+
+  toggleAiPanel() {
+    this.showAiPanel = !this.showAiPanel;
+
+    // Show welcome message on first open
+    if (this.showAiPanel && this.aiMessages.length === 0) {
+      this.aiMessages.push({
+        role: 'assistant',
+        content: `Hi! I can help schedule interviews, find optimal slots, and coordinate with your team.\n\nTry asking:\n• "Find 3 slots next week for a technical interview"\n• "Propose a schedule for Google"\n• "When is the best time for a 1-hour interview tomorrow?"`,
+        timestamp: new Date()
+      });
+      this.cdr.markForCheck();
+    }
+  }
+
+  async sendAiMessage() {
+    if (!this.aiUserInput.trim() || this.aiLoading) return;
+
+    const userMessage = this.aiUserInput.trim();
+    this.aiUserInput = '';
+    this.aiError = '';
+
+    // Add user message to chat
+    this.aiMessages.push({
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date()
+    });
+
+    this.aiLoading = true;
+    this.cdr.markForCheck();
+
+    try {
+      // Build conversation history for context
+      const conversationHistory = this.aiMessages
+        .filter(m => !m.suggestedSlots || m.suggestedSlots.length === 0)
+        .map(m => ({ role: m.role, content: m.content }));
+
+      // Get resume IDs for the selected candidate
+      const candidate = this.selectedCandidate();
+      const resumeIds = candidate?.resumes?.map(r => r.id) || [];
+
+      const response = await this.interviewService.getEnhancedSchedulingSuggestions({
+        userMessage,
+        duration: this.aiDuration,
+        dateRange: this.interviewService.getDateRangeForScheduling(14),
+        timezone: 'America/New_York',
+        resumeIds: resumeIds.length > 0 ? resumeIds : undefined,
+        conversationHistory: conversationHistory.slice(-10)
+      });
+
+      // Add assistant response
+      this.aiMessages.push({
+        role: 'assistant',
+        content: response.message,
+        suggestedSlots: response.suggestedSlots,
+        timestamp: new Date()
+      });
+
+    } catch (err: any) {
+      this.aiError = err.message || 'Failed to get suggestions';
+      this.aiMessages.push({
+        role: 'assistant',
+        content: 'Sorry, I encountered an error while checking availability. Please try again.',
+        timestamp: new Date()
+      });
+    } finally {
+      this.aiLoading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  selectSuggestedSlot(slot: SuggestedSlot) {
+    this.pendingSlot = slot;
+    this.showConfirmDialog = true;
+    this.cdr.markForCheck();
+  }
+
+  cancelConfirmDialog() {
+    this.showConfirmDialog = false;
+    this.pendingSlot = null;
+    this.cdr.markForCheck();
+  }
+
+  async confirmScheduleInterview() {
+    if (!this.pendingSlot) return;
+
+    this.schedulingInterview = true;
+    this.cdr.markForCheck();
+
+    try {
+      const slot = this.pendingSlot;
+
+      // Find the application if we have one
+      let applicationId = slot.applicationId;
+      let title = 'Interview';
+
+      if (slot.companyName && slot.jobTitle) {
+        title = `${slot.jobTitle} at ${slot.companyName}`;
+      } else if (slot.companyName) {
+        title = `Interview at ${slot.companyName}`;
+      }
+
+      // If no applicationId, try to find one based on company name
+      if (!applicationId && slot.companyName) {
+        const matchingApp = this.applications.find(
+          app => app.company_name?.toLowerCase().includes(slot.companyName!.toLowerCase())
+        );
+        if (matchingApp) {
+          applicationId = matchingApp.id;
+          title = `${matchingApp.job_title} at ${matchingApp.company_name}`;
+        }
+      }
+
+      // Use first available application if none found
+      if (!applicationId && this.applications.length > 0) {
+        const firstApp = this.applications[0];
+        applicationId = firstApp.id;
+        if (!slot.companyName) {
+          title = `${firstApp.job_title} at ${firstApp.company_name}`;
+        }
+      }
+
+      if (!applicationId) {
+        throw new Error('No application found. Please select an application first.');
+      }
+
+      // Convert date/time to UTC
+      const scheduledAt = this.convertToUTC(slot.date, slot.startTime, 'America/New_York');
+
+      const request: CreateInterviewRequest = {
+        application_id: applicationId,
+        title: title,
+        interview_type: 'video',
+        scheduled_at: scheduledAt,
+        duration_minutes: this.aiDuration,
+        timezone: 'America/New_York',
+        add_to_google_calendar: true
+      };
+
+      const interview = await this.interviewService.scheduleInterview(request);
+
+      // Close dialog and reload
+      this.showConfirmDialog = false;
+      this.pendingSlot = null;
+
+      // Add confirmation message to chat
+      this.aiMessages.push({
+        role: 'assistant',
+        content: `Interview scheduled for ${this.formatSlotDisplay(slot)}. It has been added to your calendar.`,
+        timestamp: new Date()
+      });
+
+      // Reload interviews to show new one
+      await this.loadInterviews();
+
+      this.cdr.markForCheck();
+    } catch (err: any) {
+      console.error('Failed to schedule interview:', err);
+      alert('Failed to schedule interview: ' + (err.message || 'Unknown error'));
+    } finally {
+      this.schedulingInterview = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  onAiInputKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.sendAiMessage();
+    }
+  }
+
+  formatSlotDisplay(slot: SuggestedSlot): string {
+    const date = new Date(slot.date);
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+    // Convert 24h to 12h format
+    const [hours, minutes] = slot.startTime.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    const time12 = `${hour12}:${minutes} ${ampm}`;
+
+    return `${dayName} at ${time12}`;
+  }
+
+  isSlotSelected(slot: SuggestedSlot): boolean {
+    if (!this.selectedSlot) return false;
+    return this.selectedSlot.date === slot.date &&
+           this.selectedSlot.startTime === slot.startTime;
+  }
+
+  sendQuickAction(action: 'propose' | 'reschedule' | 'reminder') {
+    const actions = {
+      'propose': 'Propose optimal interview times for next week',
+      'reschedule': 'Find alternative times for rescheduling',
+      'reminder': 'Set up interview reminders'
+    };
+    this.aiUserInput = actions[action];
+    this.sendAiMessage();
+  }
+
+  // ============================================================================
+  // SCHEDULE MODAL (Empty slot click)
+  // ============================================================================
+
+  /**
+   * Handle click on empty hour segment in week/day view
+   */
+  onHourSegmentClicked(event: { date: Date; sourceEvent: MouseEvent }) {
+    // Get applications for current candidate
+    const candidateApps = this.getCandidateApplications();
+
+    if (candidateApps.length === 0) {
+      alert('No applications found. Please add an application first before scheduling an interview.');
+      return;
+    }
+
+    this.clickedDate = event.date;
+    this.availableAppsForSchedule = candidateApps;
+    this.showScheduleModal = true;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Get applications for the selected candidate
+   */
+  getCandidateApplications(): UserApplicationView[] {
+    const candidateId = this.selectedCandidateId();
+
+    if (!candidateId) {
+      // No candidate selected, show all applications
+      return this.applications;
+    }
+
+    // Get candidate's resume IDs
+    const candidate = this.candidates().find(c => c.id === candidateId);
+    if (!candidate) {
+      return this.applications;
+    }
+
+    const candidateResumeIds = new Set(candidate.resumes.map(r => r.id));
+
+    // Filter applications by candidate's resumes
+    return this.applications.filter(
+      app => app.resume_id && candidateResumeIds.has(app.resume_id)
+    );
+  }
+
+  /**
+   * Close the schedule modal
+   */
+  closeScheduleModal() {
+    this.showScheduleModal = false;
+    this.clickedDate = null;
+    this.availableAppsForSchedule = [];
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Handle interview scheduled from modal
+   */
+  async onInterviewScheduled(interview: ScheduledInterview) {
+    this.closeScheduleModal();
+    await this.loadInterviews();
+    this.cdr.markForCheck();
   }
 }

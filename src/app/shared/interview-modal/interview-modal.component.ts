@@ -20,8 +20,13 @@ import { UserApplicationView } from '../../core/models';
 export class InterviewModalComponent implements OnInit {
   @Input() application!: UserApplicationView;
   @Input() existingInterview?: ScheduledInterview;
+  @Input() preselectedDate?: Date | null;
+  @Input() availableApplications?: UserApplicationView[]; // For calendar empty slot click
   @Output() close = new EventEmitter<void>();
   @Output() saved = new EventEmitter<ScheduledInterview>();
+
+  // Selected application (when choosing from dropdown)
+  selectedApplication: UserApplicationView | null = null;
 
   saving = false;
   error = '';
@@ -73,21 +78,62 @@ export class InterviewModalComponent implements OnInit {
     // Set default timezone to America/New_York
     this.timezone = 'America/New_York';
 
-    // Set default title
-    if (this.application) {
+    // If we have available applications (from calendar), need to select one
+    if (this.availableApplications && this.availableApplications.length > 0 && !this.application) {
+      this.selectedApplication = null; // Will be selected from dropdown
+    } else if (this.application) {
+      this.selectedApplication = this.application;
       this.title = `${this.application.job_title || 'Interview'} at ${this.application.company_name || 'Company'}`;
     }
 
-    // Set default date to tomorrow
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    this.scheduledDate = tomorrow.toISOString().split('T')[0];
-    this.scheduledTime = '10:00';
+    // Use preselected date if provided, otherwise default to tomorrow
+    if (this.preselectedDate) {
+      // Format date for input[type="date"] - need to convert to local timezone
+      const localDate = new Date(this.preselectedDate.toLocaleString('en-US', { timeZone: this.timezone }));
+      const year = localDate.getFullYear();
+      const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = localDate.getDate().toString().padStart(2, '0');
+      this.scheduledDate = `${year}-${month}-${day}`;
+
+      // Format time
+      const hours = localDate.getHours().toString().padStart(2, '0');
+      const minutes = localDate.getMinutes().toString().padStart(2, '0');
+      this.scheduledTime = `${hours}:${minutes}`;
+    } else {
+      // Set default date to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      this.scheduledDate = tomorrow.toISOString().split('T')[0];
+      this.scheduledTime = '10:00';
+    }
 
     // Populate from existing interview if editing
     if (this.existingInterview) {
       this.populateFromExisting();
     }
+  }
+
+  /**
+   * Called when application is selected from dropdown
+   */
+  onApplicationSelected() {
+    if (this.selectedApplication) {
+      this.title = `${this.selectedApplication.job_title || 'Interview'} at ${this.selectedApplication.company_name || 'Company'}`;
+    }
+  }
+
+  /**
+   * Check if we need to show application selector
+   */
+  get showApplicationSelector(): boolean {
+    return !!(this.availableApplications && this.availableApplications.length > 0 && !this.application);
+  }
+
+  /**
+   * Get the active application (either passed in or selected)
+   */
+  get activeApplication(): UserApplicationView | null {
+    return this.selectedApplication || this.application || null;
   }
 
   private populateFromExisting() {
@@ -109,6 +155,13 @@ export class InterviewModalComponent implements OnInit {
   }
 
   async scheduleInterview() {
+    const app = this.activeApplication;
+
+    if (!app) {
+      this.error = 'Please select an application';
+      return;
+    }
+
     if (!this.scheduledDate || !this.scheduledTime) {
       this.error = 'Please select a date and time';
       return;
@@ -122,7 +175,7 @@ export class InterviewModalComponent implements OnInit {
       const scheduledAt = this.convertToUTC(this.scheduledDate, this.scheduledTime, this.timezone);
 
       const request: CreateInterviewRequest = {
-        application_id: this.application.id,
+        application_id: app.id,
         title: this.title,
         interview_type: this.interviewType,
         scheduled_at: scheduledAt,

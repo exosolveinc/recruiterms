@@ -55,6 +55,9 @@ export interface SuggestedSlot {
   endTime: string;
   datetime: string;
   reason: string;
+  applicationId?: string;
+  companyName?: string;
+  jobTitle?: string;
 }
 
 export interface ScheduleAssistantMessage {
@@ -72,6 +75,8 @@ export interface ScheduleAssistantRequest {
     end: string;
   };
   timezone: string;
+  userId?: string;
+  resumeIds?: string[];
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
@@ -595,6 +600,43 @@ export class InterviewService {
       };
     } catch (error: any) {
       console.error('Failed to get scheduling suggestions:', error);
+      const errorMessage = error.error?.message || error.message || 'Failed to get scheduling suggestions';
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Get AI-powered scheduling suggestions with application context
+   * This enhanced version includes user's applications to provide better recommendations
+   */
+  async getEnhancedSchedulingSuggestions(request: ScheduleAssistantRequest): Promise<ScheduleAssistantResponse> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${environment.supabaseAnonKey}`
+    });
+
+    // Add user ID for application context
+    const user = this.supabase.currentUser;
+    const enhancedRequest = {
+      ...request,
+      userId: user?.id
+    };
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post<ScheduleAssistantResponse>(
+          `${this.supabaseFunctionsUrl}/ai-schedule-interview`,
+          enhancedRequest,
+          { headers }
+        )
+      );
+
+      return {
+        message: response.message || 'Here are some available slots:',
+        suggestedSlots: response.suggestedSlots || []
+      };
+    } catch (error: any) {
+      console.error('Failed to get enhanced scheduling suggestions:', error);
       const errorMessage = error.error?.message || error.message || 'Failed to get scheduling suggestions';
       throw new Error(errorMessage);
     }
