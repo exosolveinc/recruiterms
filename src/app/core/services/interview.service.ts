@@ -22,7 +22,7 @@ export interface ScheduledInterview {
   google_event_id?: string;
   google_event_link?: string;
   reminder_sent: boolean;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled' | 'no_show';
+  status: 'pending' | 'scheduled' | 'completed' | 'cancelled' | 'rescheduled' | 'no_show';
   outcome?: string;
   feedback?: string;
   created_at: string;
@@ -316,7 +316,7 @@ export class InterviewService {
         notes: request.notes,
         google_event_id: googleEventId,
         google_event_link: googleEventLink,
-        status: 'scheduled'
+        status: 'pending'
       })
       .select()
       .single();
@@ -395,7 +395,7 @@ export class InterviewService {
         .select('*')
         .gte('scheduled_at', now.toISOString())
         .lte('scheduled_at', future.toISOString())
-        .eq('status', 'scheduled')
+        .in('status', ['pending', 'scheduled'])
         .order('scheduled_at', { ascending: true });
 
       if (error) {
@@ -475,6 +475,57 @@ export class InterviewService {
     if (error) throw error;
 
     await this.supabase.logActivity('interview_cancelled', 'interview', id);
+  }
+
+  /**
+   * Delete an interview permanently
+   */
+  async deleteInterview(id: string): Promise<void> {
+    const client = this.supabase.supabaseClient;
+
+    // Get existing interview
+    const { data: existing } = await client
+      .from('scheduled_interviews')
+      .select('google_event_id')
+      .eq('id', id)
+      .single();
+
+    // Delete from Google Calendar
+    if (existing?.google_event_id) {
+      await this.deleteGoogleCalendarEvent(existing.google_event_id);
+    }
+
+    const { error } = await client
+      .from('scheduled_interviews')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    await this.supabase.logActivity('interview_deleted', 'interview', id);
+  }
+
+  /**
+   * Approve/confirm a pending interview (changes status from pending to scheduled)
+   */
+  async approveInterview(id: string): Promise<ScheduledInterview> {
+    const client = this.supabase.supabaseClient;
+
+    const { data, error } = await client
+      .from('scheduled_interviews')
+      .update({
+        status: 'scheduled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await this.supabase.logActivity('interview_approved', 'interview', id);
+
+    return data as ScheduledInterview;
   }
 
   /**

@@ -472,12 +472,24 @@
   cursor: pointer;
   transition: all 0.2s;
 
-  &:hover {
+  &:hover:not(.selected) {
     background: #eee;
     border-color: #111;
 
     .btn-select-slot {
       background: #111;
+    }
+  }
+
+  &.selected {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    cursor: default;
+
+    .slot-datetime .slot-date,
+    .slot-datetime .slot-time,
+    .slot-reason {
+      color: #9ca3af;
     }
   }
 
@@ -517,6 +529,12 @@
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s;
+
+    &.selected,
+    &:disabled {
+      background: #9ca3af;
+      cursor: default;
+    }
   }
 }
 

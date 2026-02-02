@@ -52,6 +52,7 @@
                                     <div
                                         *ngFor="let slot of msg.suggestedSlots"
                                         class="slot-card"
+                                        [class.selected]="isSlotSelected(slot)"
                                         (click)="selectSuggestedSlot(slot)"
                                     >
                                         <div class="slot-datetime">
@@ -59,7 +60,14 @@
                                             <span class="slot-time">{{ slot.startTime }} - {{ slot.endTime }}</span>
                                         </div>
                                         <div class="slot-reason">{{ slot.reason }}</div>
-                                        <button type="button" class="btn-select-slot">Select This Time</button>
+                                        <button
+                                            type="button"
+                                            class="btn-select-slot"
+                                            [class.selected]="isSlotSelected(slot)"
+                                            [disabled]="isSlotSelected(slot)"
+                                        >
+                                            {{ isSlotSelected(slot) ? 'Selected' : 'Select This Time' }}
+                                        </button>
                                     </div>
                                 </div>
                             </div>

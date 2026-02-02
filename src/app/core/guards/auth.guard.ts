@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, CanActivateChild, Router } from '@angular/router';
 import { Observable, from } from 'rxjs';
-import { map, switchMap, take, tap } from 'rxjs/operators';
+import { filter, map, switchMap, take, tap } from 'rxjs/operators';
 import { SupabaseService } from '../services/supabase.service';
 
 @Injectable({
@@ -15,7 +15,11 @@ export class AuthGuard implements CanActivate, CanActivateChild {
   ) {}
 
   canActivate(): Observable<boolean> {
-    return this.supabase.session$.pipe(
+    // Wait for initialization to complete before checking session
+    return this.supabase.initialized$.pipe(
+      filter(initialized => initialized),
+      take(1),
+      switchMap(() => this.supabase.session$),
       take(1),
       map(session => !!session),
       tap(isAuthenticated => {
@@ -35,14 +39,18 @@ export class AuthGuard implements CanActivate, CanActivateChild {
   providedIn: 'root'
 })
 export class AdminGuard implements CanActivate {
-  
+
   constructor(
     private supabase: SupabaseService,
     private router: Router
   ) {}
 
   canActivate(): Observable<boolean> {
-    return this.supabase.profile$.pipe(
+    // Wait for initialization to complete before checking profile
+    return this.supabase.initialized$.pipe(
+      filter(initialized => initialized),
+      take(1),
+      switchMap(() => this.supabase.profile$),
       take(1),
       map(profile => profile?.role === 'admin'),
       tap(isAdmin => {
@@ -65,14 +73,18 @@ export class GuestGuard implements CanActivate {
   ) {}
 
   canActivate(): Observable<boolean> {
-    return this.supabase.session$.pipe(
+    // Wait for initialization to complete before checking session
+    return this.supabase.initialized$.pipe(
+      filter(initialized => initialized),
+      take(1),
+      switchMap(() => this.supabase.session$),
       take(1),
       switchMap(session => {
         if (!session) {
           // Not logged in - allow access to guest pages
           return from(Promise.resolve(true));
         }
-        
+
         // Logged in - redirect to appropriate dashboard
         return from(this.redirectLoggedInUser());
       })
@@ -102,14 +114,18 @@ export class GuestGuard implements CanActivate {
   providedIn: 'root'
 })
 export class SetupGuard implements CanActivate {
-  
+
   constructor(
     private supabase: SupabaseService,
     private router: Router
   ) {}
 
   canActivate(): Observable<boolean> {
-    return this.supabase.session$.pipe(
+    // Wait for initialization to complete before checking session
+    return this.supabase.initialized$.pipe(
+      filter(initialized => initialized),
+      take(1),
+      switchMap(() => this.supabase.session$),
       take(1),
       switchMap(session => {
         if (!session) {

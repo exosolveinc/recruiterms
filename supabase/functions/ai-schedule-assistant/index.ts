@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { JWT } from "npm:google-auth-library@9.0.0";
 import Anthropic from "npm:@anthropic-ai/sdk@0.24.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,14 @@ interface CalendarEvent {
   end: { dateTime?: string; date?: string; timeZone?: string };
 }
 
+interface DatabaseInterview {
+  id: string;
+  title: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  status: string;
+}
+
 interface SuggestedSlot {
   date: string;
   startTime: string;
@@ -39,6 +48,49 @@ interface AvailableSlot {
   start: string;
   end: string;
   durationMinutes: number;
+}
+
+async function fetchDatabaseInterviews(
+  timeMin: string,
+  timeMax: string
+): Promise<DatabaseInterview[]> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("Supabase credentials not configured");
+    return [];
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  const { data, error } = await supabase
+    .from("scheduled_interviews")
+    .select("id, title, scheduled_at, duration_minutes, status")
+    .gte("scheduled_at", timeMin)
+    .lte("scheduled_at", timeMax)
+    .in("status", ["pending", "scheduled"]);
+
+  if (error) {
+    console.error("Failed to fetch database interviews:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+function convertInterviewsToEvents(interviews: DatabaseInterview[]): CalendarEvent[] {
+  return interviews.map(interview => {
+    const start = new Date(interview.scheduled_at);
+    const end = new Date(start.getTime() + interview.duration_minutes * 60 * 1000);
+
+    return {
+      id: interview.id,
+      summary: `[Scheduled] ${interview.title}`,
+      start: { dateTime: start.toISOString() },
+      end: { dateTime: end.toISOString() }
+    };
+  });
 }
 
 async function getGoogleAccessToken(): Promise<string> {
@@ -259,22 +311,55 @@ serve(async (req) => {
     }
 
     const calendarId = Deno.env.get("GOOGLE_CALENDAR_ID");
-    if (!calendarId) {
-      throw new Error("GOOGLE_CALENDAR_ID not configured");
+
+    // Get events from both sources
+    let googleEvents: CalendarEvent[] = [];
+    let databaseInterviews: DatabaseInterview[] = [];
+
+    // Fetch Google Calendar events
+    if (calendarId) {
+      try {
+        const accessToken = await getGoogleAccessToken();
+        googleEvents = await fetchCalendarEvents(accessToken, calendarId, dateRange.start, dateRange.end);
+      } catch (calendarError) {
+        console.error('Google Calendar fetch error:', calendarError);
+      }
     }
 
-    // Get Google Calendar events
-    let events: CalendarEvent[] = [];
-    let availableSlots: AvailableSlot[] = [];
-
+    // Fetch interviews from database
     try {
-      const accessToken = await getGoogleAccessToken();
-      events = await fetchCalendarEvents(accessToken, calendarId, dateRange.start, dateRange.end);
-      availableSlots = findAvailableSlots(events, dateRange, duration, timezone);
-    } catch (calendarError) {
-      console.error('Calendar fetch error:', calendarError);
-      // Continue without calendar data - AI will work with limited info
+      databaseInterviews = await fetchDatabaseInterviews(dateRange.start, dateRange.end);
+      console.log(`Fetched ${databaseInterviews.length} interviews from database`);
+    } catch (dbError) {
+      console.error('Database fetch error:', dbError);
     }
+
+    // Combine both sources into a single events list
+    const databaseEvents = convertInterviewsToEvents(databaseInterviews);
+    const allEvents = [...googleEvents, ...databaseEvents];
+
+    // Remove duplicates (interviews that are on both Google Calendar and database)
+    // Keep unique by checking if times overlap significantly
+    const events = allEvents.filter((event, index, self) => {
+      const eventStart = new Date(event.start.dateTime || event.start.date || '').getTime();
+      const eventEnd = new Date(event.end.dateTime || event.end.date || '').getTime();
+
+      // Check if there's an earlier event with overlapping time (likely a duplicate)
+      const isDuplicate = self.slice(0, index).some(other => {
+        const otherStart = new Date(other.start.dateTime || other.start.date || '').getTime();
+        const otherEnd = new Date(other.end.dateTime || other.end.date || '').getTime();
+
+        // Consider duplicate if start times are within 5 minutes of each other
+        return Math.abs(eventStart - otherStart) < 5 * 60 * 1000;
+      });
+
+      return !isDuplicate;
+    });
+
+    console.log(`Total unique events: ${events.length} (Google: ${googleEvents.length}, DB: ${databaseInterviews.length})`);
+
+    // Find available slots from combined events
+    const availableSlots = findAvailableSlots(events, dateRange, duration, timezone);
 
     // Build the system prompt
     const today = new Date();
@@ -307,22 +392,11 @@ ${formatSlotsForPrompt(availableSlots)}
 INSTRUCTIONS:
 1. Analyze the user's request to understand their scheduling preferences
 2. Select the best 1-3 slots from the available options that match their request
-3. Provide a friendly, helpful response explaining your recommendations
+3. Provide a friendly, helpful response in the "message" field
 4. If no slots match their request, suggest alternatives or ask for clarification
 
-You MUST respond with valid JSON in this exact format:
-{
-  "message": "Your friendly conversational response here",
-  "suggestedSlots": [
-    {
-      "date": "YYYY-MM-DD",
-      "startTime": "HH:mm",
-      "endTime": "HH:mm",
-      "datetime": "YYYY-MM-DDTHH:mm:00",
-      "reason": "Brief explanation of why this slot is good"
-    }
-  ]
-}
+CRITICAL: You MUST respond with ONLY valid JSON. No text before or after the JSON object. No markdown code blocks. Just the raw JSON object:
+{"message": "Your friendly conversational response here", "suggestedSlots": [{"date": "YYYY-MM-DD", "startTime": "HH:mm", "endTime": "HH:mm", "datetime": "YYYY-MM-DDTHH:mm:00", "reason": "Brief explanation"}]}
 
 If you cannot find suitable slots, return an empty suggestedSlots array and explain in the message.`;
 
@@ -357,13 +431,27 @@ If you cannot find suitable slots, return an empty suggestedSlots array and expl
 
     try {
       let jsonText = content.text.trim();
+      console.log('Raw Claude response:', jsonText.substring(0, 200));
 
       // Handle markdown code blocks
-      if (jsonText.startsWith("```")) {
-        jsonText = jsonText.replace(/```json?\n?/g, "").replace(/```$/g, "").trim();
+      if (jsonText.includes("```")) {
+        const codeBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          jsonText = codeBlockMatch[1].trim();
+        }
+      }
+
+      // Try to extract JSON object from text (in case AI adds extra text around it)
+      // Find the first { and last } to extract the JSON object
+      const firstBrace = jsonText.indexOf('{');
+      const lastBrace = jsonText.lastIndexOf('}');
+
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonText = jsonText.substring(firstBrace, lastBrace + 1);
       }
 
       assistantResponse = JSON.parse(jsonText);
+      console.log('Parsed successfully, message length:', assistantResponse.message?.length);
 
       // Validate response structure
       if (!assistantResponse.message) {
@@ -372,10 +460,13 @@ If you cannot find suitable slots, return an empty suggestedSlots array and expl
       if (!Array.isArray(assistantResponse.suggestedSlots)) {
         assistantResponse.suggestedSlots = [];
       }
-    } catch (parseError) {
-      console.error('Failed to parse Claude response:', content.text);
+    } catch (parseError: any) {
+      console.error('Failed to parse Claude response:', parseError.message);
+      console.error('Raw text was:', content.text.substring(0, 500));
+
+      // Try to extract just a message if JSON parsing completely fails
       assistantResponse = {
-        message: content.text,
+        message: "I found some available times. Please check the slots below or try asking again.",
         suggestedSlots: []
       };
     }

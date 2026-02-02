@@ -27,10 +27,12 @@ export class SupabaseService {
   private _session = new BehaviorSubject<Session | null>(null);
   private _user = new BehaviorSubject<User | null>(null);
   private _profile = new BehaviorSubject<Profile | null>(null);
+  private _initialized = new BehaviorSubject<boolean>(false);
 
   session$ = this._session.asObservable();
   user$ = this._user.asObservable();
   profile$ = this._profile.asObservable();
+  initialized$ = this._initialized.asObservable();
 
   constructor() {
     this.supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
@@ -48,12 +50,14 @@ export class SupabaseService {
     });
 
     // Check initial session
-    this.supabase.auth.getSession().then(({ data: { session } }) => {
+    this.supabase.auth.getSession().then(async ({ data: { session } }) => {
       this._session.next(session);
       this._user.next(session?.user ?? null);
       if (session?.user) {
-        this.loadProfile(session.user.id);
+        await this.loadProfile(session.user.id);
       }
+      // Mark initialization as complete after profile is loaded
+      this._initialized.next(true);
     });
   }
 
