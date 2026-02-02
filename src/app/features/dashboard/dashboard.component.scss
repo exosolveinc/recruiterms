@@ -3348,6 +3348,233 @@ table {
 }
 
 // ============================================================================
+// INTERVIEWS SECTION (Expanded Row)
+// ============================================================================
+
+.interviews-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+
+  .section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    h4 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+
+      .fi {
+        font-size: 16px;
+        color: #3b82f6;
+      }
+    }
+  }
+
+  .btn-schedule-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    .fi {
+      font-size: 12px;
+    }
+
+    &:hover {
+      background: #2563eb;
+    }
+  }
+
+  .interviews-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  .interviews-group {
+    margin-bottom: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .group-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    &.upcoming .group-label {
+      color: #16a34a;
+    }
+
+    &.past .group-label {
+      color: #94a3b8;
+    }
+  }
+
+  .interview-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .interview-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: all 0.15s;
+
+    &:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    }
+
+    &.past {
+      opacity: 0.7;
+      background: #f8fafc;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+
+    .interview-date {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 44px;
+      padding: 6px 10px;
+      background: #eff6ff;
+      border-radius: 6px;
+
+      .date-day {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e40af;
+        line-height: 1;
+      }
+
+      .date-month {
+        font-size: 11px;
+        font-weight: 500;
+        color: #3b82f6;
+        text-transform: uppercase;
+      }
+    }
+
+    &.past .interview-date {
+      background: #f1f5f9;
+
+      .date-day {
+        color: #64748b;
+      }
+
+      .date-month {
+        color: #94a3b8;
+      }
+    }
+
+    .interview-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .interview-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+      }
+
+      .interview-time {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: #64748b;
+
+        .fi {
+          font-size: 11px;
+        }
+      }
+
+      .interview-type {
+        font-size: 11px;
+        color: #94a3b8;
+        text-transform: capitalize;
+      }
+    }
+
+    .interview-status-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+
+      &.status-scheduled {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+
+      &.status-pending {
+        background: #fef3c7;
+        color: #b45309;
+      }
+
+      &.status-completed {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      &.status-cancelled {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+    }
+  }
+
+  .no-interviews {
+    padding: 20px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+
+    p {
+      margin: 0;
+    }
+  }
+}
+
+// ============================================================================
 // RESPONSIVE
 // ============================================================================
 

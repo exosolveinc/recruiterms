@@ -8,14 +8,14 @@
         [class.active]="activePage === item.id"
         (click)="navigate(item.route)"
       >
-        <span class="nav-icon">{{ item.icon }}</span>
+        <i class="fi" [ngClass]="item.icon"></i>
         <span class="tooltip">{{ item.label }}</span>
       </button>
     </div>
   </div>
   <div class="sidebar-bottom">
     <button class="nav-item logout" (click)="logout()">
-      <span class="nav-icon">🚪</span>
+      <i class="fi fi-rr-sign-out-alt"></i>
       <span class="tooltip">Sign Out</span>
     </button>
   </div>

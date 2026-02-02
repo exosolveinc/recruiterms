@@ -158,6 +158,10 @@ export class DashboardComponent implements OnInit {
   jobDetailsCache: Map<string, Job> = new Map();
   loadingJobDetailsFor: string | null = null;
 
+  // Interviews for expanded application
+  expandedAppInterviews: ScheduledInterview[] = [];
+  loadingAppInterviews = false;
+
   constructor(
     private supabase: SupabaseService,
     private router: Router,
@@ -524,12 +528,14 @@ export class DashboardComponent implements OnInit {
     event.stopPropagation();
     if (this.expandedAppId === appId) {
       this.expandedAppId = null;
+      this.expandedAppInterviews = [];
     } else {
       this.expandedAppId = appId;
       // Load job details when expanding
       const app = this.applications().find(a => a.id === appId);
       if (app) {
         this.loadJobDetailsIfNeeded(app);
+        this.loadInterviewsForApp(appId);
       }
     }
   }
@@ -1146,6 +1152,10 @@ export class DashboardComponent implements OnInit {
   async onInterviewScheduled(interview: ScheduledInterview) {
     this.closeInterviewModal();
     await this.loadUpcomingInterviews();
+    // Reload interviews for the expanded app if it matches
+    if (this.expandedAppId && interview.application_id === this.expandedAppId) {
+      await this.loadInterviewsForApp(this.expandedAppId);
+    }
     this.appState.invalidateApplications();
     await this.loadApplications();
   }
@@ -1177,6 +1187,38 @@ export class DashboardComponent implements OnInit {
     } else {
       return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     }
+  }
+
+  async loadInterviewsForApp(appId: string) {
+    this.loadingAppInterviews = true;
+    this.expandedAppInterviews = [];
+    try {
+      this.expandedAppInterviews = await this.interviewService.getInterviewsForApplication(appId);
+    } catch (err) {
+      console.error('Failed to load interviews for app:', err);
+    } finally {
+      this.loadingAppInterviews = false;
+    }
+  }
+
+  getUpcomingInterviewsForExpanded(): ScheduledInterview[] {
+    const now = new Date();
+    return this.expandedAppInterviews.filter(i => new Date(i.scheduled_at) >= now);
+  }
+
+  getPastInterviewsForExpanded(): ScheduledInterview[] {
+    const now = new Date();
+    return this.expandedAppInterviews.filter(i => new Date(i.scheduled_at) < now);
+  }
+
+  getInterviewStatusClass(interview: ScheduledInterview): string {
+    const statusClasses: Record<string, string> = {
+      'scheduled': 'status-scheduled',
+      'completed': 'status-completed',
+      'cancelled': 'status-cancelled',
+      'pending': 'status-pending'
+    };
+    return statusClasses[interview.status] || 'status-pending';
   }
 
   async reanalyzeApplication(app: UserApplicationView) {

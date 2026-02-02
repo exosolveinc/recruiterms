@@ -26,11 +26,11 @@ export class SidebarComponent implements OnInit {
   isAdmin = false;
 
   allNavItems: NavItem[] = [
-    { icon: '📋', label: 'Applications', route: '/dashboard', id: 'dashboard' },
-    { icon: '📄', label: 'Resumes', route: '/resumes', id: 'resumes' },
-    { icon: '👥', label: 'Candidates', route: '/candidates', id: 'candidates' },
-    { icon: '🔍', label: 'Job Feed', route: '/job-feed', id: 'job-feed' },
-    {icon: '🗓️', label:'Interview Management', route:'/interviews', id:'interviews'},
+    { icon: 'fi-rr-clipboard-list', label: 'Applications', route: '/dashboard', id: 'dashboard' },
+    { icon: 'fi-rr-document', label: 'Resumes', route: '/resumes', id: 'resumes' },
+    { icon: 'fi-rr-users', label: 'Candidates', route: '/candidates', id: 'candidates' },
+    { icon: 'fi-rr-briefcase', label: 'Job Feed', route: '/job-feed', id: 'job-feed' },
+    { icon: 'fi fi-rr-calendar-clock', label: 'Interview Management', route: '/interviews', id: 'interviews' },
   ];
 
   get navItems(): NavItem[] {

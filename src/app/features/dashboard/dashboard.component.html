@@ -580,6 +580,73 @@
                                                 </div>
                                             </div>
 
+                                            <!-- Interviews Section -->
+                                            <div class="optimizer-section interviews-section">
+                                                <div class="section-header-row">
+                                                    <h4><i class="fi fi-rr-calendar"></i> Interviews</h4>
+                                                    <button class="btn-schedule-sm" (click)="openInterviewModal(app); $event.stopPropagation()">
+                                                        <i class="fi fi-rr-plus"></i> Schedule
+                                                    </button>
+                                                </div>
+
+                                                <!-- Loading State -->
+                                                <div class="interviews-loading" *ngIf="loadingAppInterviews">
+                                                    <span class="spinner-tiny"></span>
+                                                    <span>Loading interviews...</span>
+                                                </div>
+
+                                                <ng-container *ngIf="!loadingAppInterviews">
+                                                    <!-- Upcoming Interviews -->
+                                                    <div class="interviews-group upcoming" *ngIf="getUpcomingInterviewsForExpanded().length > 0">
+                                                        <span class="group-label">Upcoming</span>
+                                                        <div class="interview-cards">
+                                                            <div class="interview-card" *ngFor="let interview of getUpcomingInterviewsForExpanded()" [class]="getInterviewStatusClass(interview)">
+                                                                <div class="interview-date">
+                                                                    <span class="date-day">{{ interview.scheduled_at | date:'d' }}</span>
+                                                                    <span class="date-month">{{ interview.scheduled_at | date:'MMM' }}</span>
+                                                                </div>
+                                                                <div class="interview-details">
+                                                                    <span class="interview-title">{{ interview.title }}</span>
+                                                                    <span class="interview-time">
+                                                                        <i class="fi fi-rr-clock"></i>
+                                                                        {{ interview.scheduled_at | date:'h:mm a' }} · {{ interview.duration_minutes }} min
+                                                                    </span>
+                                                                    <span class="interview-type">{{ interview.interview_type }}</span>
+                                                                </div>
+                                                                <span class="interview-status-badge" [class]="'status-' + interview.status">{{ interview.status }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Past Interviews -->
+                                                    <div class="interviews-group past" *ngIf="getPastInterviewsForExpanded().length > 0">
+                                                        <span class="group-label">Past</span>
+                                                        <div class="interview-cards">
+                                                            <div class="interview-card past" *ngFor="let interview of getPastInterviewsForExpanded()" [class]="getInterviewStatusClass(interview)">
+                                                                <div class="interview-date">
+                                                                    <span class="date-day">{{ interview.scheduled_at | date:'d' }}</span>
+                                                                    <span class="date-month">{{ interview.scheduled_at | date:'MMM' }}</span>
+                                                                </div>
+                                                                <div class="interview-details">
+                                                                    <span class="interview-title">{{ interview.title }}</span>
+                                                                    <span class="interview-time">
+                                                                        <i class="fi fi-rr-clock"></i>
+                                                                        {{ interview.scheduled_at | date:'h:mm a' }} · {{ interview.duration_minutes }} min
+                                                                    </span>
+                                                                    <span class="interview-type">{{ interview.interview_type }}</span>
+                                                                </div>
+                                                                <span class="interview-status-badge" [class]="'status-' + interview.status">{{ interview.status }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- No Interviews -->
+                                                    <div class="no-interviews" *ngIf="expandedAppInterviews.length === 0">
+                                                        <p>No interviews scheduled yet</p>
+                                                    </div>
+                                                </ng-container>
+                                            </div>
+
                                             <!-- Quick Wins Section -->
                                             <div class="optimizer-section quick-wins-section" *ngIf="getDetailedAnalysis(app.id)?.quickWins?.length">
                                                 <h4>⚡ Quick Wins</h4>
