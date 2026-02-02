@@ -46,6 +46,7 @@ export class InterviewModalComponent implements OnInit {
   aiUserInput = '';
   aiLoading = false;
   aiError = '';
+  selectedSlot: SuggestedSlot | null = null;
 
   interviewTypes = [
     { value: 'phone', label: 'Phone Interview' },
@@ -245,6 +246,10 @@ export class InterviewModalComponent implements OnInit {
   }
 
   selectSuggestedSlot(slot: SuggestedSlot) {
+    // If clicking the same slot, do nothing (already selected)
+    if (this.isSlotSelected(slot)) return;
+
+    this.selectedSlot = slot;
     this.scheduledDate = slot.date;
     this.scheduledTime = slot.startTime;
 
@@ -254,6 +259,13 @@ export class InterviewModalComponent implements OnInit {
       content: `Great choice! I've set the interview for ${this.formatSlotDisplay(slot)}. You can adjust the other details and save when ready.`,
       timestamp: new Date()
     });
+  }
+
+  isSlotSelected(slot: SuggestedSlot): boolean {
+    if (!this.selectedSlot) return false;
+    return this.selectedSlot.date === slot.date &&
+           this.selectedSlot.startTime === slot.startTime &&
+           this.selectedSlot.endTime === slot.endTime;
   }
 
   formatSlotDisplay(slot: SuggestedSlot): string {
