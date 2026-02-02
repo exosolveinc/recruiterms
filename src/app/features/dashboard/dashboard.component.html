@@ -214,8 +214,8 @@
                     <ng-container *ngFor="let app of filteredApplications()">
                         <!-- Main Row -->
                         <tr class="app-row" [class.expanded]="isExpanded(app.id)" (click)="toggleExpand(app.id, $event)">
-                            <td>
-                                <span class="expand-icon" [class.open]="isExpanded(app.id)">▸</span>
+                            <td class="expand-cell">
+                                <i class="fi fi-rr-angle-right expand-icon" [class.open]="isExpanded(app.id)"></i>
                             </td>
                             <td>
                                 <div class="company-cell">

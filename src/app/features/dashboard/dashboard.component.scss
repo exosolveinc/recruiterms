@@ -667,14 +667,33 @@ table {
   }
 }
 
+.expand-cell {
+  width: 40px;
+  text-align: center;
+}
+
 .expand-icon {
-  color: #999;
-  font-size: 14px;
-  transition: transform 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #64748b;
+  font-size: 12px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  transition: all 0.25s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: #e2e8f0;
+    color: #334155;
+  }
 
   &.open {
     transform: rotate(90deg);
-    color: #111;
+    color: #3b82f6;
+    background: #eff6ff;
   }
 }
 
