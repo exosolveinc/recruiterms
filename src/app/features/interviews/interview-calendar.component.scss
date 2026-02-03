@@ -117,7 +117,7 @@
   flex-direction: column;
   overflow: auto;
   width: 100%;
-  background: #fff;
+  background: radial-gradient(ellipse at center, #f8fafc 0%, #fff 70%);
   border-radius: 12px;
 
   > div[ngSwitch] {
