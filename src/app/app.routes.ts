@@ -1,11 +1,12 @@
 import { Routes } from '@angular/router';
-import { AuthGuard, GuestGuard } from './core/guards/auth.guard';
+import { AuthGuard, GuestGuard, RoleRedirectGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full',
+    canActivate: [RoleRedirectGuard],
+    children: []
   },
   {
     path: 'auth',

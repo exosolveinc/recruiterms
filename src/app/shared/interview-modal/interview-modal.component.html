@@ -6,19 +6,34 @@
         </div>
 
         <div class="modal-body">
-            <!-- Application Info -->
-            <div class="application-info">
+            <!-- Application Selector (for calendar empty slot click) -->
+            <div class="form-group" *ngIf="showApplicationSelector">
+                <label class="form-label">Application <span class="required">*</span></label>
+                <select
+                    class="form-select application-select"
+                    [(ngModel)]="selectedApplication"
+                    (ngModelChange)="onApplicationSelected()"
+                >
+                    <option [ngValue]="null" disabled>Select an application...</option>
+                    <option *ngFor="let app of availableApplications" [ngValue]="app">
+                        {{ app.company_name }} - {{ app.job_title }}
+                    </option>
+                </select>
+            </div>
+
+            <!-- Application Info (show when application is selected) -->
+            <div class="application-info" *ngIf="activeApplication">
                 <div class="company-logo" [style.background]="'#635BFF'">
-                    {{ application.company_name?.charAt(0) || '?' }}
+                    {{ activeApplication.company_name?.charAt(0) || '?' }}
                 </div>
                 <div class="application-details">
-                    <div class="job-title">{{ application.job_title || 'Position' }}</div>
-                    <div class="company-name">{{ application.company_name || 'Company' }}</div>
+                    <div class="job-title">{{ activeApplication.job_title || 'Position' }}</div>
+                    <div class="company-name">{{ activeApplication.company_name || 'Company' }}</div>
                 </div>
             </div>
 
             <!-- AI Scheduling Assistant Toggle -->
-            <div class="ai-assistant-toggle">
+            <div class="ai-assistant-toggle" *ngIf="!hideAiAssistant">
                 <button
                     type="button"
                     class="btn-ai-assistant"
@@ -34,7 +49,7 @@
             </div>
 
             <!-- AI Assistant Panel -->
-            <div class="ai-assistant-panel" *ngIf="showAiAssistant">
+            <div class="ai-assistant-panel" *ngIf="showAiAssistant && !hideAiAssistant">
                 <div class="ai-chat-container">
                     <!-- Messages -->
                     <div class="ai-messages">

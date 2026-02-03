@@ -113,6 +113,51 @@ export class GuestGuard implements CanActivate {
 @Injectable({
   providedIn: 'root'
 })
+export class RoleRedirectGuard implements CanActivate {
+
+  constructor(
+    private supabase: SupabaseService,
+    private router: Router
+  ) {}
+
+  canActivate(): Observable<boolean> {
+    return this.supabase.initialized$.pipe(
+      filter(initialized => initialized),
+      take(1),
+      switchMap(() => this.supabase.session$),
+      take(1),
+      switchMap(session => {
+        if (!session) {
+          this.router.navigate(['/auth/login']);
+          return from(Promise.resolve(false));
+        }
+        return from(this.redirectBasedOnRole());
+      })
+    );
+  }
+
+  private async redirectBasedOnRole(): Promise<boolean> {
+    try {
+      const profile = await this.supabase.getProfile();
+
+      if (!profile?.organization_id) {
+        this.router.navigate(['/setup']);
+      } else if (profile.role === 'admin') {
+        this.router.navigate(['/admin']);
+      } else {
+        this.router.navigate(['/dashboard']);
+      }
+    } catch (err) {
+      this.router.navigate(['/dashboard']);
+    }
+
+    return false;
+  }
+}
+
+@Injectable({
+  providedIn: 'root'
+})
 export class SetupGuard implements CanActivate {
 
   constructor(

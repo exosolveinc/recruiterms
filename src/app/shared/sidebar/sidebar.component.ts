@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { Profile } from '../../core/models';
 import { SupabaseService } from '../../core/services/supabase.service';
 
@@ -19,18 +20,20 @@ interface NavItem {
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
-export class SidebarComponent implements OnInit {
+export class SidebarComponent implements OnInit, OnDestroy {
   @Input() activePage: string = '';
 
   profile: Profile | null = null;
   isAdmin = false;
+  private profileSub?: Subscription;
 
   allNavItems: NavItem[] = [
-    { icon: '📋', label: 'Applications', route: '/dashboard', id: 'dashboard' },
-    { icon: '📄', label: 'Resumes', route: '/resumes', id: 'resumes' },
-    { icon: '👥', label: 'Candidates', route: '/candidates', id: 'candidates' },
-    { icon: '🔍', label: 'Job Feed', route: '/job-feed', id: 'job-feed' },
-    {icon: '🗓️', label:'Interview Management', route:'/interviews', id:'interviews'},
+    { icon: 'fi-rr-apps', label: 'Admin Dashboard', route: '/admin', id: 'admin', adminOnly: true },
+    { icon: 'fi-rr-clipboard-list', label: 'Applications', route: '/dashboard', id: 'dashboard' },
+    { icon: 'fi-rr-document', label: 'Resumes', route: '/resumes', id: 'resumes' },
+    { icon: 'fi-rr-users', label: 'Candidates', route: '/candidates', id: 'candidates' },
+    { icon: 'fi-rr-briefcase', label: 'Job Feed', route: '/job-feed', id: 'job-feed' },
+    { icon: 'fi fi-rr-calendar-clock', label: 'Interview Management', route: '/interviews', id: 'interviews' },
   ];
 
   get navItems(): NavItem[] {
@@ -42,17 +45,16 @@ export class SidebarComponent implements OnInit {
     private supabase: SupabaseService
   ) {}
 
-  async ngOnInit() {
-    await this.loadProfile();
+  ngOnInit() {
+    // Subscribe to cached profile observable - no API call needed
+    this.profileSub = this.supabase.profile$.subscribe(profile => {
+      this.profile = profile;
+      this.isAdmin = profile?.role === 'admin';
+    });
   }
 
-  async loadProfile() {
-    try {
-      this.profile = await this.supabase.getProfile();
-      this.isAdmin = this.profile?.role === 'admin';
-    } catch (err) {
-      console.error('Failed to load profile:', err);
-    }
+  ngOnDestroy() {
+    this.profileSub?.unsubscribe();
   }
 
   navigate(route: string) {

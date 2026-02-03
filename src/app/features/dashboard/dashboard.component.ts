@@ -9,11 +9,13 @@ import { AppStateService } from '../../core/services/app-state.service';
 import { VendorEmailService } from '../../core/services/vendor-email.service';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 import { InterviewModalComponent } from '../../shared/interview-modal/interview-modal.component';
+import { TableModule } from 'primeng/table';
+import { RippleModule } from 'primeng/ripple';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent, InterviewModalComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, InterviewModalComponent, TableModule, RippleModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -110,6 +112,7 @@ export class DashboardComponent implements OnInit {
 
   // Expandable row
   expandedAppId: string | null = null;
+  expandedRows: { [key: string]: boolean } = {};
 
   // Candidate Selection Drawer
   showCandidateDrawer = false;
@@ -157,6 +160,10 @@ export class DashboardComponent implements OnInit {
   // Job details cache (for expanded rows)
   jobDetailsCache: Map<string, Job> = new Map();
   loadingJobDetailsFor: string | null = null;
+
+  // Interviews for expanded application
+  expandedAppInterviews: ScheduledInterview[] = [];
+  loadingAppInterviews = false;
 
   constructor(
     private supabase: SupabaseService,
@@ -520,18 +527,36 @@ export class DashboardComponent implements OnInit {
     return ['applied', 'screening', 'interviewing'].includes(app.status);
   }
 
-  toggleExpand(appId: string, event: Event) {
-    event.stopPropagation();
+  toggleExpand(appId: string, event?: Event) {
+    if (event) event.stopPropagation();
     if (this.expandedAppId === appId) {
       this.expandedAppId = null;
+      this.expandedRows = {};
+      this.expandedAppInterviews = [];
     } else {
       this.expandedAppId = appId;
+      this.expandedRows = { [appId]: true };
       // Load job details when expanding
       const app = this.applications().find(a => a.id === appId);
       if (app) {
         this.loadJobDetailsIfNeeded(app);
+        this.loadInterviewsForApp(appId);
       }
     }
+  }
+
+  onRowExpand(event: any) {
+    const app = event.data as UserApplicationView;
+    this.expandedAppId = app.id;
+    this.expandedRows = { [app.id]: true };
+    this.loadJobDetailsIfNeeded(app);
+    this.loadInterviewsForApp(app.id);
+  }
+
+  onRowCollapse(event: any) {
+    this.expandedAppId = null;
+    this.expandedRows = {};
+    this.expandedAppInterviews = [];
   }
 
   isExpanded(appId: string): boolean {
@@ -1146,6 +1171,10 @@ export class DashboardComponent implements OnInit {
   async onInterviewScheduled(interview: ScheduledInterview) {
     this.closeInterviewModal();
     await this.loadUpcomingInterviews();
+    // Reload interviews for the expanded app if it matches
+    if (this.expandedAppId && interview.application_id === this.expandedAppId) {
+      await this.loadInterviewsForApp(this.expandedAppId);
+    }
     this.appState.invalidateApplications();
     await this.loadApplications();
   }
@@ -1177,6 +1206,38 @@ export class DashboardComponent implements OnInit {
     } else {
       return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     }
+  }
+
+  async loadInterviewsForApp(appId: string) {
+    this.loadingAppInterviews = true;
+    this.expandedAppInterviews = [];
+    try {
+      this.expandedAppInterviews = await this.interviewService.getInterviewsForApplication(appId);
+    } catch (err) {
+      console.error('Failed to load interviews for app:', err);
+    } finally {
+      this.loadingAppInterviews = false;
+    }
+  }
+
+  getUpcomingInterviewsForExpanded(): ScheduledInterview[] {
+    const now = new Date();
+    return this.expandedAppInterviews.filter(i => new Date(i.scheduled_at) >= now);
+  }
+
+  getPastInterviewsForExpanded(): ScheduledInterview[] {
+    const now = new Date();
+    return this.expandedAppInterviews.filter(i => new Date(i.scheduled_at) < now);
+  }
+
+  getInterviewStatusClass(interview: ScheduledInterview): string {
+    const statusClasses: Record<string, string> = {
+      'scheduled': 'status-scheduled',
+      'completed': 'status-completed',
+      'cancelled': 'status-cancelled',
+      'pending': 'status-pending'
+    };
+    return statusClasses[interview.status] || 'status-pending';
   }
 
   async reanalyzeApplication(app: UserApplicationView) {

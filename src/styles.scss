@@ -47,3 +47,71 @@ button {
     background: #b1b1b1;
   }
 }
+
+// PrimeNG Global Overrides
+.p-component {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.p-datatable {
+  .p-datatable-thead > tr > th {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #666 !important;
+    background: #fafafa !important;
+    border: none !important;
+    border-bottom: 1px solid #eee !important;
+    padding: 14px 16px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .p-datatable-tbody > tr > td {
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    color: #111 !important;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding: 18px 16px !important;
+  }
+
+  .p-sortable-column:not(.p-highlight):hover {
+    background: #f5f5f5 !important;
+  }
+
+  // Remove any default PrimeNG row backgrounds
+  .p-datatable-tbody > tr {
+    background: white !important;
+
+    &:hover {
+      background: #fafafa !important;
+    }
+
+    &.p-highlight {
+      background: #f5f5f5 !important;
+      color: inherit !important;
+    }
+  }
+}
+// ============================================================================
+// ANGULAR CALENDAR OVERRIDES
+// ============================================================================
+
+// Day name - 14px, not bold
+.cal-week-view .cal-day-headers .cal-header b {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+// Date - 12px
+.cal-week-view .cal-day-headers .cal-header span {
+  font-size: 12px !important;
+}
+
+// Time labels - 12px, normal weight
+.cal-week-view .cal-time {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}

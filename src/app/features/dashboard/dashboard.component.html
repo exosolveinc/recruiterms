@@ -5,12 +5,6 @@
             <h1>Applications</h1>
             <p class="page-sub">Track and optimize your job applications</p>
         </div>
-        <button class="btn-admin" *ngIf="profile()?.role === 'admin'" (click)="goToAdminDashboard()">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1L10 5H14L11 8L12 12L8 10L4 12L5 8L2 5H6L8 1Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Admin Dashboard
-        </button>
     </div>
 
     <main class="main-content">
@@ -195,78 +189,89 @@
         </div>
 
         <!-- Applications Table -->
-        <div class="table-container">
-            <table>
-                <thead>
+        <div class="table-container primeng-table">
+            <p-table
+                [value]="filteredApplications()"
+                dataKey="id"
+                [expandedRowKeys]="expandedRows"
+                (onRowExpand)="onRowExpand($event)"
+                (onRowCollapse)="onRowCollapse($event)"
+                [rowHover]="true"
+                [tableStyle]="{'min-width': '100%'}"
+                styleClass="applications-table">
+
+                <!-- Header -->
+                <ng-template pTemplate="header">
                     <tr>
-                        <th style="width:32px"></th>
-                        <th>COMPANY</th>
-                        <th>SALARY</th>
-                        <th>MATCH</th>
-                        <th>STATUS</th>
-                        <th>APPLIED</th>
-                        <th>RESUME</th>
-                        <th>PLATFORM</th>
-                        <th>ACTIONS</th>
+                        <th class="expand-col"></th>
+                        <th class="company-col">COMPANY</th>
+                        <th class="salary-col">SALARY</th>
+                        <th class="match-col">MATCH</th>
+                        <th class="status-col">STATUS</th>
+                        <th class="date-col">APPLIED</th>
+                        <th class="resume-col">RESUME</th>
+                        <th class="platform-col">PLATFORM</th>
+                        <th class="actions-col">ACTIONS</th>
                     </tr>
-                </thead>
-                <tbody>
-                    <ng-container *ngFor="let app of filteredApplications()">
-                        <!-- Main Row -->
-                        <tr class="app-row" [class.expanded]="isExpanded(app.id)" (click)="toggleExpand(app.id, $event)">
-                            <td>
-                                <span class="expand-icon" [class.open]="isExpanded(app.id)">▸</span>
-                            </td>
-                            <td>
-                                <div class="company-cell">
-                                    <div class="company-logo" [style.background]="getCompanyColor(app.company_name)">
-                                        {{ app.company_name?.charAt(0) || '?' }}
-                                    </div>
-                                    <div>
-                                        <div class="company-name">{{ app.company_name || 'Unknown' }}</div>
-                                        <div class="company-sub">{{ app.job_title || 'Position' }} · {{ app.location || 'Remote' }}</div>
-                                    </div>
+                </ng-template>
+
+                <!-- Body -->
+                <ng-template pTemplate="body" let-app let-expanded="expanded">
+                    <tr class="app-row" [class.expanded]="expanded">
+                        <td class="expand-cell">
+                            <button type="button" pRipple [pRowToggler]="app" class="p-row-toggler">
+                                <i class="fi fi-rr-angle-right expand-icon" [class.open]="expanded"></i>
+                            </button>
+                        </td>
+                        <td>
+                            <div class="company-cell">
+                                <div class="company-logo" [style.background]="getCompanyColor(app.company_name)">
+                                    {{ app.company_name?.charAt(0) || '?' }}
                                 </div>
-                            </td>
-                            <td class="salary-col">
-                                <span class="salary-text" *ngIf="app.salary_min || app.salary_max">
-                                    {{ formatSalary(app.salary_min, app.salary_max) }}
-                                </span>
-                                <span class="salary-text no-salary" *ngIf="!app.salary_min && !app.salary_max">—</span>
-                            </td>
-                            <td>
-                                <input
-                                    type="text"
-                                    class="match-input"
-                                    [class.high]="app.match_score && app.match_score >= 80"
-                                    [class.medium]="app.match_score && app.match_score >= 60 && app.match_score < 80"
-                                    [class.low]="app.match_score && app.match_score < 60"
-                                    [value]="app.match_score ? app.match_score + '%' : '—'"
-                                    readonly
-                                    (click)="$event.stopPropagation()"
-                                />
-                            </td>
-                            <td>
-                                <select
-                                    class="status-select-inline"
-                                    [class]="'status-' + app.status"
-                                    [ngModel]="app.status"
-                                    (ngModelChange)="updateStatus(app, $event)"
-                                    (click)="$event.stopPropagation()">
-                                    <option value="extracted">Extracted</option>
-                                    <option value="applied">Applied</option>
-                                    <option value="screening">Screening</option>
-                                    <option value="interviewing">Interview</option>
-                                    <option value="offer">Offer</option>
-                                    <option value="accepted">Accepted</option>
-                                    <option value="rejected">Rejected</option>
-                                    <option value="withdrawn">Withdrawn</option>
-                                </select>
-                            </td>
-                            <td class="date-col">
-                                <span class="applied-date">{{ formatAppliedDate(app.applied_at) }}</span>
-                            </td>
-                            <td class="resume-col" (click)="$event.stopPropagation()">
+                                <div>
+                                    <div class="company-name">{{ app.company_name || 'Unknown' }}</div>
+                                    <div class="company-sub">{{ app.job_title || 'Position' }} · {{ app.location || 'Remote' }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="salary-col">
+                            <span class="salary-text" *ngIf="app.salary_min || app.salary_max">
+                                {{ formatSalary(app.salary_min, app.salary_max) }}
+                            </span>
+                            <span class="salary-text no-salary" *ngIf="!app.salary_min && !app.salary_max">—</span>
+                        </td>
+                        <td>
+                            <input
+                                type="text"
+                                class="match-input"
+                                [class.high]="app.match_score && app.match_score >= 80"
+                                [class.medium]="app.match_score && app.match_score >= 60 && app.match_score < 80"
+                                [class.low]="app.match_score && app.match_score < 60"
+                                [value]="app.match_score ? app.match_score + '%' : '—'"
+                                readonly
+                            />
+                        </td>
+                        <td>
+                            <select
+                                class="status-select-inline"
+                                [class]="'status-' + app.status"
+                                [ngModel]="app.status"
+                                (ngModelChange)="updateStatus(app, $event)"
+                                (click)="$event.stopPropagation()">
+                                <option value="extracted">Extracted</option>
+                                <option value="applied">Applied</option>
+                                <option value="screening">Screening</option>
+                                <option value="interviewing">Interview</option>
+                                <option value="offer">Offer</option>
+                                <option value="accepted">Accepted</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="withdrawn">Withdrawn</option>
+                            </select>
+                        </td>
+                        <td class="date-col">
+                            <span class="applied-date">{{ formatAppliedDate(app.applied_at) }}</span>
+                        </td>
+                        <td class="resume-col" (click)="$event.stopPropagation()">
                                 <div class="resume-dropdown-container">
                                     <button class="resume-dropdown-trigger" (click)="toggleResumeDropdown(app.id, $event)">
                                         <span class="resume-name">{{ getResumeNameForApp(app) }}</span>
@@ -445,11 +450,13 @@
                                 </div>
                             </td>
                         </tr>
+                </ng-template>
 
-                        <!-- Expanded Row -->
-                        <tr class="expand-row" *ngIf="isExpanded(app.id)">
-                            <td colspan="9">
-                                <div class="expand-content">
+                <!-- Row Expansion -->
+                <ng-template pTemplate="rowexpansion" let-app>
+                    <tr class="expand-row">
+                        <td colspan="9">
+                            <div class="expand-content">
                                     <div class="optimizer-grid-expanded">
                                         <!-- Left Column: Resume & Match Analysis -->
                                         <div class="expand-left">
@@ -578,6 +585,73 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </div>
+
+                                            <!-- Interviews Section -->
+                                            <div class="optimizer-section interviews-section">
+                                                <div class="section-header-row">
+                                                    <h4><i class="fi fi-rr-calendar"></i> Interviews</h4>
+                                                    <button class="btn-schedule-sm" (click)="openInterviewModal(app); $event.stopPropagation()">
+                                                        <i class="fi fi-rr-plus"></i> Schedule
+                                                    </button>
+                                                </div>
+
+                                                <!-- Loading State -->
+                                                <div class="interviews-loading" *ngIf="loadingAppInterviews">
+                                                    <span class="spinner-tiny"></span>
+                                                    <span>Loading interviews...</span>
+                                                </div>
+
+                                                <ng-container *ngIf="!loadingAppInterviews">
+                                                    <!-- Upcoming Interviews -->
+                                                    <div class="interviews-group upcoming" *ngIf="getUpcomingInterviewsForExpanded().length > 0">
+                                                        <span class="group-label">Upcoming</span>
+                                                        <div class="interview-cards">
+                                                            <div class="interview-card" *ngFor="let interview of getUpcomingInterviewsForExpanded()" [class]="getInterviewStatusClass(interview)">
+                                                                <div class="interview-date">
+                                                                    <span class="date-day">{{ interview.scheduled_at | date:'d' }}</span>
+                                                                    <span class="date-month">{{ interview.scheduled_at | date:'MMM' }}</span>
+                                                                </div>
+                                                                <div class="interview-details">
+                                                                    <span class="interview-title">{{ interview.title }}</span>
+                                                                    <span class="interview-time">
+                                                                        <i class="fi fi-rr-clock"></i>
+                                                                        {{ interview.scheduled_at | date:'h:mm a' }} · {{ interview.duration_minutes }} min
+                                                                    </span>
+                                                                    <span class="interview-type">{{ interview.interview_type }}</span>
+                                                                </div>
+                                                                <span class="interview-status-badge" [class]="'status-' + interview.status">{{ interview.status }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Past Interviews -->
+                                                    <div class="interviews-group past" *ngIf="getPastInterviewsForExpanded().length > 0">
+                                                        <span class="group-label">Past</span>
+                                                        <div class="interview-cards">
+                                                            <div class="interview-card past" *ngFor="let interview of getPastInterviewsForExpanded()" [class]="getInterviewStatusClass(interview)">
+                                                                <div class="interview-date">
+                                                                    <span class="date-day">{{ interview.scheduled_at | date:'d' }}</span>
+                                                                    <span class="date-month">{{ interview.scheduled_at | date:'MMM' }}</span>
+                                                                </div>
+                                                                <div class="interview-details">
+                                                                    <span class="interview-title">{{ interview.title }}</span>
+                                                                    <span class="interview-time">
+                                                                        <i class="fi fi-rr-clock"></i>
+                                                                        {{ interview.scheduled_at | date:'h:mm a' }} · {{ interview.duration_minutes }} min
+                                                                    </span>
+                                                                    <span class="interview-type">{{ interview.interview_type }}</span>
+                                                                </div>
+                                                                <span class="interview-status-badge" [class]="'status-' + interview.status">{{ interview.status }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- No Interviews -->
+                                                    <div class="no-interviews" *ngIf="expandedAppInterviews.length === 0">
+                                                        <p>No interviews scheduled yet</p>
+                                                    </div>
+                                                </ng-container>
                                             </div>
 
                                             <!-- Quick Wins Section -->
@@ -788,9 +862,19 @@
                                 </div>
                             </td>
                         </tr>
-                    </ng-container>
-                </tbody>
-            </table>
+                </ng-template>
+
+                <!-- Empty Message -->
+                <ng-template pTemplate="emptymessage">
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state-inline">
+                                <span>No applications found</span>
+                            </div>
+                        </td>
+                    </tr>
+                </ng-template>
+            </p-table>
 
             <!-- Empty State -->
             <div class="empty-state" *ngIf="applications().length === 0">
