@@ -24,6 +24,7 @@ import { UserApplicationView } from '../../core/models';
 import { environment } from '../../../environments/environment';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import jsPDF from 'jspdf';
 
 interface InterviewCalendarEvent extends CalendarEvent {
   interview?: ScheduledInterview;
@@ -85,6 +86,7 @@ export class InterviewCalendarComponent implements OnInit {
   editDate = '';
   editTime = '';
   editStatus = '';
+  editDuration = 60;
   saving = false;
 
   // AI Scheduling Assistant state
@@ -367,6 +369,9 @@ export class InterviewCalendarComponent implements OnInit {
     // Set status
     this.editStatus = this.selectedInterview.status;
 
+    // Set duration
+    this.editDuration = this.selectedInterview.duration_minutes;
+
     this.isEditing = true;
     this.cdr.markForCheck();
   }
@@ -389,7 +394,8 @@ export class InterviewCalendarComponent implements OnInit {
       // Update interview via service
       const updated = await this.interviewService.updateInterview(this.selectedInterview.id, {
         scheduled_at,
-        status: this.editStatus as any
+        status: this.editStatus as any,
+        duration_minutes: Number(this.editDuration)
       });
 
       // Update local state
@@ -539,6 +545,30 @@ export class InterviewCalendarComponent implements OnInit {
       'no_show': 'status-no-show'
     };
     return classes[status] || '';
+  }
+
+  getEventTooltip(event: InterviewCalendarEvent): string {
+    if (!event.interview) return event.title || 'Interview';
+
+    const interview = event.interview;
+    const lines: string[] = [];
+
+    lines.push(interview.title || 'Interview');
+    lines.push(`Type: ${this.getInterviewTypeLabel(interview.interview_type)}`);
+    lines.push(`Date: ${this.formatDate(interview.scheduled_at)}`);
+    lines.push(`Time: ${this.formatTime(interview.scheduled_at)}`);
+    lines.push(`Duration: ${interview.duration_minutes} minutes`);
+    lines.push(`Status: ${interview.status}`);
+
+    if (interview.interviewer_name) {
+      lines.push(`Interviewer: ${interview.interviewer_name}`);
+    }
+
+    if (interview.location) {
+      lines.push(`Location: ${interview.location}`);
+    }
+
+    return lines.join('\n');
   }
 
   // Approve a pending interview
@@ -1351,132 +1381,179 @@ export class InterviewCalendarComponent implements OnInit {
     if (!this.jobDescDialogData) return;
 
     const data = this.jobDescDialogData;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Please allow popups to download PDF');
-      return;
+
+    // Create PDF using jsPDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const maxWidth = pageWidth - margin * 2;
+    let yPos = margin;
+
+    // Helper to check and add new page if needed
+    const checkPageBreak = (requiredSpace: number) => {
+      if (yPos + requiredSpace > pageHeight - margin) {
+        pdf.addPage();
+        yPos = margin;
+      }
+    };
+
+    // Header - Job Title
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(17, 17, 17);
+    pdf.text(data.jobTitle, margin, yPos);
+    yPos += 10;
+
+    // Company name
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(data.companyName, margin, yPos);
+    yPos += 8;
+
+    // Meta info (location, work type, etc.)
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100);
+    const metaItems: string[] = [];
+    if (data.location) metaItems.push(data.location);
+    if (data.workType) metaItems.push(data.workType);
+    if (data.employmentType) metaItems.push(data.employmentType);
+    if (data.experienceLevel) metaItems.push(data.experienceLevel);
+    if (metaItems.length > 0) {
+      pdf.text(metaItems.join('  |  '), margin, yPos);
+      yPos += 6;
     }
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <title>${data.jobTitle} - ${data.companyName}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            padding: 40px;
-            max-width: 800px;
-            margin: 0 auto;
-          }
-          .header {
-            border-bottom: 2px solid #111;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          .header h1 { font-size: 24px; color: #111; margin-bottom: 8px; }
-          .header .company { font-size: 18px; color: #666; margin-bottom: 12px; }
-          .meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: #666; }
-          .meta-item { display: flex; align-items: center; gap: 4px; }
-          .section { margin-bottom: 24px; }
-          .section h2 { font-size: 16px; color: #111; margin-bottom: 12px; border-bottom: 1px solid #e5e5e5; padding-bottom: 8px; }
-          .section p { margin-bottom: 12px; }
-          ul { margin-left: 20px; margin-bottom: 12px; }
-          li { margin-bottom: 6px; }
-          .skills { display: flex; flex-wrap: wrap; gap: 8px; }
-          .skill { background: #f3f4f6; padding: 4px 12px; border-radius: 16px; font-size: 13px; }
-          .salary { font-size: 18px; font-weight: 600; color: #15803d; }
-          @media print {
-            body { padding: 20px; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>${data.jobTitle}</h1>
-          <div class="company">${data.companyName}</div>
-          <div class="meta">
-            ${data.location ? `<span class="meta-item">📍 ${data.location}</span>` : ''}
-            ${data.workType ? `<span class="meta-item">💼 ${data.workType}</span>` : ''}
-            ${data.employmentType ? `<span class="meta-item">⏰ ${data.employmentType}</span>` : ''}
-            ${data.experienceLevel ? `<span class="meta-item">📊 ${data.experienceLevel}</span>` : ''}
-          </div>
-          ${data.salaryMin || data.salaryMax ? `
-            <div class="salary" style="margin-top: 12px;">
-              ${data.salaryCurrency || '$'}${data.salaryMin?.toLocaleString() || ''}${data.salaryMax ? ` - ${data.salaryCurrency || '$'}${data.salaryMax.toLocaleString()}` : ''}
-            </div>
-          ` : ''}
-        </div>
+    // Salary
+    if (data.salaryMin || data.salaryMax) {
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(21, 128, 61); // Green
+      const currency = data.salaryCurrency || '$';
+      let salaryText = '';
+      if (data.salaryMin && data.salaryMax) {
+        salaryText = `${currency}${data.salaryMin.toLocaleString()} - ${currency}${data.salaryMax.toLocaleString()}`;
+      } else if (data.salaryMin) {
+        salaryText = `${currency}${data.salaryMin.toLocaleString()}+`;
+      } else if (data.salaryMax) {
+        salaryText = `Up to ${currency}${data.salaryMax.toLocaleString()}`;
+      }
+      pdf.text(salaryText, margin, yPos);
+      yPos += 5;
+    }
 
-        ${data.descriptionSummary ? `
-          <div class="section">
-            <h2>Summary</h2>
-            <p>${data.descriptionSummary}</p>
-          </div>
-        ` : ''}
+    // Line separator
+    yPos += 3;
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 10;
 
-        ${data.descriptionFull ? `
-          <div class="section">
-            <h2>Description</h2>
-            <p>${data.descriptionFull.replace(/\n/g, '<br>')}</p>
-          </div>
-        ` : ''}
+    // Helper function for sections
+    const addSection = (title: string, content: string | string[] | null) => {
+      if (!content || (Array.isArray(content) && content.length === 0)) return;
 
-        ${data.responsibilities?.length ? `
-          <div class="section">
-            <h2>Responsibilities</h2>
-            <ul>
-              ${data.responsibilities.map(r => `<li>${r}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
+      checkPageBreak(20);
 
-        ${data.qualifications?.length ? `
-          <div class="section">
-            <h2>Qualifications</h2>
-            <ul>
-              ${data.qualifications.map(q => `<li>${q}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
+      // Section title
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(17, 17, 17);
+      pdf.text(title, margin, yPos);
+      yPos += 7;
 
-        ${data.requiredSkills?.length ? `
-          <div class="section">
-            <h2>Required Skills</h2>
-            <div class="skills">
-              ${data.requiredSkills.map((s: any) => `<span class="skill">${typeof s === 'string' ? s : s.name || s.skill || s.title || ''}</span>`).join('')}
-            </div>
-          </div>
-        ` : ''}
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(51, 51, 51);
 
-        ${data.benefits?.length ? `
-          <div class="section">
-            <h2>Benefits</h2>
-            <ul>
-              ${data.benefits.map((b: any) => {
-                if (typeof b === 'string') return `<li>${b}</li>`;
-                if (b?.category && b?.items) return `<li><strong>${b.category}:</strong> ${b.items.join(', ')}</li>`;
-                return `<li>${b.name || b.benefit || b.title || b.description || ''}</li>`;
-              }).join('')}
-            </ul>
-          </div>
-        ` : ''}
+      if (Array.isArray(content)) {
+        for (const item of content) {
+          checkPageBreak(10);
+          const wrappedText = pdf.splitTextToSize(`\u2022 ${item}`, maxWidth - 5);
+          pdf.text(wrappedText, margin + 3, yPos);
+          yPos += wrappedText.length * 5 + 2;
+        }
+      } else {
+        const wrappedText = pdf.splitTextToSize(content, maxWidth);
+        for (let i = 0; i < wrappedText.length; i++) {
+          checkPageBreak(6);
+          pdf.text(wrappedText[i], margin, yPos);
+          yPos += 5;
+        }
+      }
+      yPos += 5;
+    };
 
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-          };
-        </script>
-      </body>
-      </html>
-    `;
+    // Summary
+    addSection('Summary', data.descriptionSummary);
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    // Description
+    addSection('Description', data.descriptionFull);
+
+    // Responsibilities
+    addSection('Responsibilities', data.responsibilities);
+
+    // Qualifications
+    addSection('Qualifications', data.qualifications);
+
+    // Required Skills
+    if (data.requiredSkills?.length) {
+      checkPageBreak(20);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(17, 17, 17);
+      pdf.text('Required Skills', margin, yPos);
+      yPos += 7;
+
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(51, 51, 51);
+
+      const skills = data.requiredSkills.map((s: any) =>
+        typeof s === 'string' ? s : s.name || s.skill || s.title || ''
+      ).filter(Boolean);
+
+      const skillsText = skills.join(', ');
+      const wrappedSkills = pdf.splitTextToSize(skillsText, maxWidth);
+      pdf.text(wrappedSkills, margin, yPos);
+      yPos += wrappedSkills.length * 5 + 5;
+    }
+
+    // Benefits
+    if (data.benefits?.length) {
+      checkPageBreak(20);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(17, 17, 17);
+      pdf.text('Benefits', margin, yPos);
+      yPos += 7;
+
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(51, 51, 51);
+
+      for (const benefit of data.benefits) {
+        checkPageBreak(10);
+        let benefitText: string;
+        if (typeof benefit === 'string') {
+          benefitText = benefit;
+        } else if (benefit?.category && benefit?.items) {
+          benefitText = `${benefit.category}: ${benefit.items.join(', ')}`;
+        } else {
+          benefitText = benefit?.name || benefit?.benefit || benefit?.title || benefit?.description || '';
+        }
+        if (benefitText) {
+          const wrappedText = pdf.splitTextToSize(`\u2022 ${benefitText}`, maxWidth - 5);
+          pdf.text(wrappedText, margin + 3, yPos);
+          yPos += wrappedText.length * 5 + 2;
+        }
+      }
+    }
+
+    // Save the PDF
+    const fileName = `Job-Description-${data.companyName.replace(/[^a-zA-Z0-9]/g, '-')}-${data.jobTitle.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`;
+    pdf.save(fileName);
   }
 
   /**
@@ -1532,96 +1609,95 @@ export class InterviewCalendarComponent implements OnInit {
       return;
     }
 
-    // Create a styled HTML document for printing to PDF
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Please allow popups to download PDF');
-      return;
+    // Create PDF using jsPDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const maxWidth = pageWidth - margin * 2;
+    let yPos = margin;
+
+    // Header
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Interview Preparation Notes', margin, yPos);
+    yPos += 10;
+
+    // Subtitle
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`${title} at ${companyName}`, margin, yPos);
+    yPos += 7;
+
+    // Date
+    pdf.setFontSize(10);
+    pdf.setTextColor(150, 150, 150);
+    const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    pdf.text(`Generated: ${dateStr}`, margin, yPos);
+    yPos += 5;
+
+    // Line separator
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 10;
+
+    // Content - process markdown-like content
+    pdf.setTextColor(51, 51, 51);
+    const lines = content.split('\n');
+
+    for (const line of lines) {
+      // Check if we need a new page
+      if (yPos > pageHeight - margin - 10) {
+        pdf.addPage();
+        yPos = margin;
+      }
+
+      const trimmedLine = line.trim();
+
+      if (trimmedLine.startsWith('## ')) {
+        // Section header
+        yPos += 5;
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        const headerText = trimmedLine.replace(/^## /, '');
+        pdf.text(headerText, margin, yPos);
+        yPos += 8;
+        pdf.setFont('helvetica', 'normal');
+      } else if (trimmedLine.startsWith('- ')) {
+        // Bullet point
+        pdf.setFontSize(11);
+        const bulletText = trimmedLine.replace(/^- /, '');
+        const wrappedText = pdf.splitTextToSize(`  \u2022 ${bulletText}`, maxWidth);
+        pdf.text(wrappedText, margin, yPos);
+        yPos += wrappedText.length * 5 + 2;
+      } else if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
+        // Bold text
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        const boldText = trimmedLine.replace(/^\*\*/, '').replace(/\*\*$/, '');
+        const wrappedText = pdf.splitTextToSize(boldText, maxWidth);
+        pdf.text(wrappedText, margin, yPos);
+        yPos += wrappedText.length * 5 + 2;
+        pdf.setFont('helvetica', 'normal');
+      } else if (trimmedLine) {
+        // Regular paragraph
+        pdf.setFontSize(11);
+        // Handle inline bold by removing markers (jsPDF doesn't support mixed formatting)
+        const cleanText = trimmedLine.replace(/\*\*(.+?)\*\*/g, '$1');
+        const wrappedText = pdf.splitTextToSize(cleanText, maxWidth);
+        pdf.text(wrappedText, margin, yPos);
+        yPos += wrappedText.length * 5 + 2;
+      } else {
+        // Empty line - add small spacing
+        yPos += 3;
+      }
     }
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Interview Prep - ${companyName} - ${title}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            padding: 40px;
-            max-width: 800px;
-            margin: 0 auto;
-          }
-          .header {
-            border-bottom: 2px solid #111;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          .header h1 {
-            font-size: 24px;
-            color: #111;
-            margin-bottom: 8px;
-          }
-          .header .subtitle {
-            font-size: 16px;
-            color: #666;
-          }
-          .header .date {
-            font-size: 12px;
-            color: #999;
-            margin-top: 8px;
-          }
-          .content {
-            white-space: pre-wrap;
-            font-size: 14px;
-            line-height: 1.8;
-          }
-          h2 { font-size: 18px; color: #111; margin: 24px 0 12px; }
-          ul { margin-left: 20px; }
-          li { margin-bottom: 8px; }
-          @media print {
-            body { padding: 20px; }
-            .no-print { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Interview Preparation Notes</h1>
-          <div class="subtitle">${title} at ${companyName}</div>
-          <div class="date">Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-        </div>
-        <div class="content">${this.formatInsightForPdf(content)}</div>
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-          };
-        </script>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-  }
-
-  /**
-   * Format insight content for PDF (convert markdown-like formatting to HTML)
-   */
-  private formatInsightForPdf(content: string): string {
-    return content
-      .replace(/## (\d+\. .+)/g, '<h2>$1</h2>')
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^(.+)$/gm, (match) => {
-        if (match.startsWith('<')) return match;
-        return match;
-      });
+    // Save the PDF
+    const fileName = `Interview-Prep-${companyName.replace(/[^a-zA-Z0-9]/g, '-')}-${title.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`;
+    pdf.save(fileName);
   }
 
   /**

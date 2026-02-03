@@ -152,6 +152,7 @@
                 [class.expand-right]="event.interview && isEventExpanded(event.interview) && expandDirection === 'right'"
                 [style.backgroundColor]="event.color?.secondary || '#f3f4f6'"
                 [style.borderLeftColor]="event.color?.primary || '#6b7280'"
+                [title]="getEventTooltip(event)"
                 (click)="toggleExpandedEvent(event, getEventDayIndex(event))"
               >
                 <!-- Status indicator -->
@@ -487,6 +488,21 @@
             [(ngModel)]="editTime"
             class="edit-input"
           />
+        </div>
+      </div>
+
+      <!-- Duration Edit -->
+      <div class="detail-row edit-row" *ngIf="isEditing">
+        <strong>Duration</strong>
+        <div class="edit-inputs">
+          <select [(ngModel)]="editDuration" class="edit-input duration-select">
+            <option [value]="15">15 minutes</option>
+            <option [value]="30">30 minutes</option>
+            <option [value]="45">45 minutes</option>
+            <option [value]="60">1 hour</option>
+            <option [value]="90">1.5 hours</option>
+            <option [value]="120">2 hours</option>
+          </select>
         </div>
       </div>
 

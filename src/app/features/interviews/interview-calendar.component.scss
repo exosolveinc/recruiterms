@@ -134,7 +134,12 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
-  padding: 0;
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 100;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .calendar-header-col {
@@ -1800,6 +1805,48 @@
 }
 
 // ============================================================================
+// CALENDAR EVENT OVERFLOW FIX
+// ============================================================================
+
+// Allow hover actions to overflow when multiple events in same block
+::ng-deep {
+  .cal-week-view,
+  .cal-day-view {
+    .cal-event-container {
+      overflow: visible !important;
+
+      &:hover {
+        z-index: 9999 !important;
+      }
+    }
+
+    .cal-event {
+      overflow: visible !important;
+
+      &:hover {
+        z-index: 9999 !important;
+      }
+    }
+
+    .cal-events-container {
+      overflow: visible !important;
+    }
+
+    .cal-time-events {
+      overflow: visible !important;
+    }
+
+    .cal-day-columns {
+      overflow: visible !important;
+    }
+
+    .cal-day-column {
+      overflow: visible !important;
+    }
+  }
+}
+
+// ============================================================================
 // CALENDAR CELL BORDERS
 // ============================================================================
 
@@ -1925,27 +1972,19 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
 
 .custom-event {
   position: relative;
-  border-radius: 8px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  overflow: visible;
   padding: 10px 12px;
   height: 100%;
   min-height: 42px;
-  border-left: 3px solid;
   font-size: 12px;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 
   &:hover {
-    z-index: 50;
+    z-index: 10 !important;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-    transform: translateY(-1px);
-
-    .event-hover-actions {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 }
 
@@ -1989,17 +2028,45 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
 // Hover quick actions
 .event-hover-actions {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
   display: flex;
   justify-content: center;
-  gap: 4px;
-  padding: 6px;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 70%, transparent 100%);
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   opacity: 0;
-  transform: translateY(8px);
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  z-index: 10;
+  pointer-events: none;
+  flex-direction: row;
+}
+
+// Vertical layout for narrow events (less width)
+.custom-event:not(.expanded) {
+  container-type: size;
+}
+
+@container (max-width: 80px) {
+  .event-hover-actions {
+    flex-direction: column;
+  }
+}
+
+@container (max-height: 50px) {
+  .event-hover-actions {
+    flex-direction: row;
+  }
+}
+
+.custom-event:hover .event-hover-actions {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: auto;
 }
 
 .hover-action-btn {
@@ -2007,29 +2074,37 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
   width: 26px;
   height: 26px;
   padding: 0;
-  background: #fff;
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  color: #64748b;
+  color: #475569;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
   flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 
   &:hover {
     background: #0f172a;
     color: #fff;
     border-color: #0f172a;
-    transform: scale(1.08);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+    transform: scale(1.05);
   }
 
   svg {
-    width: 13px;
-    height: 13px;
+    width: 12px;
+    height: 12px;
+  }
+}
+
+// Fallback for browsers without container query support
+// Default to vertical for small events
+@supports not (container-type: size) {
+  .custom-event {
+    .event-hover-actions {
+      flex-direction: column;
+    }
   }
 }
 
