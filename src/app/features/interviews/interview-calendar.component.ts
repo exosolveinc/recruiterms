@@ -118,6 +118,9 @@ export class InterviewCalendarComponent implements OnInit {
   // Pre-loaded insights cache (interviewId -> insight data)
   insightsCache: Map<string, { content: string; ready: boolean; generating: boolean }> = new Map();
 
+  // Pre-loaded jobs cache (jobId -> job data)
+  jobsCache: Map<string, any> = new Map();
+
   // AI Insight Dialog
   showInsightDialog = false;
   insightDialogData: {
@@ -166,7 +169,8 @@ export class InterviewCalendarComponent implements OnInit {
     await this.loadApplications();
     await this.loadInterviews();
 
-    // Pre-load all AI insights
+    // Pre-load all jobs and AI insights
+    await this.loadAllJobs();
     await this.loadAllInsights();
 
     // Show welcome message in AI panel
@@ -729,20 +733,23 @@ export class InterviewCalendarComponent implements OnInit {
         if (matchingApp) {
           applicationId = matchingApp.id;
           title = `${matchingApp.job_title} at ${matchingApp.company_name}`;
-        }
-      }
-
-      // Use first available application if none found
-      if (!applicationId && this.applications.length > 0) {
-        const firstApp = this.applications[0];
-        applicationId = firstApp.id;
-        if (!slot.companyName) {
-          title = `${firstApp.job_title} at ${firstApp.company_name}`;
+        } else {
+          // No matching application found for the specified company
+          this.showConfirmDialog = false;
+          this.pendingSlot = null;
+          this.schedulingInterview = false;
+          this.aiMessages.push({
+            role: 'assistant',
+            content: `I can't schedule an interview for ${slot.companyName} because you haven't applied to any jobs at this company yet. Please apply to a job first, then I can help you schedule an interview.`,
+            timestamp: new Date()
+          });
+          this.cdr.markForCheck();
+          return;
         }
       }
 
       if (!applicationId) {
-        throw new Error('No application found. Please select an application first.');
+        throw new Error('No application found. Please apply to a job first before scheduling an interview.');
       }
 
       // Convert date/time to UTC
@@ -957,26 +964,17 @@ export class InterviewCalendarComponent implements OnInit {
       }
     }
 
-    // Get job description from jobs table
+    // Get job description from cache
     let jobDescData = null;
     if (app?.job_id) {
-      try {
-        const { data: jobData } = await this.supabase.supabaseClient
-          .from('jobs')
-          .select('*')
-          .eq('id', app.job_id)
-          .single();
-
-        if (jobData) {
-          jobDescData = {
-            name: `${jobData.company_name || app.company_name} - ${jobData.job_title || app.job_title}`,
-            jobId: jobData.id,
-            ready: true,
-            job: jobData
-          };
-        }
-      } catch (err) {
-        console.error('Failed to load job details:', err);
+      const jobData = this.jobsCache.get(app.job_id);
+      if (jobData) {
+        jobDescData = {
+          name: `${jobData.company_name || app.company_name} - ${jobData.job_title || app.job_title}`,
+          jobId: jobData.id,
+          ready: true,
+          job: jobData
+        };
       }
     }
 
@@ -1021,6 +1019,33 @@ export class InterviewCalendarComponent implements OnInit {
       this.cdr.markForCheck();
     } catch (err) {
       console.error('Failed to load insights:', err);
+    }
+  }
+
+  /**
+   * Load all jobs for applications on page init
+   */
+  async loadAllJobs() {
+    if (this.applications.length === 0) return;
+
+    try {
+      // Get unique job IDs from applications
+      const jobIds = [...new Set(this.applications.map(a => a.job_id).filter(Boolean))];
+      if (jobIds.length === 0) return;
+
+      const { data } = await this.supabase.supabaseClient
+        .from('jobs')
+        .select('*')
+        .in('id', jobIds);
+
+      if (data) {
+        data.forEach((job: any) => {
+          this.jobsCache.set(job.id, job);
+        });
+      }
+      this.cdr.markForCheck();
+    } catch (err) {
+      console.error('Failed to load jobs:', err);
     }
   }
 
@@ -1138,6 +1163,96 @@ export class InterviewCalendarComponent implements OnInit {
   viewResume() {
     if (this.expandedEventData?.resume?.url) {
       window.open(this.expandedEventData.resume.url, '_blank');
+    }
+  }
+
+  /**
+   * View resume from event (for hover actions)
+   */
+  viewResumeFromEvent(interview: ScheduledInterview) {
+    const app = this.applications.find(a => a.id === interview.application_id);
+    if (!app?.resume_id) return;
+
+    const candidate = this.candidates().find(c =>
+      c.resumes.some(r => r.id === app.resume_id)
+    );
+    const resume = candidate?.resumes.find(r => r.id === app.resume_id);
+    if (resume?.file_url) {
+      window.open(resume.file_url, '_blank');
+    }
+  }
+
+  /**
+   * View job description from event (for hover actions)
+   */
+  viewJobDescFromEvent(interview: ScheduledInterview) {
+    const app = this.applications.find(a => a.id === interview.application_id);
+    if (!app?.job_id) return;
+
+    const jobData = this.jobsCache.get(app.job_id);
+    if (jobData) {
+      this.jobDescDialogData = {
+        jobTitle: jobData.job_title || 'Job Position',
+        companyName: jobData.company_name || '',
+        location: jobData.location,
+        workType: jobData.work_type,
+        employmentType: jobData.employment_type,
+        experienceLevel: jobData.experience_level,
+        salaryMin: jobData.salary_min,
+        salaryMax: jobData.salary_max,
+        salaryCurrency: jobData.salary_currency || 'USD',
+        descriptionSummary: jobData.description_summary,
+        descriptionFull: jobData.description_full,
+        responsibilities: jobData.responsibilities,
+        qualifications: jobData.qualifications,
+        requiredSkills: jobData.required_skills,
+        benefits: jobData.benefits,
+        sourceUrl: jobData.source_url
+      };
+      this.showJobDescDialog = true;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /**
+   * View AI insight from event (for hover actions)
+   */
+  async viewAiInsightFromEvent(interview: ScheduledInterview) {
+    const app = this.applications.find(a => a.id === interview.application_id);
+
+    // Check cache first
+    let insightContent = this.insightsCache.get(interview.id)?.content;
+
+    // If not in cache, fetch from database
+    if (!insightContent) {
+      try {
+        const { data } = await this.supabase.supabaseClient
+          .from('interview_ai_insights')
+          .select('content')
+          .eq('interview_id', interview.id)
+          .single();
+
+        if (data?.content) {
+          insightContent = data.content;
+          this.insightsCache.set(interview.id, {
+            content: data.content,
+            ready: true,
+            generating: false
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load AI insight:', err);
+      }
+    }
+
+    if (insightContent) {
+      this.insightDialogData = {
+        title: app?.job_title || interview.title || 'Interview',
+        companyName: app?.company_name || '',
+        content: insightContent
+      };
+      this.showInsightDialog = true;
+      this.cdr.markForCheck();
     }
   }
 

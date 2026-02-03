@@ -22,6 +22,7 @@ export class InterviewModalComponent implements OnInit {
   @Input() existingInterview?: ScheduledInterview;
   @Input() preselectedDate?: Date | null;
   @Input() availableApplications?: UserApplicationView[]; // For calendar empty slot click
+  @Input() hideAiAssistant = false; // Hide AI scheduling assistant
   @Output() close = new EventEmitter<void>();
   @Output() saved = new EventEmitter<ScheduledInterview>();
 

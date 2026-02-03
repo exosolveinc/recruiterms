@@ -1735,19 +1735,22 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
   left: 0;
   right: 0;
   display: flex;
-  gap: 4px;
-  padding: 6px;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 50%, transparent 100%);
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.9) 60%, transparent 100%);
   opacity: 0;
   transform: translateY(8px);
   transition: all 0.2s ease;
 }
 
 .hover-action-btn {
-  flex: 1;
-  padding: 6px 4px;
-  background: rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 4px;
   color: #374151;
   cursor: pointer;
@@ -1755,6 +1758,7 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 
   &:hover {
     background: #111;
@@ -1763,8 +1767,8 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
   }
 
   svg {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
   }
 }
 

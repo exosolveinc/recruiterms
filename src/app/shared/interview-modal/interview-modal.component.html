@@ -33,7 +33,7 @@
             </div>
 
             <!-- AI Scheduling Assistant Toggle -->
-            <div class="ai-assistant-toggle">
+            <div class="ai-assistant-toggle" *ngIf="!hideAiAssistant">
                 <button
                     type="button"
                     class="btn-ai-assistant"
@@ -49,7 +49,7 @@
             </div>
 
             <!-- AI Assistant Panel -->
-            <div class="ai-assistant-panel" *ngIf="showAiAssistant">
+            <div class="ai-assistant-panel" *ngIf="showAiAssistant && !hideAiAssistant">
                 <div class="ai-chat-container">
                     <!-- Messages -->
                     <div class="ai-messages">
