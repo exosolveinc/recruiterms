@@ -136,8 +136,8 @@
 
   h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 400;
     color: #111;
   }
 }
@@ -652,16 +652,18 @@
 .ai-avatar {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: #111;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
 
-  svg {
-    width: 22px;
-    height: 22px;
+  i {
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -750,16 +752,18 @@
   width: 28px;
   height: 28px;
   min-width: 28px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: #111;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
 
-  svg {
-    width: 14px;
-    height: 14px;
+  i{
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   &.user-avatar {
@@ -1612,5 +1616,948 @@
   .confirm-modal {
     max-width: 100%;
     margin: 0 16px;
+  }
+}
+
+// ============================================================================
+// CALENDAR DAY HEADER STYLES
+// ============================================================================
+
+// Day name - 14px, not bold
+.cal-week-view .cal-day-headers .cal-header b,
+mwl-calendar-week-view .cal-day-headers .cal-header b {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  font-weight: normal !important;
+}
+
+// Date - 12px
+.cal-week-view .cal-day-headers .cal-header span,
+mwl-calendar-week-view .cal-day-headers .cal-header span {
+  font-size: 12px !important;
+}
+
+// Time labels - 12px, normal weight
+.cal-week-view .cal-time,
+mwl-calendar-week-view .cal-time {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+
+// Month view day headers - 14px, not bold
+.cal-month-view .cal-header .cal-cell,
+mwl-calendar-month-view .cal-header .cal-cell {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+// Month view day numbers - 15px, not bold
+.cal-month-view .cal-day-number,
+mwl-calendar-month-view .cal-day-number {
+  font-size: 15px !important;
+  font-weight: 400 !important;
+}
+
+// Month view today's day number - 22px, not bold
+.cal-month-view .cal-day-cell.cal-today .cal-day-number,
+mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
+  font-size: 22px !important;
+  font-weight: 400 !important;
+}
+
+// ============================================================================
+// CUSTOM EVENT TEMPLATE - EXPANDED VIEW
+// ============================================================================
+
+.custom-event {
+  position: relative;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  padding: 8px 10px;
+  height: 100%;
+  min-height: 40px;
+  border-left: 3px solid;
+  font-size: 12px;
+  background: #f9fafb;
+
+  &:hover {
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+    .event-hover-actions {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.event-status-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.event-title {
+  font-weight: 600;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 16px;
+  line-height: 1.3;
+}
+
+.event-time {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 2px;
+  font-family: monospace;
+  line-height: 1.2;
+}
+
+// Ensure custom event fills the calendar event container properly
+::ng-deep .cal-event {
+  .custom-event {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+// Hover quick actions
+.event-hover-actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 50%, transparent 100%);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.2s ease;
+}
+
+.hover-action-btn {
+  flex: 1;
+  padding: 6px 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  color: #374151;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+// Expanded state
+.custom-event.expanded {
+  position: absolute;
+  z-index: 100;
+  padding: 14px;
+  width: 320px;
+  height: auto !important;
+  min-height: 280px;
+  overflow: visible;
+  background: #fff !important;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  border-left: 4px solid;
+
+  .event-hover-actions {
+    display: none;
+  }
+}
+
+// Expand directions
+.custom-event.expanded.expand-right {
+  left: 0;
+  right: auto;
+}
+
+.custom-event.expanded.expand-left {
+  right: 0;
+  left: auto;
+}
+
+.expanded-role {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+// Expanded content
+.event-expanded-content {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+  animation: slideDown 0.25s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Document items
+.doc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  margin: 6px 0;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+  }
+
+  &.ai-insight-item {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border-color: #bbf7d0;
+  }
+}
+
+.doc-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-icon {
+  width: 32px;
+  height: 32px;
+  background: #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+
+  &.pending {
+    background: #fef3c7;
+    color: #b45309;
+  }
+
+  .ai-insight-item & {
+    background: #dcfce7;
+    color: #15803d;
+  }
+}
+
+.doc-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111;
+}
+
+.doc-file {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 1px;
+  font-family: monospace;
+}
+
+.doc-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.doc-action-btn {
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+  }
+
+  &.generate-btn {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border-color: #86efac;
+    color: #15803d;
+
+    &:hover {
+      background: linear-gradient(135deg, #bbf7d0 0%, #86efac 100%);
+    }
+  }
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.generating-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #15803d;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+// AI Insight Preview
+.ai-insight-preview {
+  margin-top: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+
+  .insight-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: #15803d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .insight-content {
+    font-size: 12px;
+    color: #374151;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+}
+
+// View full button
+.view-full-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  margin-top: 14px;
+  background: #111;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #333;
+    transform: translateY(-1px);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+// ============================================================================
+// AI INSIGHT DIALOG
+// ============================================================================
+
+.insight-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 24px;
+  backdrop-filter: blur(4px);
+}
+
+.insight-dialog {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 700px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  animation: dialogSlideIn 0.25s ease;
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.insight-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+}
+
+.insight-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.insight-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.insight-title-text {
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111;
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: #15803d;
+  }
+}
+
+.insight-dialog-header .btn-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #111;
+  }
+}
+
+.insight-dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.insight-content-full {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #374151;
+
+  // Markdown heading styles
+  h1, h2, h3, h4, h5, h6 {
+    color: #111;
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  h1 { font-size: 1.5em; }
+  h2 { font-size: 1.3em; }
+  h3 { font-size: 1.15em; }
+  h4 { font-size: 1em; }
+
+  // Paragraphs
+  p {
+    margin: 0 0 1em;
+  }
+
+  // Lists
+  ul, ol {
+    margin: 0 0 1em;
+    padding-left: 1.5em;
+  }
+
+  li {
+    margin-bottom: 0.4em;
+  }
+
+  // Strong/Bold
+  strong, b {
+    font-weight: 600;
+    color: #111;
+  }
+
+  // Emphasis/Italic
+  em, i {
+    font-style: italic;
+  }
+
+  // Code inline
+  code {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+  }
+
+  // Code blocks
+  pre {
+    background: #f3f4f6;
+    padding: 12px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1em 0;
+
+    code {
+      background: none;
+      padding: 0;
+    }
+  }
+
+  // Blockquotes
+  blockquote {
+    border-left: 3px solid #d1d5db;
+    padding-left: 16px;
+    margin: 1em 0;
+    color: #6b7280;
+    font-style: italic;
+  }
+
+  // Horizontal rules
+  hr {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 1.5em 0;
+  }
+
+  // Links
+  a {
+    color: #6366f1;
+    text-decoration: underline;
+
+    &:hover {
+      color: #4f46e5;
+    }
+  }
+}
+
+.insight-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.btn-copy,
+.btn-download-pdf,
+.btn-close-dialog {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.btn-copy {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+  }
+}
+
+.btn-download-pdf {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #fff;
+  border: none;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  }
+}
+
+.btn-close-dialog {
+  background: #111;
+  color: #fff;
+  border: none;
+
+  &:hover {
+    background: #333;
+  }
+}
+
+@media (max-width: 768px) {
+  .insight-dialog {
+    max-width: 100%;
+    max-height: 90vh;
+    margin: 16px;
+    border-radius: 12px;
+  }
+
+  .insight-dialog-header {
+    padding: 16px 20px;
+  }
+
+  .insight-dialog-body {
+    padding: 20px;
+  }
+
+  .insight-dialog-footer {
+    padding: 12px 20px;
+    flex-wrap: wrap;
+
+    button {
+      flex: 1;
+      min-width: 100px;
+    }
+  }
+}
+
+// ============================================================================
+// JOB DESCRIPTION DIALOG
+// ============================================================================
+
+.job-desc-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 24px;
+  backdrop-filter: blur(4px);
+}
+
+.job-desc-dialog {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 700px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  animation: dialogSlideIn 0.25s ease;
+}
+
+.job-desc-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.job-desc-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.job-desc-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.job-desc-title-text {
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111;
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: #6b7280;
+  }
+}
+
+.job-desc-dialog-header .btn-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #111;
+  }
+}
+
+.job-desc-dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+// Job Meta Section
+.job-meta-section {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.job-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.job-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #374151;
+
+  .meta-icon {
+    font-size: 16px;
+  }
+}
+
+.job-salary {
+  font-size: 20px;
+  font-weight: 600;
+  color: #15803d;
+  margin-top: 8px;
+}
+
+// Job Sections
+.job-section {
+  margin-bottom: 24px;
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+}
+
+.job-content {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #374151;
+
+  p {
+    margin-bottom: 12px;
+  }
+}
+
+.job-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.5;
+
+    &::before {
+      content: '•';
+      position: absolute;
+      left: 0;
+      color: #6366f1;
+      font-weight: bold;
+    }
+  }
+}
+
+.job-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.job-skill {
+  display: inline-block;
+  padding: 6px 14px;
+  background: #ede9fe;
+  color: #6366f1;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.job-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6366f1;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 10px 16px;
+  background: #f5f3ff;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #ede9fe;
+    color: #4f46e5;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.job-desc-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+@media (max-width: 768px) {
+  .job-desc-dialog {
+    max-width: 100%;
+    max-height: 90vh;
+    margin: 16px;
+    border-radius: 12px;
+  }
+
+  .job-desc-dialog-header {
+    padding: 16px 20px;
+  }
+
+  .job-desc-dialog-body {
+    padding: 20px;
+  }
+
+  .job-desc-dialog-footer {
+    padding: 12px 20px;
+    flex-wrap: wrap;
+
+    button {
+      flex: 1;
+      min-width: 100px;
+    }
+  }
+
+  .job-meta-grid {
+    flex-direction: column;
+    gap: 8px;
   }
 }

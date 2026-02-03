@@ -14,12 +14,16 @@ import {
   CalendarEventTitleFormatter
 } from 'angular-calendar';
 import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
+import { MarkdownModule } from 'ngx-markdown';
 import { InterviewService, ScheduledInterview, ScheduleAssistantMessage, SuggestedSlot, CreateInterviewRequest } from '../../core/services/interview.service';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { AppStateService } from '../../core/services/app-state.service';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 import { InterviewModalComponent } from '../../shared/interview-modal/interview-modal.component';
 import { UserApplicationView } from '../../core/models';
+import { environment } from '../../../environments/environment';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 interface InterviewCalendarEvent extends CalendarEvent {
   interview?: ScheduledInterview;
@@ -33,7 +37,8 @@ interface InterviewCalendarEvent extends CalendarEvent {
     FormsModule,
     SidebarComponent,
     CalendarModule,
-    InterviewModalComponent
+    InterviewModalComponent,
+    MarkdownModule
   ],
   templateUrl: './interview-calendar.component.html',
   styleUrls: ['./interview-calendar.component.scss'],
@@ -101,6 +106,47 @@ export class InterviewCalendarComponent implements OnInit {
   clickedDate: Date | null = null;
   availableAppsForSchedule: UserApplicationView[] = [];
 
+  // Expanded Event View
+  expandedEventId: string | null = null;
+  expandDirection: 'left' | 'right' = 'right';
+  expandedEventData: {
+    resume: { name: string; url: string; ready: boolean } | null;
+    jobDesc: { name: string; jobId: string; ready: boolean; job: any } | null;
+    aiInsight: { content: string; ready: boolean; generating: boolean } | null;
+  } | null = null;
+
+  // Pre-loaded insights cache (interviewId -> insight data)
+  insightsCache: Map<string, { content: string; ready: boolean; generating: boolean }> = new Map();
+
+  // AI Insight Dialog
+  showInsightDialog = false;
+  insightDialogData: {
+    title: string;
+    companyName: string;
+    content: string;
+  } | null = null;
+
+  // Job Description Dialog
+  showJobDescDialog = false;
+  jobDescDialogData: {
+    jobTitle: string;
+    companyName: string;
+    location: string | null;
+    workType: string | null;
+    employmentType: string | null;
+    experienceLevel: string | null;
+    salaryMin: number | null;
+    salaryMax: number | null;
+    salaryCurrency: string | null;
+    descriptionSummary: string | null;
+    descriptionFull: string | null;
+    responsibilities: string[] | null;
+    qualifications: string[] | null;
+    requiredSkills: any[] | null;
+    benefits: any[] | null;
+    sourceUrl: string | null;
+  } | null = null;
+
   // Effect to reload when candidate changes
   private candidateEffect = effect(() => {
     const candidateId = this.selectedCandidateId();
@@ -111,13 +157,17 @@ export class InterviewCalendarComponent implements OnInit {
 
   constructor(
     private interviewService: InterviewService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private http: HttpClient
   ) {}
 
   async ngOnInit() {
     await this.loadCandidates();
     await this.loadApplications();
     await this.loadInterviews();
+
+    // Pre-load all AI insights
+    await this.loadAllInsights();
 
     // Show welcome message in AI panel
     if (this.showAiPanel && this.aiMessages.length === 0) {
@@ -433,18 +483,23 @@ export class InterviewCalendarComponent implements OnInit {
   }
 
   // Format helpers
-  formatTime(date: string): string {
-    const time = new Date(date).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'America/New_York'
-    });
-    const tzAbbr = new Date(date).toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York',
-      timeZoneName: 'short'
-    }).split(' ').pop(); // Gets EST or EDT
-    return `${time} ${tzAbbr}`;
+  formatTime(date: string | undefined | null): string {
+    if (!date) return '';
+    try {
+      const time = new Date(date).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'America/New_York'
+      });
+      const tzAbbr = new Date(date).toLocaleTimeString('en-US', {
+        timeZone: 'America/New_York',
+        timeZoneName: 'short'
+      }).split(' ').pop(); // Gets EST or EDT
+      return `${time} ${tzAbbr}`;
+    } catch {
+      return '';
+    }
   }
 
   formatDate(date: string): string {
@@ -829,6 +884,665 @@ export class InterviewCalendarComponent implements OnInit {
   async onInterviewScheduled(interview: ScheduledInterview) {
     this.closeScheduleModal();
     await this.loadInterviews();
+
+    // Auto-generate AI insights for newly scheduled interview
+    this.generateAiInsightForInterview(interview.id);
+
     this.cdr.markForCheck();
+  }
+
+  // ============================================================================
+  // EXPANDED EVENT VIEW
+  // ============================================================================
+
+  /**
+   * Toggle expanded view for an event
+   */
+  toggleExpandedEvent(event: InterviewCalendarEvent, dayIndex: number) {
+    if (!event.interview) return;
+
+    const interviewId = event.interview.id;
+
+    // If already expanded, collapse
+    if (this.expandedEventId === interviewId) {
+      this.collapseEvent();
+      return;
+    }
+
+    // Smart positioning: days 0-3 expand right, days 4-6 expand left
+    this.expandDirection = dayIndex >= 4 ? 'left' : 'right';
+    this.expandedEventId = interviewId;
+
+    // Load event data
+    this.loadExpandedEventData(event.interview);
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Collapse expanded event
+   */
+  collapseEvent() {
+    this.expandedEventId = null;
+    this.expandedEventData = null;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Check if event is expanded
+   */
+  isEventExpanded(interview: ScheduledInterview): boolean {
+    return this.expandedEventId === interview.id;
+  }
+
+  /**
+   * Load data for expanded event view
+   */
+  async loadExpandedEventData(interview: ScheduledInterview) {
+    // Find the application for this interview
+    const app = this.applications.find(a => a.id === interview.application_id);
+
+    // Get resume info
+    let resumeData = null;
+    if (app?.resume_id) {
+      const candidate = this.candidates().find(c =>
+        c.resumes.some(r => r.id === app.resume_id)
+      );
+      const resume = candidate?.resumes.find(r => r.id === app.resume_id);
+      if (resume) {
+        resumeData = {
+          name: resume.file_name || 'Resume.pdf',
+          url: resume.file_url || '',
+          ready: true
+        };
+      }
+    }
+
+    // Get job description from jobs table
+    let jobDescData = null;
+    if (app?.job_id) {
+      try {
+        const { data: jobData } = await this.supabase.supabaseClient
+          .from('jobs')
+          .select('*')
+          .eq('id', app.job_id)
+          .single();
+
+        if (jobData) {
+          jobDescData = {
+            name: `${jobData.company_name || app.company_name} - ${jobData.job_title || app.job_title}`,
+            jobId: jobData.id,
+            ready: true,
+            job: jobData
+          };
+        }
+      } catch (err) {
+        console.error('Failed to load job details:', err);
+      }
+    }
+
+    // Check for existing AI insight
+    const existingInsight = await this.getExistingAiInsight(interview.id);
+
+    this.expandedEventData = {
+      resume: resumeData,
+      jobDesc: jobDescData,
+      aiInsight: existingInsight || {
+        content: '',
+        ready: false,
+        generating: false
+      }
+    };
+
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Load all AI insights for interviews on page init
+   */
+  async loadAllInsights() {
+    if (this.allInterviews.length === 0) return;
+
+    try {
+      const interviewIds = this.allInterviews.map(i => i.id);
+      const { data } = await this.supabase.supabaseClient
+        .from('interview_ai_insights')
+        .select('interview_id, content')
+        .in('interview_id', interviewIds);
+
+      if (data) {
+        data.forEach((insight: { interview_id: string; content: string }) => {
+          this.insightsCache.set(insight.interview_id, {
+            content: insight.content,
+            ready: true,
+            generating: false
+          });
+        });
+      }
+      this.cdr.markForCheck();
+    } catch (err) {
+      console.error('Failed to load insights:', err);
+    }
+  }
+
+  /**
+   * Get existing AI insight for interview
+   */
+  async getExistingAiInsight(interviewId: string): Promise<{ content: string; ready: boolean; generating: boolean } | null> {
+    // Check cache first
+    if (this.insightsCache.has(interviewId)) {
+      return this.insightsCache.get(interviewId)!;
+    }
+
+    try {
+      const { data } = await this.supabase.supabaseClient
+        .from('interview_ai_insights')
+        .select('content')
+        .eq('interview_id', interviewId)
+        .maybeSingle();
+
+      if (data?.content) {
+        const insight = { content: data.content, ready: true, generating: false };
+        this.insightsCache.set(interviewId, insight);
+        return insight;
+      }
+    } catch (err) {
+      // No insight exists yet
+    }
+    return null;
+  }
+
+  /**
+   * Check if insight exists for interview (from cache)
+   */
+  hasInsight(interviewId: string): boolean {
+    return this.insightsCache.has(interviewId);
+  }
+
+  /**
+   * Generate AI insight for interview
+   */
+  async generateAiInsight() {
+    if (!this.expandedEventId || !this.expandedEventData) return;
+
+    const interview = this.allInterviews.find(i => i.id === this.expandedEventId);
+    if (!interview) return;
+
+    this.expandedEventData.aiInsight = {
+      content: '',
+      ready: false,
+      generating: true
+    };
+    this.cdr.markForCheck();
+
+    await this.generateAiInsightForInterview(interview.id);
+
+    // Reload the insight (will also update cache)
+    const insight = await this.getExistingAiInsight(interview.id);
+    if (insight) {
+      this.expandedEventData.aiInsight = insight;
+      // Update cache
+      this.insightsCache.set(interview.id, insight);
+    } else {
+      this.expandedEventData.aiInsight = {
+        content: 'Failed to generate insight. Please try again.',
+        ready: false,
+        generating: false
+      };
+    }
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Generate AI insight for a specific interview
+   */
+  async generateAiInsightForInterview(interviewId: string) {
+    try {
+      const interview = this.allInterviews.find(i => i.id === interviewId);
+      if (!interview) return;
+
+      const app = this.applications.find(a => a.id === interview.application_id);
+      if (!app) return;
+
+      // Get resume content
+      const candidate = this.candidates().find(c =>
+        c.resumes.some(r => r.id === app.resume_id)
+      );
+      const resume = candidate?.resumes.find(r => r.id === app.resume_id);
+
+      const headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${environment.supabaseAnonKey}`
+      });
+
+      // Call edge function to generate insight
+      await firstValueFrom(
+        this.http.post(`${environment.supabaseUrl}/functions/v1/generate-interview-insight`, {
+          interviewId,
+          applicationId: app.id,
+          jobTitle: app.job_title,
+          companyName: app.company_name,
+          jobDescription: '', // Job description is not in UserApplicationView
+          resumeSummary: resume?.professional_summary || '',
+          workHistory: resume?.work_history || [],
+          skills: resume?.skills || []
+        }, { headers })
+      );
+    } catch (err) {
+      console.error('Failed to generate AI insight:', err);
+    }
+  }
+
+  /**
+   * View resume in new tab
+   */
+  viewResume() {
+    if (this.expandedEventData?.resume?.url) {
+      window.open(this.expandedEventData.resume.url, '_blank');
+    }
+  }
+
+  /**
+   * Download resume
+   */
+  async downloadResume() {
+    if (!this.expandedEventData?.resume?.url) return;
+
+    try {
+      const response = await fetch(this.expandedEventData.resume.url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = this.expandedEventData.resume.name || 'resume.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Failed to download resume:', err);
+      // Fallback: open in new tab
+      window.open(this.expandedEventData.resume.url, '_blank');
+    }
+  }
+
+  /**
+   * View job description in dialog
+   */
+  viewJobDesc() {
+    if (!this.expandedEventData?.jobDesc?.job) return;
+
+    const job = this.expandedEventData.jobDesc.job;
+    this.jobDescDialogData = {
+      jobTitle: job.job_title || 'Job Position',
+      companyName: job.company_name || '',
+      location: job.location,
+      workType: job.work_type,
+      employmentType: job.employment_type,
+      experienceLevel: job.experience_level,
+      salaryMin: job.salary_min,
+      salaryMax: job.salary_max,
+      salaryCurrency: job.salary_currency || 'USD',
+      descriptionSummary: job.description_summary,
+      descriptionFull: job.description_full,
+      responsibilities: job.responsibilities,
+      qualifications: job.qualifications,
+      requiredSkills: job.required_skills,
+      benefits: job.benefits,
+      sourceUrl: job.source_url
+    };
+    this.showJobDescDialog = true;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Close job description dialog
+   */
+  closeJobDescDialog() {
+    this.showJobDescDialog = false;
+    this.jobDescDialogData = null;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Download job description as PDF
+   */
+  downloadJobDesc() {
+    if (!this.jobDescDialogData && this.expandedEventData?.jobDesc?.job) {
+      // If dialog not open, use expanded event data
+      const job = this.expandedEventData.jobDesc.job;
+      this.jobDescDialogData = {
+        jobTitle: job.job_title || 'Job Position',
+        companyName: job.company_name || '',
+        location: job.location,
+        workType: job.work_type,
+        employmentType: job.employment_type,
+        experienceLevel: job.experience_level,
+        salaryMin: job.salary_min,
+        salaryMax: job.salary_max,
+        salaryCurrency: job.salary_currency || 'USD',
+        descriptionSummary: job.description_summary,
+        descriptionFull: job.description_full,
+        responsibilities: job.responsibilities,
+        qualifications: job.qualifications,
+        requiredSkills: job.required_skills,
+        benefits: job.benefits,
+        sourceUrl: job.source_url
+      };
+    }
+
+    if (!this.jobDescDialogData) return;
+
+    const data = this.jobDescDialogData;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to download PDF');
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <title>${data.jobTitle} - ${data.companyName}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+          }
+          .header {
+            border-bottom: 2px solid #111;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .header h1 { font-size: 24px; color: #111; margin-bottom: 8px; }
+          .header .company { font-size: 18px; color: #666; margin-bottom: 12px; }
+          .meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: #666; }
+          .meta-item { display: flex; align-items: center; gap: 4px; }
+          .section { margin-bottom: 24px; }
+          .section h2 { font-size: 16px; color: #111; margin-bottom: 12px; border-bottom: 1px solid #e5e5e5; padding-bottom: 8px; }
+          .section p { margin-bottom: 12px; }
+          ul { margin-left: 20px; margin-bottom: 12px; }
+          li { margin-bottom: 6px; }
+          .skills { display: flex; flex-wrap: wrap; gap: 8px; }
+          .skill { background: #f3f4f6; padding: 4px 12px; border-radius: 16px; font-size: 13px; }
+          .salary { font-size: 18px; font-weight: 600; color: #15803d; }
+          @media print {
+            body { padding: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${data.jobTitle}</h1>
+          <div class="company">${data.companyName}</div>
+          <div class="meta">
+            ${data.location ? `<span class="meta-item">📍 ${data.location}</span>` : ''}
+            ${data.workType ? `<span class="meta-item">💼 ${data.workType}</span>` : ''}
+            ${data.employmentType ? `<span class="meta-item">⏰ ${data.employmentType}</span>` : ''}
+            ${data.experienceLevel ? `<span class="meta-item">📊 ${data.experienceLevel}</span>` : ''}
+          </div>
+          ${data.salaryMin || data.salaryMax ? `
+            <div class="salary" style="margin-top: 12px;">
+              ${data.salaryCurrency || '$'}${data.salaryMin?.toLocaleString() || ''}${data.salaryMax ? ` - ${data.salaryCurrency || '$'}${data.salaryMax.toLocaleString()}` : ''}
+            </div>
+          ` : ''}
+        </div>
+
+        ${data.descriptionSummary ? `
+          <div class="section">
+            <h2>Summary</h2>
+            <p>${data.descriptionSummary}</p>
+          </div>
+        ` : ''}
+
+        ${data.descriptionFull ? `
+          <div class="section">
+            <h2>Description</h2>
+            <p>${data.descriptionFull.replace(/\n/g, '<br>')}</p>
+          </div>
+        ` : ''}
+
+        ${data.responsibilities?.length ? `
+          <div class="section">
+            <h2>Responsibilities</h2>
+            <ul>
+              ${data.responsibilities.map(r => `<li>${r}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${data.qualifications?.length ? `
+          <div class="section">
+            <h2>Qualifications</h2>
+            <ul>
+              ${data.qualifications.map(q => `<li>${q}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${data.requiredSkills?.length ? `
+          <div class="section">
+            <h2>Required Skills</h2>
+            <div class="skills">
+              ${data.requiredSkills.map((s: any) => `<span class="skill">${typeof s === 'string' ? s : s.name || s.skill || s.title || ''}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${data.benefits?.length ? `
+          <div class="section">
+            <h2>Benefits</h2>
+            <ul>
+              ${data.benefits.map((b: any) => {
+                if (typeof b === 'string') return `<li>${b}</li>`;
+                if (b?.category && b?.items) return `<li><strong>${b.category}:</strong> ${b.items.join(', ')}</li>`;
+                return `<li>${b.name || b.benefit || b.title || b.description || ''}</li>`;
+              }).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  }
+
+  /**
+   * View AI insight in dialog
+   */
+  viewAiInsight() {
+    if (!this.expandedEventId || !this.expandedEventData?.aiInsight?.content) return;
+
+    const interview = this.allInterviews.find(i => i.id === this.expandedEventId);
+    if (!interview) return;
+
+    const app = this.applications.find(a => a.id === interview.application_id);
+
+    this.insightDialogData = {
+      title: app?.job_title || interview.title || 'Interview',
+      companyName: app?.company_name || '',
+      content: this.expandedEventData.aiInsight.content
+    };
+    this.showInsightDialog = true;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Close insight dialog
+   */
+  closeInsightDialog() {
+    this.showInsightDialog = false;
+    this.insightDialogData = null;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Download AI insight as PDF
+   */
+  downloadAiInsightPdf() {
+    let title: string;
+    let companyName: string;
+    let content: string;
+
+    // Try to get data from dialog first, then from expanded event
+    if (this.insightDialogData) {
+      title = this.insightDialogData.title;
+      companyName = this.insightDialogData.companyName;
+      content = this.insightDialogData.content;
+    } else if (this.expandedEventId && this.expandedEventData?.aiInsight?.content) {
+      const interview = this.allInterviews.find(i => i.id === this.expandedEventId);
+      if (!interview) return;
+      const app = this.applications.find(a => a.id === interview.application_id);
+      title = app?.job_title || interview.title || 'Interview';
+      companyName = app?.company_name || '';
+      content = this.expandedEventData.aiInsight.content;
+    } else {
+      return;
+    }
+
+    // Create a styled HTML document for printing to PDF
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to download PDF');
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Interview Prep - ${companyName} - ${title}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+          }
+          .header {
+            border-bottom: 2px solid #111;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .header h1 {
+            font-size: 24px;
+            color: #111;
+            margin-bottom: 8px;
+          }
+          .header .subtitle {
+            font-size: 16px;
+            color: #666;
+          }
+          .header .date {
+            font-size: 12px;
+            color: #999;
+            margin-top: 8px;
+          }
+          .content {
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.8;
+          }
+          h2 { font-size: 18px; color: #111; margin: 24px 0 12px; }
+          ul { margin-left: 20px; }
+          li { margin-bottom: 8px; }
+          @media print {
+            body { padding: 20px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Interview Preparation Notes</h1>
+          <div class="subtitle">${title} at ${companyName}</div>
+          <div class="date">Generated: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        </div>
+        <div class="content">${this.formatInsightForPdf(content)}</div>
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  }
+
+  /**
+   * Format insight content for PDF (convert markdown-like formatting to HTML)
+   */
+  private formatInsightForPdf(content: string): string {
+    return content
+      .replace(/## (\d+\. .+)/g, '<h2>$1</h2>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/^(.+)$/gm, (match) => {
+        if (match.startsWith('<')) return match;
+        return match;
+      });
+  }
+
+  /**
+   * Copy AI insight to clipboard
+   */
+  copyAiInsight() {
+    if (this.expandedEventData?.aiInsight?.content) {
+      navigator.clipboard.writeText(this.expandedEventData.aiInsight.content);
+    }
+  }
+
+  /**
+   * Get day index for an event (0-6 for Sun-Sat)
+   */
+  getEventDayIndex(event: InterviewCalendarEvent): number {
+    if (!event.start) return 3; // Default to middle
+    return event.start.getDay();
+  }
+
+  /**
+   * Get display text for a skill object
+   */
+  getSkillDisplay(skill: any): string {
+    if (typeof skill === 'string') return skill;
+    return skill?.name || skill?.skill || skill?.title || JSON.stringify(skill);
+  }
+
+  /**
+   * Get display text for a benefit object
+   */
+  getBenefitDisplay(benefit: any): string {
+    if (typeof benefit === 'string') return benefit;
+    // Handle {category, items[]} structure
+    if (benefit?.category && benefit?.items) {
+      return `${benefit.category}: ${benefit.items.join(', ')}`;
+    }
+    return benefit?.name || benefit?.benefit || benefit?.title || benefit?.description || '';
   }
 }

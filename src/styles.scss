@@ -95,3 +95,23 @@ button {
     }
   }
 }
+// ============================================================================
+// ANGULAR CALENDAR OVERRIDES
+// ============================================================================
+
+// Day name - 14px, not bold
+.cal-week-view .cal-day-headers .cal-header b {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+// Date - 12px
+.cal-week-view .cal-day-headers .cal-header span {
+  font-size: 12px !important;
+}
+
+// Time labels - 12px, normal weight
+.cal-week-view .cal-time {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
