@@ -1846,6 +1846,14 @@
   }
 }
 
+// When an event is expanded, ensure all parent containers have high z-index
+::ng-deep {
+  .expanded-parent {
+    z-index: 9999 !important;
+    position: relative;
+  }
+}
+
 // ============================================================================
 // CALENDAR CELL BORDERS
 // ============================================================================
@@ -2111,7 +2119,7 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
 // Expanded state
 .custom-event.expanded {
   position: absolute;
-  z-index: 100;
+  z-index: 9999 !important;
   padding: 18px;
   width: 340px;
   height: auto !important;
@@ -2947,5 +2955,200 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
   .job-meta-grid {
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+// ============================================================================
+// EXPANDED EVENT OVERLAY (Fixed position outside calendar)
+// ============================================================================
+
+.expanded-event-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+  background: transparent;
+}
+
+.expanded-event-overlay {
+  position: fixed;
+  z-index: 9999;
+  padding: 18px;
+  width: 340px;
+  background: #fff;
+  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
+  border-left: 4px solid;
+  animation: expandIn 0.2s ease;
+
+  .event-status-dot {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+  }
+
+  .event-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #0f172a;
+    padding-right: 24px;
+    line-height: 1.4;
+  }
+
+  .event-time {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 3px;
+    font-family: ui-monospace, monospace;
+    line-height: 1.2;
+  }
+
+  .event-expanded-content {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .expanded-role {
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+
+  .doc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .doc-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .doc-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #475569;
+  }
+
+  .doc-details {
+    .doc-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #0f172a;
+    }
+    .doc-file {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 1px;
+    }
+  }
+
+  .doc-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .doc-action-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+  }
+
+  .ai-insight-item {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border-color: #bbf7d0;
+
+    .doc-icon {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #fff;
+
+      &.pending {
+        background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+        color: #64748b;
+      }
+    }
+  }
+
+  .generate-btn {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff;
+    border-color: #16a34a;
+
+    &:hover {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+    }
+  }
+
+  .generating-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e2e8f0;
+    border-top-color: #22c55e;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .view-full-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: #0f172a;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: #1e293b;
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

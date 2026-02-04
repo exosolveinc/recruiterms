@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, ViewEncapsulation, inject, effect } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, ViewEncapsulation, inject, effect, HostBinding } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
@@ -111,6 +111,13 @@ export class InterviewCalendarComponent implements OnInit {
   // Expanded Event View
   expandedEventId: string | null = null;
   expandDirection: 'left' | 'right' = 'right';
+  expandedEvent: InterviewCalendarEvent | null = null;
+  expandedPosition: { top: number; left: number } | null = null;
+
+  // Host binding to add class when event is expanded (for z-index stacking)
+  @HostBinding('class.has-expanded-event') get hasExpandedEvent() {
+    return !!this.expandedEventId;
+  }
   expandedEventData: {
     resume: { name: string; url: string; ready: boolean } | null;
     jobDesc: { name: string; jobId: string; ready: boolean; job: any } | null;
@@ -935,7 +942,7 @@ export class InterviewCalendarComponent implements OnInit {
   /**
    * Toggle expanded view for an event
    */
-  toggleExpandedEvent(event: InterviewCalendarEvent, dayIndex: number) {
+  toggleExpandedEvent(event: InterviewCalendarEvent, dayIndex: number, clickEvent?: MouseEvent) {
     if (!event.interview) return;
 
     const interviewId = event.interview.id;
@@ -946,9 +953,24 @@ export class InterviewCalendarComponent implements OnInit {
       return;
     }
 
+    // Remove expanded-column class from any previous column
+    this.clearExpandedColumnClass();
+
     // Smart positioning: days 0-3 expand right, days 4-6 expand left
     this.expandDirection = dayIndex >= 4 ? 'left' : 'right';
     this.expandedEventId = interviewId;
+    this.expandedEvent = event;
+
+    // Calculate position for the overlay
+    if (clickEvent) {
+      const target = clickEvent.currentTarget as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      this.expandedPosition = {
+        top: rect.top,
+        left: this.expandDirection === 'right' ? rect.left : rect.right - 340
+      };
+      this.addExpandedColumnClass(clickEvent.target as HTMLElement);
+    }
 
     // Load event data
     this.loadExpandedEventData(event.interview);
@@ -956,10 +978,41 @@ export class InterviewCalendarComponent implements OnInit {
   }
 
   /**
+   * Add expanded-parent class to all parent containers for z-index stacking
+   */
+  private addExpandedColumnClass(element: HTMLElement) {
+    let current: HTMLElement | null = element;
+    while (current) {
+      // Add class to cal-event, cal-event-container, and cal-day-column
+      if (current.classList?.contains('cal-event') ||
+          current.classList?.contains('cal-event-container') ||
+          current.classList?.contains('cal-day-column')) {
+        current.classList.add('expanded-parent');
+      }
+      // Stop at day column level
+      if (current.classList?.contains('cal-day-column')) {
+        break;
+      }
+      current = current.parentElement;
+    }
+  }
+
+  /**
+   * Remove expanded-parent class from all elements
+   */
+  private clearExpandedColumnClass() {
+    const elements = document.querySelectorAll('.expanded-parent');
+    elements.forEach(el => el.classList.remove('expanded-parent'));
+  }
+
+  /**
    * Collapse expanded event
    */
   collapseEvent() {
+    this.clearExpandedColumnClass();
     this.expandedEventId = null;
+    this.expandedEvent = null;
+    this.expandedPosition = null;
     this.expandedEventData = null;
     this.cdr.markForCheck();
   }
