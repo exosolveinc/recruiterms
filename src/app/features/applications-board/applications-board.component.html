@@ -59,9 +59,9 @@
       <div class="stat-sub">in progress</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">OFFERS</div>
-      <div class="stat-value success">{{ getStats().offers }}</div>
-      <div class="stat-sub">received</div>
+      <div class="stat-label">SCREENING</div>
+      <div class="stat-value success">{{ getStats().screening }}</div>
+      <div class="stat-sub">in review</div>
     </div>
   </div>
 
@@ -373,10 +373,19 @@
 
                   <!-- Status -->
                   <div class="table-cell status-cell">
-                    <span class="status-badge" [attr.data-status]="app.status">
-                      <span class="status-dot"></span>
-                      {{ getStatusLabel(app.status) }}
-                    </span>
+                    <select
+                      class="status-dropdown"
+                      [value]="app.status"
+                      [attr.data-status]="app.status"
+                      (change)="onStatusChange(app, $any($event.target).value)"
+                      (click)="$event.stopPropagation()"
+                    >
+                      @for (status of allStatuses; track status.id) {
+                        <option [value]="status.id" [selected]="app.status === status.id">
+                          {{ status.label }}
+                        </option>
+                      }
+                    </select>
                   </div>
 
                   <!-- Company -->
@@ -498,12 +507,12 @@
         <span>Applied</span>
       </div>
       <div class="legend-item">
-        <span class="legend-dot interviewing"></span>
-        <span>Interviewing</span>
+        <span class="legend-dot screening"></span>
+        <span>Screening</span>
       </div>
       <div class="legend-item">
-        <span class="legend-dot offer"></span>
-        <span>Offer</span>
+        <span class="legend-dot interviewing"></span>
+        <span>Interview</span>
       </div>
       <span class="legend-separator"></span>
       <span class="match-badge high">80%+ Match</span>

@@ -110,8 +110,8 @@ export class ApplicationsBoardComponent implements OnInit {
   applicationStatuses: Array<{id: ApplicationStatus, label: string, icon: string, color: string}> = [
     { id: 'extracted', label: 'Extracted', icon: '📄', color: '#6b7280' },
     { id: 'applied', label: 'Applied', icon: '📤', color: '#3b82f6' },
-    { id: 'interviewing', label: 'Interviewing', icon: '👥', color: '#f59e0b' },
-    { id: 'offer', label: 'Offer', icon: '🎉', color: '#22c55e' },
+    { id: 'screening', label: 'Screening', icon: '🔍', color: '#8b5cf6' },
+    { id: 'interviewing', label: 'Interview', icon: '👥', color: '#f59e0b' },
   ];
 
   // All statuses including terminal ones
@@ -452,8 +452,8 @@ export class ApplicationsBoardComponent implements OnInit {
     switch (status) {
       case 'extracted': return 'extracted';
       case 'applied': return 'applied';
+      case 'screening': return 'screening';
       case 'interviewing': return 'interviewing';
-      case 'offer': return 'offer';
       default: return '';
     }
   }
@@ -461,6 +461,34 @@ export class ApplicationsBoardComponent implements OnInit {
   getStatusLabel(status: ApplicationStatus): string {
     const found = this.allStatuses.find(s => s.id === status);
     return found?.label || status;
+  }
+
+  /**
+   * Handle status change from dropdown in table view
+   */
+  async onStatusChange(app: ApplicationWithInterview, newStatus: ApplicationStatus): Promise<void> {
+    if (app.status === newStatus) return;
+
+    const originalStatus = app.status;
+
+    // Optimistically update UI
+    const updatedApps = this.applications().map(a =>
+      a.id === app.id ? { ...a, status: newStatus } : a
+    );
+    this.applications.set(updatedApps);
+
+    try {
+      await this.supabase.updateApplication(app.id, { status: newStatus });
+      this.showSuccess(`Status updated to ${this.getStatusLabel(newStatus)}`);
+    } catch (error) {
+      // Revert on error
+      const revertedApps = this.applications().map(a =>
+        a.id === app.id ? { ...a, status: originalStatus } : a
+      );
+      this.applications.set(revertedApps);
+      this.showError('Failed to update application status');
+      console.error('Error updating status:', error);
+    }
   }
 
   getStatusColor(status: ApplicationStatus): string {
@@ -711,13 +739,13 @@ export class ApplicationsBoardComponent implements OnInit {
   }
 
   // Stats
-  getStats(): { total: number; applied: number; interviewing: number; offers: number } {
+  getStats(): { total: number; applied: number; interviewing: number; screening: number } {
     const apps = this.applications();
     return {
       total: apps.length,
       applied: apps.filter(a => a.status === 'applied').length,
       interviewing: apps.filter(a => a.status === 'interviewing').length,
-      offers: apps.filter(a => a.status === 'offer' || a.status === 'accepted').length,
+      screening: apps.filter(a => a.status === 'screening').length,
     };
   }
 
