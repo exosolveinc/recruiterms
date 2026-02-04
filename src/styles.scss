@@ -115,3 +115,27 @@ button {
   font-size: 12px !important;
   font-weight: 400 !important;
 }
+
+// Month view cell overflow fix
+.cal-month-view {
+  mwl-calendar-month-cell {
+    overflow: hidden !important;
+    display: block !important;
+    min-width: 0 !important;
+  }
+
+  .cal-cell.cal-day-cell {
+    overflow: hidden !important;
+    min-width: 0 !important;
+  }
+
+  .cal-days .cal-cell-row .cal-cell {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .cal-cell-top {
+    overflow: hidden !important;
+  }
+}

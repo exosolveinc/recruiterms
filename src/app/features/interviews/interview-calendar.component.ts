@@ -271,10 +271,9 @@ export class InterviewCalendarComponent implements OnInit {
     const start = new Date(interview.scheduled_at);
     const end = new Date(start.getTime() + interview.duration_minutes * 60 * 1000);
 
-    // Build title with status and type
-    const statusLabel = interview.status.charAt(0).toUpperCase() + interview.status.slice(1);
+    // Build title with type (without status)
     const typeLabel = this.getInterviewTypeLabel(interview.interview_type);
-    const title = `[${statusLabel}] ${interview.title} - ${typeLabel}`;
+    const title = `${interview.title} - ${typeLabel}`;
 
     return {
       id: interview.id,
@@ -956,25 +955,85 @@ export class InterviewCalendarComponent implements OnInit {
     // Remove expanded-column class from any previous column
     this.clearExpandedColumnClass();
 
-    // Smart positioning: days 0-3 expand right, days 4-6 expand left
-    this.expandDirection = dayIndex >= 4 ? 'left' : 'right';
     this.expandedEventId = interviewId;
     this.expandedEvent = event;
 
-    // Calculate position for the overlay
+    // Calculate intelligent position for the overlay
     if (clickEvent) {
       const target = clickEvent.currentTarget as HTMLElement;
       const rect = target.getBoundingClientRect();
-      this.expandedPosition = {
-        top: rect.top,
-        left: this.expandDirection === 'right' ? rect.left : rect.right - 340
-      };
+      this.expandedPosition = this.calculateExpandedPosition(rect, dayIndex);
       this.addExpandedColumnClass(clickEvent.target as HTMLElement);
     }
 
     // Load event data
     this.loadExpandedEventData(event.interview);
     this.cdr.markForCheck();
+  }
+
+  /**
+   * Calculate intelligent position for the expanded overlay
+   */
+  private calculateExpandedPosition(rect: DOMRect, dayIndex?: number): { top: number; left: number } {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const overlayWidth = 340;
+    const overlayHeight = 420; // Approximate height of expanded card
+    const padding = 8;
+
+    // Calculate horizontal position
+    let left: number;
+    const spaceOnRight = viewportWidth - rect.right - padding;
+    const spaceOnLeft = rect.left - padding;
+
+    // Use dayIndex hint if available (for week view), otherwise check viewport edges
+    if (dayIndex !== undefined) {
+      // Week view: use day index as initial hint
+      this.expandDirection = dayIndex >= 4 ? 'left' : 'right';
+    } else {
+      // Month view: determine based on available space
+      this.expandDirection = spaceOnRight >= overlayWidth ? 'right' : 'left';
+    }
+
+    // Override direction if not enough space
+    if (this.expandDirection === 'right' && spaceOnRight < overlayWidth) {
+      this.expandDirection = 'left';
+    } else if (this.expandDirection === 'left' && spaceOnLeft < overlayWidth) {
+      this.expandDirection = 'right';
+    }
+
+    // Set horizontal position based on final direction
+    if (this.expandDirection === 'right') {
+      left = rect.right + padding;
+      // Ensure it doesn't overflow right edge
+      if (left + overlayWidth > viewportWidth - padding) {
+        left = viewportWidth - overlayWidth - padding;
+      }
+    } else {
+      left = rect.left - overlayWidth - padding;
+      // Ensure it doesn't overflow left edge
+      if (left < padding) {
+        left = padding;
+      }
+    }
+
+    // Calculate vertical position
+    let top: number;
+    const spaceBelow = viewportHeight - rect.top;
+    const spaceAbove = rect.bottom;
+
+    if (spaceBelow >= overlayHeight) {
+      // Enough space below - align with top of clicked element
+      top = rect.top;
+    } else if (spaceAbove >= overlayHeight) {
+      // Position above - align bottom of overlay with bottom of clicked element
+      top = rect.bottom - overlayHeight;
+    } else {
+      // Not enough space either way, position to maximize visibility
+      top = Math.max(padding, Math.min(rect.top, viewportHeight - overlayHeight - padding));
+    }
+
+    return { top, left };
   }
 
   /**
@@ -1022,6 +1081,53 @@ export class InterviewCalendarComponent implements OnInit {
    */
   isEventExpanded(interview: ScheduledInterview): boolean {
     return this.expandedEventId === interview.id;
+  }
+
+  /**
+   * Handle click on month view event
+   */
+  onMonthEventClick(event: InterviewCalendarEvent, clickEvent: MouseEvent) {
+    clickEvent.stopPropagation();
+    if (!event.interview) {
+      this.handleEvent('Clicked', event);
+      return;
+    }
+
+    const interviewId = event.interview.id;
+
+    // If already expanded, collapse
+    if (this.expandedEventId === interviewId) {
+      this.collapseEvent();
+      return;
+    }
+
+    // Collapse any previous
+    this.clearExpandedColumnClass();
+
+    this.expandedEventId = interviewId;
+    this.expandedEvent = event;
+
+    // Calculate intelligent position for the overlay
+    const target = clickEvent.currentTarget as HTMLElement;
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      this.expandedPosition = this.calculateExpandedPosition(rect);
+    }
+
+    // Load event data
+    this.loadExpandedEventData(event.interview);
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Show more events for a day (when there are more than 3)
+   */
+  onShowMoreEvents(day: any, clickEvent: MouseEvent) {
+    clickEvent.stopPropagation();
+    // Switch to day view for this date
+    this.view = CalendarView.Day;
+    this.viewDate = day.date;
+    this.cdr.markForCheck();
   }
 
   /**
