@@ -1,0 +1,718 @@
+<p-toast position="bottom-right" [life]="3000"></p-toast>
+<app-sidebar activePage="applications-board"></app-sidebar>
+<div class="applications-board-container">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Applications Board</h1>
+      <p class="subtitle">Track and manage job applications</p>
+    </div>
+    <div class="header-actions">
+      <!-- View Toggle -->
+      <div class="view-toggle">
+        <button
+          class="view-btn"
+          [class.active]="viewMode() === 'kanban'"
+          (click)="setViewMode('kanban')"
+          title="Pipeline View"
+        >
+          <i class="fi fi-rr-apps"></i>
+          Pipeline
+        </button>
+        <button
+          class="view-btn"
+          [class.active]="viewMode() === 'table'"
+          (click)="setViewMode('table')"
+          title="Table View"
+        >
+          <i class="fi fi-rr-list"></i>
+          Table
+        </button>
+      </div>
+
+      <div class="search-box">
+        <i class="fi fi-rr-search"></i>
+        <input
+          type="text"
+          placeholder="Search applications..."
+          [(ngModel)]="searchQuery"
+        />
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">TOTAL APPLICATIONS</div>
+      <div class="stat-value">{{ getStats().total }}</div>
+      <div class="stat-sub">across all stages</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">APPLIED</div>
+      <div class="stat-value primary">{{ getStats().applied }}</div>
+      <div class="stat-sub">awaiting response</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">INTERVIEWING</div>
+      <div class="stat-value warning">{{ getStats().interviewing }}</div>
+      <div class="stat-sub">in progress</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">OFFERS</div>
+      <div class="stat-value success">{{ getStats().offers }}</div>
+      <div class="stat-sub">received</div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading applications...</p>
+    </div>
+  } @else if (viewMode() === 'kanban') {
+    <!-- Kanban Pipeline View -->
+    <div class="kanban-board">
+      @for (status of applicationStatuses; track status.id) {
+        <div
+          class="kanban-column"
+          [ngClass]="getColumnClass(status.id)"
+          [class.drag-over]="dragOverColumn() === status.id"
+          (dragover)="onDragOver($event, status.id)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event, status.id)"
+        >
+          <div class="column-header">
+            <div class="column-title">
+              <span class="column-icon">{{ status.icon }}</span>
+              <h3>{{ status.label }}</h3>
+              <span class="count">{{ getColumnCount(status.id) }}</span>
+            </div>
+          </div>
+
+          <div class="card-list">
+            @for (app of getFilteredApplicationsByStatus(status.id); track app.id) {
+              <div
+                class="application-card"
+                [class.has-interview]="hasUpcomingInterview(app)"
+                [class.dragging]="draggedApp()?.id === app.id"
+                draggable="true"
+                (dragstart)="onDragStart($event, app)"
+                (dragend)="onDragEnd($event)"
+                (click)="openSidebar(app)"
+              >
+                <!-- Card Content -->
+                <div class="card-candidate">
+                  <i class="fi fi-rr-user"></i>
+                  <span>{{ app.candidateName || 'Unknown Candidate' }}</span>
+                </div>
+
+                <div class="card-header">
+                  <span class="company-name">{{ app.company_name || 'Unknown Company' }}</span>
+                  @if (app.match_score) {
+                    <span class="match-score" [ngClass]="getMatchScoreClass(app.match_score)">
+                      {{ app.match_score }}%
+                    </span>
+                  }
+                </div>
+
+                <h4 class="job-title">{{ app.job_title || 'Unknown Position' }}</h4>
+
+                <!-- Location & Work Type -->
+                <div class="card-meta">
+                  @if (app.location) {
+                    <span class="meta-item">
+                      <i class="fi fi-rr-marker"></i>
+                      {{ app.location }}
+                    </span>
+                  }
+                  @if (app.work_type) {
+                    <span class="work-type-badge" [attr.data-type]="app.work_type?.toLowerCase()">
+                      {{ app.work_type }}
+                    </span>
+                  }
+                </div>
+
+                <!-- Salary -->
+                @if (app.salary_min || app.salary_max) {
+                  <div class="salary">
+                    <i class="fi fi-rr-dollar"></i>
+                    {{ formatSalary(app.salary_min, app.salary_max) }}
+                  </div>
+                }
+
+                <!-- Skills Preview -->
+                @if (app.matching_skills && app.matching_skills.length) {
+                  <div class="skills-preview">
+                    @for (skill of app.matching_skills.slice(0, 3); track skill) {
+                      <span class="skill-tag">{{ skill }}</span>
+                    }
+                    @if (app.matching_skills.length > 3) {
+                      <span class="skill-tag more">+{{ app.matching_skills.length - 3 }}</span>
+                    }
+                  </div>
+                }
+
+                <!-- Upcoming Interview Alert -->
+                @if (getNextInterview(app); as interview) {
+                  <div class="interview-alert">
+                    <i class="fi fi-rr-calendar"></i>
+                    <span>Interview: {{ formatDateTime(interview.scheduled_at) }}</span>
+                  </div>
+                }
+
+                <!-- Card Footer -->
+                <div class="card-footer">
+                  <span class="applied-date">
+                    <i class="fi fi-rr-clock"></i>
+                    Applied {{ formatDate(app.applied_at) }}
+                  </span>
+                  @if (app.platform) {
+                    <span class="platform">{{ app.platform }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (getFilteredApplicationsByStatus(status.id).length === 0) {
+              <div class="empty-column">
+                <span class="empty-icon">📭</span>
+                <p>No applications</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- Table View -->
+    <div class="table-view">
+      <!-- Table Header -->
+      <div class="table-header">
+        <div class="table-header-cell checkbox-cell">
+          <button
+            class="expand-all-btn"
+            (click)="toggleExpandAll()"
+            [title]="areAllGroupsExpanded() ? 'Collapse All' : 'Expand All'"
+          >
+            <i class="fi" [ngClass]="areAllGroupsExpanded() ? 'fi-rr-angle-double-small-up' : 'fi-rr-angle-double-small-down'"></i>
+          </button>
+        </div>
+        <!-- Status Column with Sort & Filter -->
+        <div class="table-header-cell status-cell header-with-filter">
+          <span class="header-label sortable-header" (click)="onSort('status')">
+            Status
+            <i class="sort-icon" [ngClass]="getSortIconClass('status')"></i>
+          </span>
+          <div class="filter-wrapper">
+            <i class="pi pi-filter" [class.active]="selectedStatuses.length > 0"></i>
+            <span class="filter-count" *ngIf="selectedStatuses.length > 0">{{ selectedStatuses.length }}</span>
+            <p-multiSelect
+              [options]="statusOptions"
+              [(ngModel)]="selectedStatuses"
+              [showHeader]="false"
+              [showToggleAll]="false"
+              styleClass="p-compact-multiselect"
+              appendTo="body"
+            ></p-multiSelect>
+          </div>
+        </div>
+        <!-- Company -->
+        <div class="table-header-cell company-cell">
+          <span class="sortable-header" (click)="onSort('company_name')">
+            Company
+            <i class="sort-icon" [ngClass]="getSortIconClass('company_name')"></i>
+          </span>
+        </div>
+        <!-- Position Column with Filter -->
+        <div class="table-header-cell position-cell header-with-filter">
+          <span class="header-label">Position</span>
+          <div class="filter-wrapper">
+            <i class="pi pi-filter" [class.active]="selectedPositions.length > 0"></i>
+            <span class="filter-count" *ngIf="selectedPositions.length > 0">{{ selectedPositions.length }}</span>
+            <p-multiSelect
+              [options]="positionOptions()"
+              [(ngModel)]="selectedPositions"
+              [showHeader]="false"
+              [showToggleAll]="false"
+              styleClass="p-compact-multiselect"
+              appendTo="body"
+            ></p-multiSelect>
+          </div>
+        </div>
+        <!-- Location Column with Work Type Filter -->
+        <div class="table-header-cell location-cell header-with-filter">
+          <span class="header-label">Location</span>
+          <div class="filter-wrapper">
+            <i class="pi pi-filter" [class.active]="selectedWorkTypes.length > 0"></i>
+            <span class="filter-count" *ngIf="selectedWorkTypes.length > 0">{{ selectedWorkTypes.length }}</span>
+            <p-multiSelect
+              [options]="workTypeOptions"
+              [(ngModel)]="selectedWorkTypes"
+              [showHeader]="false"
+              [showToggleAll]="false"
+              styleClass="p-compact-multiselect"
+              appendTo="body"
+            ></p-multiSelect>
+          </div>
+        </div>
+        <!-- Match -->
+        <div class="table-header-cell match-cell">
+          <span class="sortable-header" (click)="onSort('match_score')">
+            Match
+            <i class="sort-icon" [ngClass]="getSortIconClass('match_score')"></i>
+          </span>
+        </div>
+        <!-- Salary with Range Filter -->
+        <div class="table-header-cell salary-cell header-with-filter">
+          <span class="header-label">Salary</span>
+          <div class="filter-wrapper salary-filter-wrapper">
+            <i class="pi pi-filter" [class.active]="hasSalaryFilter()"></i>
+            <div class="salary-filter-dropdown">
+              <div class="salary-filter-content">
+                <div class="salary-range-header">
+                  <span class="salary-range-label">{{ formatSalaryK(salaryRange[0]) }} - {{ formatSalaryK(salaryRange[1]) }}</span>
+                  @if (salaryFilterActive) {
+                    <button class="clear-salary-btn" (click)="clearSalaryFilter(); $event.stopPropagation()">
+                      <i class="pi pi-times"></i>
+                    </button>
+                  }
+                </div>
+                <p-slider
+                  [(ngModel)]="salaryRange"
+                  [range]="true"
+                  [min]="0"
+                  [max]="300000"
+                  [step]="10000"
+                  (onChange)="onSalaryFilterChange()"
+                  styleClass="salary-slider"
+                ></p-slider>
+                <div class="salary-range-labels">
+                  <span>$0</span>
+                  <span>$300k+</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Applied Date -->
+        <div class="table-header-cell date-cell">
+          <span class="sortable-header" (click)="onSort('applied_at')">
+            Applied
+            <i class="sort-icon" [ngClass]="getSortIconClass('applied_at')"></i>
+          </span>
+        </div>
+        <!-- Actions -->
+        <div class="table-header-cell actions-cell">
+          @if (hasActiveFilters()) {
+            <button class="clear-filters-btn-small" (click)="clearAllFilters()" title="Clear all filters">
+              <i class="pi pi-filter-slash"></i>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Grouped by Candidate -->
+      @for (group of getApplicationsGroupedByCandidate(); track group.candidateName) {
+        <div class="candidate-group">
+          <!-- Group Header -->
+          <div class="candidate-group-header-wrapper" [class.expanded]="isGroupExpanded(group.candidateName)">
+            <button
+              class="candidate-group-header"
+              (click)="toggleGroupExpansion(group.candidateName)"
+            >
+              <i class="fi expand-icon" [ngClass]="isGroupExpanded(group.candidateName) ? 'fi-rr-angle-small-down' : 'fi-rr-angle-small-right'"></i>
+              <div class="group-info">
+                <i class="fi fi-rr-user group-icon"></i>
+                <span class="group-title">{{ group.candidateName }}</span>
+                @if (group.candidateEmail) {
+                  <span class="group-email">{{ group.candidateEmail }}</span>
+                }
+              </div>
+              <span class="app-count">{{ group.applications.length }} application(s)</span>
+              <div class="group-stats">
+                @if (getGroupStats(group.applications).extracted > 0) {
+                  <span class="stat extracted">{{ getGroupStats(group.applications).extracted }} Extracted</span>
+                }
+                @if (getGroupStats(group.applications).applied > 0) {
+                  <span class="stat applied">{{ getGroupStats(group.applications).applied }} Applied</span>
+                }
+                @if (getGroupStats(group.applications).interviewing > 0) {
+                  <span class="stat interviewing">{{ getGroupStats(group.applications).interviewing }} Interview</span>
+                }
+                @if (getGroupStats(group.applications).offer > 0) {
+                  <span class="stat offer">{{ getGroupStats(group.applications).offer }} Offer</span>
+                }
+              </div>
+            </button>
+          </div>
+
+          <!-- Application Rows -->
+          @if (isGroupExpanded(group.candidateName)) {
+            <div class="application-rows">
+              @for (app of group.applications; track app.id) {
+                <div
+                  class="table-row"
+                  [class.selected]="isApplicationSelected(app.id)"
+                  [class.has-interview]="hasUpcomingInterview(app)"
+                  (click)="openSidebar(app)"
+                >
+                  <!-- Checkbox -->
+                  <div class="table-cell checkbox-cell">
+                    <button
+                      class="checkbox"
+                      [class.checked]="isApplicationSelected(app.id)"
+                      (click)="toggleApplicationSelection(app.id, $event)"
+                    >
+                      @if (isApplicationSelected(app.id)) {
+                        <i class="fi fi-rr-check"></i>
+                      }
+                    </button>
+                  </div>
+
+                  <!-- Status -->
+                  <div class="table-cell status-cell">
+                    <span class="status-badge" [attr.data-status]="app.status">
+                      <span class="status-dot"></span>
+                      {{ getStatusLabel(app.status) }}
+                    </span>
+                  </div>
+
+                  <!-- Company -->
+                  <div class="table-cell company-cell">
+                    <span class="company-name">{{ app.company_name || 'Unknown' }}</span>
+                  </div>
+
+                  <!-- Position -->
+                  <div class="table-cell position-cell">
+                    <div class="position-info">
+                      <span class="position-title">{{ app.job_title || 'Unknown' }}</span>
+                      @if (app.work_type) {
+                        <span class="work-type-badge small" [attr.data-type]="app.work_type?.toLowerCase()">
+                          {{ app.work_type }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Location -->
+                  <div class="table-cell location-cell">
+                    <span class="location">{{ app.location || '-' }}</span>
+                  </div>
+
+                  <!-- Match Score -->
+                  <div class="table-cell match-cell">
+                    @if (app.match_score) {
+                      <div class="match-indicator" [ngClass]="getMatchScoreClass(app.match_score)">
+                        <div class="match-bar">
+                          <div class="match-fill" [style.width.%]="app.match_score"></div>
+                        </div>
+                        <span class="match-value">{{ app.match_score }}%</span>
+                      </div>
+                    } @else {
+                      <span class="no-match">-</span>
+                    }
+                  </div>
+
+                  <!-- Salary -->
+                  <div class="table-cell salary-cell">
+                    <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
+                  </div>
+
+                  <!-- Applied Date -->
+                  <div class="table-cell date-cell">
+                    <span class="date">{{ formatDate(app.applied_at) }}</span>
+                    @if (hasUpcomingInterview(app)) {
+                      <span class="interview-indicator" title="Has upcoming interview">
+                        <i class="fi fi-rr-calendar"></i>
+                      </span>
+                    }
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="table-cell actions-cell">
+                    <button
+                      class="action-btn"
+                      (click)="openApplicationDetail(app); $event.stopPropagation()"
+                      title="View Details"
+                    >
+                      <i class="fi fi-rr-arrow-up-right-from-square"></i>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @if (getApplicationsGroupedByCandidate().length === 0) {
+        <div class="empty-table">
+          <span class="empty-icon">📭</span>
+          <p>No applications found</p>
+        </div>
+      }
+    </div>
+
+    <!-- Selection Toolbar -->
+    @if (getSelectedCount() > 0) {
+      <div class="selection-toolbar">
+        <span class="selected-count">{{ getSelectedCount() }} selected</span>
+        <div class="toolbar-divider"></div>
+
+        <!-- Status Dropdown -->
+        <div class="toolbar-dropdown">
+          <button class="toolbar-btn" title="Change Status" (click)="toggleBulkStatusMenu()">
+            <i class="fi fi-rr-exchange"></i>
+            Status
+          </button>
+          @if (showBulkStatusMenu()) {
+            <div class="dropdown-menu">
+              @for (status of allStatuses; track status.id) {
+                <button class="dropdown-item" (click)="bulkUpdateStatus(status.id)">
+                  <span class="status-dot" [style.background-color]="status.color"></span>
+                  {{ status.label }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <button class="toolbar-close" (click)="clearSelectedApplications()">
+          <i class="fi fi-rr-cross-small"></i>
+        </button>
+      </div>
+    }
+  }
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-items">
+      <div class="legend-item">
+        <span class="legend-dot extracted"></span>
+        <span>Extracted</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot applied"></span>
+        <span>Applied</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot interviewing"></span>
+        <span>Interviewing</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot offer"></span>
+        <span>Offer</span>
+      </div>
+      <span class="legend-separator"></span>
+      <span class="match-badge high">80%+ Match</span>
+      <span class="match-badge medium">60-79%</span>
+      <span class="match-badge low">&lt;60%</span>
+    </div>
+  </div>
+
+  <!-- Application Detail Sidebar -->
+  @if (showSidebar() && selectedApplication()) {
+    <div class="sidebar-overlay" (click)="closeSidebar()"></div>
+    <div class="application-sidebar" [class.open]="showSidebar()">
+      <!-- Sidebar Header -->
+      <div class="sidebar-header">
+        <div class="header-info">
+          <span class="status-badge" [attr.data-status]="selectedApplication()!.status">
+            <span class="status-dot"></span>
+            {{ getStatusLabel(selectedApplication()!.status) }}
+          </span>
+          @if (selectedApplication()!.match_score) {
+            <span class="match-score" [ngClass]="getMatchScoreClass(selectedApplication()!.match_score)">
+              {{ selectedApplication()!.match_score }}% Match
+            </span>
+          }
+        </div>
+        <div class="header-actions">
+          <button
+            class="edit-btn"
+            (click)="openApplicationDetail(selectedApplication()!); closeSidebar()"
+            title="Full Details"
+          >
+            <i class="fi fi-rr-arrow-up-right-from-square"></i>
+          </button>
+          <button class="close-btn" (click)="closeSidebar()">
+            <i class="fi fi-rr-cross"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sidebar Content -->
+      <div class="sidebar-content">
+        <!-- Job Info Section -->
+        <div class="job-header-section">
+          <h2 class="job-title">{{ selectedApplication()!.job_title || 'Unknown Position' }}</h2>
+          <div class="company-row">
+            <span class="company-name">{{ selectedApplication()!.company_name || 'Unknown Company' }}</span>
+            @if (selectedApplication()!.platform) {
+              <span class="platform-badge">via {{ selectedApplication()!.platform }}</span>
+            }
+          </div>
+        </div>
+
+        <!-- Quick Info -->
+        <div class="info-section">
+          <h3>
+            <i class="fi fi-rr-info"></i>
+            Details
+          </h3>
+          <div class="details-grid">
+            @if (selectedApplication()!.location) {
+              <div class="detail-item">
+                <span class="detail-label">Location</span>
+                <span class="detail-value">{{ selectedApplication()!.location }}</span>
+              </div>
+            }
+            @if (selectedApplication()!.work_type) {
+              <div class="detail-item">
+                <span class="detail-label">Work Type</span>
+                <span class="detail-value">{{ selectedApplication()!.work_type }}</span>
+              </div>
+            }
+            @if (selectedApplication()!.experience_level) {
+              <div class="detail-item">
+                <span class="detail-label">Experience</span>
+                <span class="detail-value">{{ selectedApplication()!.experience_level }}</span>
+              </div>
+            }
+            <div class="detail-item">
+              <span class="detail-label">Applied</span>
+              <span class="detail-value">{{ formatDate(selectedApplication()!.applied_at) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Salary Section -->
+        @if (selectedApplication()!.salary_min || selectedApplication()!.salary_max) {
+          <div class="info-section">
+            <h3>
+              <i class="fi fi-rr-dollar"></i>
+              Salary Range
+            </h3>
+            <div class="salary-display">
+              {{ formatSalary(selectedApplication()!.salary_min, selectedApplication()!.salary_max) }}
+            </div>
+          </div>
+        }
+
+        <!-- Upcoming Interviews -->
+        @if (selectedApplication()!.scheduledInterviews?.length) {
+          <div class="info-section interviews-section">
+            <h3>
+              <i class="fi fi-rr-calendar"></i>
+              Scheduled Interviews
+            </h3>
+            <div class="interviews-list">
+              @for (interview of selectedApplication()!.scheduledInterviews; track interview.id) {
+                <div class="interview-item" [attr.data-status]="interview.status">
+                  <div class="interview-header">
+                    <span class="interview-type">{{ interview.interview_type }}</span>
+                    <span class="interview-status" [attr.data-status]="interview.status">
+                      {{ interview.status }}
+                    </span>
+                  </div>
+                  <div class="interview-time">
+                    <i class="fi fi-rr-clock"></i>
+                    {{ formatDateTime(interview.scheduled_at) }}
+                  </div>
+                  @if (interview.interviewer_name) {
+                    <div class="interview-with">
+                      <i class="fi fi-rr-user"></i>
+                      {{ interview.interviewer_name }}
+                    </div>
+                  }
+                  @if (interview.location || interview.meeting_link) {
+                    <div class="interview-location">
+                      <i class="fi" [ngClass]="interview.meeting_link ? 'fi-rr-camera' : 'fi-rr-marker'"></i>
+                      {{ interview.meeting_link || interview.location }}
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Matching Skills -->
+        @if (selectedApplication()!.matching_skills?.length) {
+          <div class="info-section">
+            <h3>
+              <i class="fi fi-rr-check-circle"></i>
+              Matching Skills
+            </h3>
+            <div class="skills-tags">
+              @for (skill of selectedApplication()!.matching_skills; track skill) {
+                <span class="skill-tag matching">{{ skill }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Missing Skills -->
+        @if (selectedApplication()!.missing_skills?.length) {
+          <div class="info-section">
+            <h3>
+              <i class="fi fi-rr-exclamation"></i>
+              Missing Skills
+            </h3>
+            <div class="skills-tags">
+              @for (skill of selectedApplication()!.missing_skills; track skill) {
+                <span class="skill-tag missing">{{ skill }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Notes -->
+        @if (selectedApplication()!.notes) {
+          <div class="info-section">
+            <h3>
+              <i class="fi fi-rr-document"></i>
+              Notes
+            </h3>
+            <p class="notes-text">{{ selectedApplication()!.notes }}</p>
+          </div>
+        }
+
+        <!-- Next Step -->
+        @if (selectedApplication()!.next_step) {
+          <div class="info-section next-step-section">
+            <h3>
+              <i class="fi fi-rr-arrow-right"></i>
+              Next Step
+            </h3>
+            <div class="next-step-content">
+              <span class="step-text">{{ selectedApplication()!.next_step }}</span>
+              @if (selectedApplication()!.next_step_date) {
+                <span class="step-date">
+                  <i class="fi fi-rr-calendar"></i>
+                  {{ formatDate(selectedApplication()!.next_step_date!) }}
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <button class="btn-secondary" (click)="closeSidebar()">
+          Close
+        </button>
+        <button
+          class="btn-primary"
+          (click)="openApplicationDetail(selectedApplication()!); closeSidebar()"
+        >
+          <i class="fi fi-rr-arrow-up-right-from-square"></i>
+          View Full Details
+        </button>
+      </div>
+    </div>
+  }
+</div>

@@ -79,6 +79,11 @@ export const routes: Routes = [
   loadComponent: () => import('./features/interviews/interview-calendar.component').then(m => m.InterviewCalendarComponent),
   canActivate: [AuthGuard]
 },
+{
+  path: 'applications-board',
+  loadComponent: () => import('./features/applications-board/applications-board.component').then(m => m.ApplicationsBoardComponent),
+  canActivate: [AuthGuard]
+},
   {
     path: '**',
     redirectTo: 'dashboard'
