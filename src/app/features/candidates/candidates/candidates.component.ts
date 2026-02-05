@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, computed } from '@angular/core';
+import { Component, OnInit, inject, computed, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Candidate, CandidateDocument, CandidatePreferences, Resume } from '../../../core/models';
@@ -7,14 +7,28 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 import { AppStateService } from '../../../core/services/app-state.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
+// PrimeNG imports
+import { TableModule, Table } from 'primeng/table';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { TagModule } from 'primeng/tag';
+
 @Component({
   selector: 'app-candidates',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    SidebarComponent,
+    TableModule,
+    MultiSelectModule,
+    TagModule
+  ],
   templateUrl: './candidates.component.html',
   styleUrl: './candidates.component.scss'
 })
 export class CandidatesComponent implements OnInit {
+  @ViewChild('dt') dt!: Table;
+
   private appState = inject(AppStateService);
 
   // Use signals from AppStateService
@@ -27,7 +41,16 @@ export class CandidatesComponent implements OnInit {
   searchTerm = '';
   skillFilter = '';
 
-  // Expandable rows
+  // PrimeNG Table
+  expandedRows: { [key: string]: boolean } = {};
+
+  // Filter options
+  companyOptions: { label: string; value: string }[] = [];
+  locationOptions: { label: string; value: string }[] = [];
+  selectedCompanies: string[] = [];
+  selectedLocations: string[] = [];
+
+  // Expandable rows (legacy)
   expandedCandidateId: string | null = null;
 
   // Modal
@@ -72,7 +95,7 @@ export class CandidatesComponent implements OnInit {
   stats = {
     totalCandidates: 0,
     totalResumes: 0,
-    avgExperience: 0
+    totalSkills: 0
   };
 
   constructor(
@@ -131,12 +154,62 @@ export class CandidatesComponent implements OnInit {
     this.stats.totalCandidates = this.candidates.length;
     this.stats.totalResumes = this.candidates.reduce((sum, c) => sum + c.resume_count, 0);
 
-    const candidatesWithExp = this.candidates.filter(c => c.years_of_experience);
-    if (candidatesWithExp.length > 0) {
-      this.stats.avgExperience = Math.round(
-        candidatesWithExp.reduce((sum, c) => sum + (c.years_of_experience || 0), 0) / candidatesWithExp.length
-      );
+    // Count unique skills across all candidates
+    const skillSet = new Set<string>();
+    this.candidates.forEach(c => {
+      c.skills?.forEach(s => skillSet.add(s.name.toLowerCase()));
+    });
+    this.stats.totalSkills = skillSet.size;
+
+    this.buildFilterOptions();
+  }
+
+  buildFilterOptions() {
+    const companies = new Set<string>();
+    const locations = new Set<string>();
+    this.candidates.forEach(c => {
+      if (c.current_company) companies.add(c.current_company);
+      if (c.location) locations.add(c.location);
+    });
+    this.companyOptions = Array.from(companies).sort().map(c => ({ label: c, value: c }));
+    this.locationOptions = Array.from(locations).sort().map(l => ({ label: l, value: l }));
+  }
+
+  onGlobalFilter(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.dt.filterGlobal(value, 'contains');
+  }
+
+  clearFilters() {
+    this.dt.clear();
+    this.searchTerm = '';
+    this.selectedCompanies = [];
+    this.selectedLocations = [];
+  }
+
+  onCompanyFilterChange() {
+    if (this.selectedCompanies.length > 0) {
+      this.dt.filter(this.selectedCompanies, 'current_company', 'in');
+    } else {
+      this.dt.filter(null, 'current_company', 'in');
     }
+  }
+
+  onLocationFilterChange() {
+    if (this.selectedLocations.length > 0) {
+      this.dt.filter(this.selectedLocations, 'location', 'in');
+    } else {
+      this.dt.filter(null, 'location', 'in');
+    }
+  }
+
+  getExperienceSeverity(level: string | null): 'success' | 'info' | 'warning' | 'danger' | 'secondary' | 'contrast' | undefined {
+    if (!level) return undefined;
+    const l = level.toLowerCase();
+    if (l.includes('senior') || l.includes('lead') || l.includes('principal')) return 'success';
+    if (l.includes('mid') || l.includes('intermediate')) return 'info';
+    if (l.includes('junior') || l.includes('entry')) return 'warning';
+    return 'secondary';
   }
 
   get filteredCandidates(): Candidate[] {

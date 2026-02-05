@@ -25,36 +25,16 @@
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">📊</div>
+                    <div class="stat-icon">🛠️</div>
                     <div class="stat-info">
-                        <span class="stat-value">{{ stats.avgExperience }} yrs</span>
-                        <span class="stat-label">Avg Experience</span>
+                        <span class="stat-value">{{ stats.totalSkills }}</span>
+                        <span class="stat-label">Unique Skills</span>
                     </div>
                 </div>
             </div>
 
             <!-- Candidates Section -->
             <div class="candidates-section">
-                <div class="section-header">
-                    <h2>Candidates ({{ filteredCandidates.length }})</h2>
-                    <div class="filters">
-                        <div class="search-box">
-                            <input type="text" [(ngModel)]="searchTerm" placeholder="Search by name, email, title..." />
-                        </div>
-                        <div class="skill-filter">
-                            <input
-                                type="text"
-                                [(ngModel)]="skillFilter"
-                                list="skillOptions"
-                                placeholder="Filter by skill..."
-                            />
-                            <datalist id="skillOptions">
-                                <option *ngFor="let skill of allSkills" [value]="skill"></option>
-                            </datalist>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Empty State -->
                 <div class="empty-state" *ngIf="candidates.length === 0">
                     <div class="empty-icon">👥</div>
@@ -62,166 +42,249 @@
                     <button class="btn-primary" (click)="goToResumes()">Upload Resumes</button>
                 </div>
 
-                <!-- Candidates Table -->
-                <div class="table-container" *ngIf="filteredCandidates.length > 0">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th class="col-expand"></th>
-                                <th class="col-name">NAME</th>
-                                <th class="col-title">TITLE / COMPANY</th>
-                                <th class="col-contact">CONTACT</th>
-                                <th class="col-location">LOCATION</th>
-                                <th class="col-experience">EXPERIENCE</th>
-                                <th class="col-skills">TOP SKILLS</th>
-                                <th class="col-resumes">RESUMES</th>
-                                <th class="col-actions">ACTIONS</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <ng-container *ngFor="let candidate of filteredCandidates">
-                                <!-- Main Row -->
-                                <tr class="candidate-row" [class.expanded]="isExpanded(candidate.id)" (click)="toggleExpand(candidate.id, $event)">
-                                    <!-- Expand Icon -->
-                                    <td class="expand-cell">
-                                        <span class="expand-icon" [class.open]="isExpanded(candidate.id)">▸</span>
-                                    </td>
+                <!-- PrimeNG Data Table -->
+                <p-table
+                    #dt
+                    *ngIf="candidates.length > 0"
+                    [value]="candidates"
+                    [paginator]="true"
+                    [rows]="10"
+                    [rowsPerPageOptions]="[5, 10, 25, 50]"
+                    [showCurrentPageReport]="true"
+                    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} candidates"
+                    [globalFilterFields]="['name', 'email', 'current_title', 'current_company', 'location']"
+                    dataKey="id"
+                    [rowHover]="true"
+                    [expandedRowKeys]="expandedRows"
+                    styleClass="p-datatable-sm candidates-table"
+                    [tableStyle]="{ 'table-layout': 'fixed', 'width': '100%' }"
+                >
+                    <!-- Table Caption -->
+                    <ng-template pTemplate="caption">
+                        <div class="table-header">
+                            <div class="table-header-left">
+                                <h2>Candidates</h2>
+                                <span class="candidate-count">{{ candidates.length }} total</span>
+                            </div>
+                            <div class="table-header-right">
+                                <div class="search-box">
+                                    <i class="pi pi-search"></i>
+                                    <input
+                                        type="text"
+                                        [(ngModel)]="searchTerm"
+                                        (input)="onGlobalFilter($event)"
+                                        placeholder="Search candidates..."
+                                    />
+                                </div>
+                                <button class="clear-filters-btn" (click)="clearFilters()" *ngIf="searchTerm || selectedCompanies.length || selectedLocations.length">
+                                    <i class="pi pi-filter-slash"></i>
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </ng-template>
 
-                                    <!-- Name -->
-                                    <td class="name-cell">
-                                        <div class="candidate-name">{{ candidate.name }}</div>
-                                    </td>
+                    <!-- Table Header -->
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th style="width: 48px"></th>
+                            <th pSortableColumn="name" style="width: 220px">
+                                <div class="header-cell">
+                                    <span>Name</span>
+                                    <i class="pi pi-sort-alt sort-icon"></i>
+                                </div>
+                            </th>
+                            <th pSortableColumn="current_company" style="min-width: 200px">
+                                <div class="header-cell">
+                                    <span>Title / Company</span>
+                                    <i class="pi pi-sort-alt sort-icon"></i>
+                                    <div class="filter-wrapper" (click)="$event.stopPropagation()">
+                                        <i class="pi pi-filter" [class.active]="selectedCompanies.length > 0"></i>
+                                        <span class="filter-count" *ngIf="selectedCompanies.length > 0">{{ selectedCompanies.length }}</span>
+                                        <p-multiSelect
+                                            [options]="companyOptions"
+                                            [(ngModel)]="selectedCompanies"
+                                            (onChange)="onCompanyFilterChange()"
+                                            [showHeader]="false"
+                                            [showToggleAll]="false"
+                                            placeholder="Filter"
+                                            styleClass="filter-multiselect"
+                                            appendTo="body"
+                                        ></p-multiSelect>
+                                    </div>
+                                </div>
+                            </th>
+                            <th style="min-width: 180px">Contact</th>
+                            <th pSortableColumn="location" style="width: 150px; max-width: 150px">
+                                <div class="header-cell">
+                                    <span>Location</span>
+                                    <i class="pi pi-sort-alt sort-icon"></i>
+                                    <div class="filter-wrapper" (click)="$event.stopPropagation()">
+                                        <i class="pi pi-filter" [class.active]="selectedLocations.length > 0"></i>
+                                        <span class="filter-count" *ngIf="selectedLocations.length > 0">{{ selectedLocations.length }}</span>
+                                        <p-multiSelect
+                                            [options]="locationOptions"
+                                            [(ngModel)]="selectedLocations"
+                                            (onChange)="onLocationFilterChange()"
+                                            [showHeader]="false"
+                                            [showToggleAll]="false"
+                                            placeholder="Filter"
+                                            styleClass="filter-multiselect"
+                                            appendTo="body"
+                                        ></p-multiSelect>
+                                    </div>
+                                </div>
+                            </th>
+                            <th pSortableColumn="years_of_experience" style="width: 120px">
+                                <div class="header-cell">
+                                    <span>Experience</span>
+                                    <i class="pi pi-sort-alt sort-icon"></i>
+                                </div>
+                            </th>
+                            <th style="width: 220px; max-width: 220px">Top Skills</th>
+                            <th style="width: 100px; text-align: center">Actions</th>
+                        </tr>
+                    </ng-template>
 
-                                    <!-- Title / Company -->
-                                    <td class="title-cell">
-                                        <div class="title-info">
-                                            <span class="job-title">{{ candidate.current_title || '—' }}</span>
-                                            <span class="company" *ngIf="candidate.current_company">{{ candidate.current_company }}</span>
+                    <!-- Table Body -->
+                    <ng-template pTemplate="body" let-candidate let-expanded="expanded">
+                        <tr class="candidate-row">
+                            <!-- Expand Toggle -->
+                            <td class="expand-cell">
+                                <button type="button" [pRowToggler]="candidate" class="expand-btn">
+                                    <i class="pi" [ngClass]="expanded ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
+                                </button>
+                            </td>
+
+                            <!-- Name -->
+                            <td class="name-cell">
+                                <div class="candidate-name">{{ candidate.name }}</div>
+                            </td>
+
+                            <!-- Title / Company -->
+                            <td class="title-cell">
+                                <div class="title-info">
+                                    <span class="job-title">{{ candidate.current_title || '—' }}</span>
+                                    <span class="company" *ngIf="candidate.current_company">{{ candidate.current_company }}</span>
+                                </div>
+                            </td>
+
+                            <!-- Contact -->
+                            <td class="contact-cell">
+                                <div class="contact-info">
+                                    <span class="email" *ngIf="candidate.email">{{ candidate.email }}</span>
+                                    <span class="phone" *ngIf="candidate.phone">{{ candidate.phone }}</span>
+                                    <span class="no-data" *ngIf="!candidate.email && !candidate.phone">—</span>
+                                </div>
+                            </td>
+
+                            <!-- Location -->
+                            <td class="location-cell">
+                                <span class="location">{{ candidate.location || '—' }}</span>
+                            </td>
+
+                            <!-- Experience -->
+                            <td class="experience-cell">
+                                <div class="exp-info">
+                                    <span class="exp-years" *ngIf="candidate.years_of_experience">{{ candidate.years_of_experience }} yrs</span>
+                                </div>
+                            </td>
+                            <!-- Skills -->
+                            <td class="skills-cell">
+                                <div class="skills-container" *ngIf="candidate.skills?.length">
+                                    <span class="skill-tag" *ngFor="let skill of candidate.skills.slice(0, 3)">{{ skill.name }}</span>
+                                    <span class="skills-more" *ngIf="candidate.skills.length > 3">+{{ candidate.skills.length - 3 }}</span>
+                                </div>
+                                <span class="no-data" *ngIf="!candidate.skills?.length">—</span>
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="actions-cell">
+                                <button class="action-btn" (click)="viewCandidate(candidate)" title="View details">
+                                    <i class="pi pi-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </ng-template>
+
+                    <!-- Row Expansion -->
+                    <ng-template pTemplate="rowexpansion" let-candidate>
+                        <tr class="expand-row">
+                            <td colspan="8">
+                                <div class="expand-content">
+                                    <div class="expand-grid">
+                                        <!-- All Skills -->
+                                        <div class="expand-section">
+                                            <h4><i class="pi pi-tags"></i> All Skills</h4>
+                                            <div class="skills-full">
+                                                <span class="skill-tag-lg" *ngFor="let skill of candidate.skills">
+                                                    {{ skill.name }}
+                                                    <span class="proficiency" *ngIf="skill.proficiency">({{ skill.proficiency }})</span>
+                                                </span>
+                                            </div>
+                                            <div class="no-skills" *ngIf="!candidate.skills?.length">No skills extracted</div>
                                         </div>
-                                    </td>
 
-                                    <!-- Contact -->
-                                    <td class="contact-cell">
-                                        <div class="contact-info">
-                                            <span class="email" *ngIf="candidate.email">{{ candidate.email }}</span>
-                                            <span class="phone" *ngIf="candidate.phone">{{ candidate.phone }}</span>
-                                            <span class="no-data" *ngIf="!candidate.email && !candidate.phone">—</span>
-                                        </div>
-                                    </td>
-
-                                    <!-- Location -->
-                                    <td class="location-cell">
-                                        <span class="location">{{ candidate.location || '—' }}</span>
-                                    </td>
-
-                                    <!-- Experience -->
-                                    <td class="experience-cell">
-                                        <div class="exp-info">
-                                            <span class="exp-years" *ngIf="candidate.years_of_experience">
-                                                {{ candidate.years_of_experience }} yrs
-                                            </span>
-                                            <span class="exp-badge" *ngIf="candidate.experience_level" [class]="getExperienceBadgeClass(candidate.experience_level)">
-                                                {{ candidate.experience_level }}
-                                            </span>
-                                            <span class="no-data" *ngIf="!candidate.years_of_experience && !candidate.experience_level">—</span>
-                                        </div>
-                                    </td>
-
-                                    <!-- Skills -->
-                                    <td class="skills-cell">
-                                        <div class="skills-container">
-                                            <span class="skill-tag" *ngFor="let skill of candidate.skills.slice(0, 3)">{{ skill.name }}</span>
-                                            <span class="skills-more" *ngIf="candidate.skills.length > 3">+{{ candidate.skills.length - 3 }}</span>
-                                        </div>
-                                        <span class="no-data" *ngIf="!candidate.skills?.length">—</span>
-                                    </td>
-
-                                    <!-- Resume Count -->
-                                    <td class="resumes-cell">
-                                        <span class="resume-count" [class.multiple]="candidate.resume_count > 1">
-                                            {{ candidate.resume_count }}
-                                        </span>
-                                    </td>
-
-                                    <!-- Actions -->
-                                    <td class="actions-cell" (click)="$event.stopPropagation()">
-                                        <button class="action-btn" (click)="viewCandidate(candidate)" title="View details">
-                                            👁️
-                                        </button>
-                                    </td>
-                                </tr>
-
-                                <!-- Expanded Row -->
-                                <tr class="expand-row" *ngIf="isExpanded(candidate.id)">
-                                    <td colspan="9">
-                                        <div class="expand-content">
-                                            <div class="expand-grid">
-                                                <!-- Left Column - All Skills -->
-                                                <div class="expand-section">
-                                                    <h4>All Skills</h4>
-                                                    <div class="skills-full">
-                                                        <span class="skill-tag-lg" *ngFor="let skill of candidate.skills">
-                                                            {{ skill.name }}
-                                                            <span class="proficiency" *ngIf="skill.proficiency">({{ skill.proficiency }})</span>
-                                                        </span>
-                                                    </div>
-                                                    <div class="no-skills" *ngIf="!candidate.skills?.length">
-                                                        No skills extracted
-                                                    </div>
+                                        <!-- Contact Details -->
+                                        <div class="expand-section">
+                                            <h4><i class="pi pi-user"></i> Contact Details</h4>
+                                            <div class="contact-details">
+                                                <div class="detail-item" *ngIf="candidate.email">
+                                                    <i class="pi pi-envelope"></i>
+                                                    <a [href]="'mailto:' + candidate.email">{{ candidate.email }}</a>
                                                 </div>
-
-                                                <!-- Middle Column - Contact Details -->
-                                                <div class="expand-section">
-                                                    <h4>Contact Details</h4>
-                                                    <div class="contact-details">
-                                                        <div class="detail-item" *ngIf="candidate.email">
-                                                            <span class="detail-icon">📧</span>
-                                                            <a [href]="'mailto:' + candidate.email">{{ candidate.email }}</a>
-                                                        </div>
-                                                        <div class="detail-item" *ngIf="candidate.phone">
-                                                            <span class="detail-icon">📱</span>
-                                                            <a [href]="'tel:' + candidate.phone">{{ candidate.phone }}</a>
-                                                        </div>
-                                                        <div class="detail-item" *ngIf="candidate.linkedin">
-                                                            <span class="detail-icon">🔗</span>
-                                                            <a [href]="candidate.linkedin" target="_blank">LinkedIn Profile</a>
-                                                        </div>
-                                                        <div class="detail-item" *ngIf="candidate.location">
-                                                            <span class="detail-icon">📍</span>
-                                                            <span>{{ candidate.location }}</span>
-                                                        </div>
-                                                    </div>
+                                                <div class="detail-item" *ngIf="candidate.phone">
+                                                    <i class="pi pi-phone"></i>
+                                                    <a [href]="'tel:' + candidate.phone">{{ candidate.phone }}</a>
                                                 </div>
+                                                <div class="detail-item" *ngIf="candidate.linkedin">
+                                                    <i class="pi pi-linkedin"></i>
+                                                    <a [href]="candidate.linkedin" target="_blank">LinkedIn Profile</a>
+                                                </div>
+                                                <div class="detail-item" *ngIf="candidate.location">
+                                                    <i class="pi pi-map-marker"></i>
+                                                    <span>{{ candidate.location }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                                <!-- Right Column - Resumes -->
-                                                <div class="expand-section">
-                                                    <h4>Resumes ({{ candidate.resume_count }})</h4>
-                                                    <div class="resume-list">
-                                                        <div class="resume-item" *ngFor="let resume of candidate.resumes">
-                                                            <div class="resume-info">
-                                                                <span class="resume-name">{{ resume.file_name }}</span>
-                                                                <span class="resume-date">{{ formatDate(resume.created_at) }}</span>
-                                                            </div>
-                                                            <div class="resume-actions">
-                                                                <button class="btn-sm" (click)="openResumeFile(resume); $event.stopPropagation()">🔗 Open</button>
-                                                                <button class="btn-sm" (click)="downloadResume(resume); $event.stopPropagation()">⬇️ Download</button>
-                                                            </div>
-                                                        </div>
+                                        <!-- Resumes -->
+                                        <div class="expand-section">
+                                            <h4><i class="pi pi-file"></i> Resumes ({{ candidate.resume_count }})</h4>
+                                            <div class="resume-list">
+                                                <div class="resume-item" *ngFor="let resume of candidate.resumes">
+                                                    <div class="resume-info">
+                                                        <span class="resume-name">{{ resume.file_name }}</span>
+                                                        <span class="resume-date">{{ formatDate(resume.created_at) }}</span>
+                                                    </div>
+                                                    <div class="resume-actions">
+                                                        <button class="btn-sm" (click)="openResumeFile(resume)">
+                                                            <i class="pi pi-external-link"></i> Open
+                                                        </button>
+                                                        <button class="btn-sm" (click)="downloadResume(resume)">
+                                                            <i class="pi pi-download"></i>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </td>
-                                </tr>
-                            </ng-container>
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </ng-template>
 
-                <!-- No Results -->
-                <div class="no-results" *ngIf="candidates.length > 0 && filteredCandidates.length === 0">
-                    <p>No candidates match your search.</p>
-                </div>
+                    <!-- Empty Message -->
+                    <ng-template pTemplate="emptymessage">
+                        <tr>
+                            <td colspan="8" class="empty-table-message">
+                                <i class="pi pi-search"></i>
+                                <p>No candidates match your filters.</p>
+                                <button class="btn-text" (click)="clearFilters()">Clear Filters</button>
+                            </td>
+                        </tr>
+                    </ng-template>
+                </p-table>
             </div>
         </ng-container>
     </main>
@@ -459,7 +522,7 @@
                             <div class="pref-section">
                                 <label class="pref-label">Available Start Date</label>
                                 <input *ngIf="editingPreferences" type="date" [(ngModel)]="editedPreferences.available_start_date" class="pref-input" />
-                                <span *ngIf="!editingPreferences">{{ editedPreferences.available_start_date ? formatDate(editedPreferences.available_start_date) : 'Not specified' }}</span>
+                                <span *ngIf="!editingPreferences">{{ editedPreferences.available_start_date ? formatDate(editedPreferences.available_start_date!) : 'Not specified' }}</span>
                             </div>
 
                             <!-- Notice Period -->

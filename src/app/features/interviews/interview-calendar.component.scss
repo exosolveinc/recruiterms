@@ -115,7 +115,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: auto;
+
   width: 100%;
   background: radial-gradient(ellipse at center, #f8fafc 0%, #fff 70%);
   border-radius: 12px;
@@ -2268,52 +2268,12 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
   }
 }
 
-// Expanded state
+// Expanded state - hide the original event since we use the overlay
 .custom-event.expanded {
-  position: absolute;
-  z-index: 9999 !important;
-  padding: 18px;
-  width: 340px;
-  height: auto !important;
-  min-height: 290px;
-  overflow: visible;
-  background: #fff !important;
-  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.04);
-  border-radius: 16px;
-  border-left: 4px solid;
-  animation: expandIn 0.2s ease;
-
-  .event-hover-actions {
-    display: none;
-  }
-
-  .event-title {
-    font-size: 16px;
-    padding-right: 0;
-  }
+  opacity: 0.4;
+  pointer-events: none;
 }
 
-@keyframes expandIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-// Expand directions
-.custom-event.expanded.expand-right {
-  left: 0;
-  right: auto;
-}
-
-.custom-event.expanded.expand-left {
-  right: 0;
-  left: auto;
-}
 
 .expanded-role {
   font-size: 11px;
