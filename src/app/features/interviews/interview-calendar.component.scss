@@ -1975,6 +1975,157 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
 }
 
 // ============================================================================
+// MONTH VIEW - GOOGLE CALENDAR STYLE EVENTS
+// ============================================================================
+
+// Hide default events display and fix cell sizing
+::ng-deep .cal-month-view {
+  .cal-events {
+    display: none !important;
+  }
+
+  .cal-day-cell {
+    min-height: 100px;
+    max-height: 120px;
+    overflow: hidden;
+
+    &.cal-in-month.cal-has-events {
+      overflow: hidden !important;
+    }
+  }
+
+  .cal-cell-top {
+    min-height: auto !important;
+    height: 100%;
+    overflow: hidden !important;
+  }
+
+  // Ensure cells don't expand based on content
+  .cal-cell {
+    overflow: hidden !important;
+  }
+
+  mwl-calendar-month-cell {
+    overflow: hidden !important;
+    display: block !important;
+    max-width: 100% !important;
+  }
+
+  .cal-cell.cal-day-cell {
+    overflow: hidden !important;
+    position: relative !important;
+  }
+
+  .cal-days .cal-cell-row {
+    .cal-cell {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      max-width: calc(100% / 7) !important;
+      overflow: hidden !important;
+    }
+  }
+}
+
+.month-cell-content {
+  padding: 4px;
+  height: 100%;
+  width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+
+  .month-day-number {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    padding: 2px 6px;
+    display: inline-block;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    text-align: center;
+    line-height: 20px;
+    flex-shrink: 0;
+
+    &.today {
+      background: #3b82f6;
+      color: #fff;
+    }
+  }
+}
+
+.month-events-list {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.month-event-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 1px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+
+  &:hover {
+    filter: brightness(0.95);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .month-event-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .month-event-time {
+    font-size: 11px;
+    font-weight: 500;
+    color: #374151;
+    flex-shrink: 0;
+    text-transform: lowercase;
+  }
+
+  .month-event-title {
+    font-size: 12px;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+.month-more-events {
+  font-size: 11px;
+  font-weight: 500;
+  color: #3b82f6;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(59, 130, 246, 0.1);
+  }
+}
+
+// ============================================================================
 // CUSTOM EVENT TEMPLATE - EXPANDED VIEW
 // ============================================================================
 
@@ -2023,6 +2174,7 @@ mwl-calendar-month-view .cal-day-cell.cal-today .cal-day-number {
   margin-top: 3px;
   font-family: ui-monospace, monospace;
   line-height: 1.2;
+
 }
 
 // Ensure custom event fills the calendar event container properly

@@ -109,11 +109,40 @@
               [viewDate]="viewDate"
               [events]="events"
               [refresh]="refresh"
-              [activeDayIsOpen]="activeDayIsOpen"
+              [activeDayIsOpen]="false"
               (dayClicked)="dayClicked($event.day)"
-              (eventClicked)="handleEvent('Clicked', $event.event)"
+              (eventClicked)="onMonthEventClick($event.event, $any($event.sourceEvent))"
+              [cellTemplate]="monthCellTemplate"
             >
             </mwl-calendar-month-view>
+
+            <!-- Month Cell Template -->
+            <ng-template #monthCellTemplate let-day="day" let-locale="locale">
+              <div class="month-cell-content">
+                <span class="month-day-number" [class.today]="day.isToday">
+                  {{ day.date | date:'d' }}
+                </span>
+                <div class="month-events-list">
+                  <ng-container *ngFor="let event of day.events; let i = index">
+                    <div
+                      *ngIf="i < 3"
+                      class="month-event-item"
+                      [style.backgroundColor]="event.color?.secondary || '#f3f4f6'"
+                      [style.borderLeftColor]="event.color?.primary || '#3b82f6'"
+                      [title]="getEventTooltip(event)"
+                      (click)="onMonthEventClick(event, $event)"
+                    >
+                      <span class="month-event-dot" [style.backgroundColor]="event.color?.primary || '#3b82f6'"></span>
+                      <span class="month-event-time">{{ event.start | date:'h:mma' }}</span>
+                      <span class="month-event-title">{{ event.title }}</span>
+                    </div>
+                  </ng-container>
+                  <div *ngIf="day.events.length > 2" class="month-more-events" (click)="onShowMoreEvents(day, $event)">
+                    +{{ day.events.length - 2 }} more
+                  </div>
+                </div>
+              </div>
+            </ng-template>
 
             <mwl-calendar-week-view
               *ngSwitchCase="CalendarView.Week"
@@ -652,8 +681,6 @@
   [style.left.px]="expandedPosition.left"
   [style.borderLeftColor]="expandedEvent.color?.primary || '#6b7280'"
 >
-  <!-- Status indicator -->
-  <div class="event-status-dot" [style.backgroundColor]="expandedEvent.color?.primary || '#6b7280'"></div>
 
   <!-- Basic event info -->
   <div class="event-title">{{ expandedEvent.interview?.title || expandedEvent.title || 'Interview' }}</div>
