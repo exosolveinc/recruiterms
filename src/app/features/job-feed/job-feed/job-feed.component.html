@@ -3,45 +3,83 @@
   <main class="main-content">
     <!-- Candidate Selection Bar -->
     <div class="candidate-selection-bar">
-      <div class="selected-candidate-display" (click)="openCandidateDrawer()">
-        <div class="candidate-avatar" *ngIf="selectedCandidate">
-          {{ getInitials(selectedCandidate.name) }}
+      <div class="candidate-bar-left">
+        <div class="selected-candidate-display" (click)="openCandidateDrawer()">
+          <div class="candidate-avatar" *ngIf="selectedCandidate">
+            {{ getInitials(selectedCandidate.name) }}
+          </div>
+          <div class="candidate-avatar empty" *ngIf="!selectedCandidate">
+            ?
+          </div>
+          <div class="candidate-details">
+            <span class="candidate-name" *ngIf="selectedCandidate">{{ selectedCandidate.name }}</span>
+            <span class="candidate-name placeholder" *ngIf="!selectedCandidate">Select a candidate</span>
+            <span class="candidate-meta" *ngIf="selectedCandidate">
+              {{ selectedCandidate.current_title || 'No title' }}
+              <span *ngIf="selectedResume"> · {{ getResumeLabel(selectedResume) }}</span>
+            </span>
+          </div>
+          <button class="change-btn">
+            {{ selectedCandidate ? 'Change' : 'Select' }}
+          </button>
         </div>
-        <div class="candidate-avatar empty" *ngIf="!selectedCandidate">
-          ?
-        </div>
-        <div class="candidate-details">
-          <span class="candidate-name" *ngIf="selectedCandidate">{{ selectedCandidate.name }}</span>
-          <span class="candidate-name placeholder" *ngIf="!selectedCandidate">Select a candidate</span>
-          <span class="candidate-meta" *ngIf="selectedCandidate">
-            {{ selectedCandidate.current_title || 'No title' }}
-            <span *ngIf="selectedResume"> · {{ getResumeLabel(selectedResume) }}</span>
+
+        <!-- Gmail Connect (inline beside candidate) -->
+        <button
+          class="gmail-connect-inline"
+          [class.connected]="gmailStatus.connected"
+          (click)="gmailStatus.connected ? toggleGmailPanel() : connectGmail()"
+          [disabled]="gmailConnecting"
+          *ngIf="selectedCandidate"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+            <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
+            <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
+            <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
+          </svg>
+          <span *ngIf="!gmailStatus.connected && !gmailConnecting">Connect Gmail</span>
+          <span *ngIf="gmailConnecting">Connecting...</span>
+          <span *ngIf="gmailStatus.connected" class="gmail-connected-label">
+            <span class="connected-dot"></span>
+            {{ gmailStatus.google_email || 'Gmail' }}
           </span>
-        </div>
-        <button class="change-btn">
-          {{ selectedCandidate ? 'Change' : 'Select' }}
         </button>
       </div>
 
-      <!-- Preferences Summary (collapsed view) -->
-      <div class="preferences-bar" *ngIf="selectedCandidate?.preferences">
-        <div class="pref-tags">
-          <span class="pref-tag" *ngIf="selectedCandidate?.preferences?.preferred_job_titles?.length">
-            {{ selectedCandidate!.preferences!.preferred_job_titles![0] }}
-            <span *ngIf="selectedCandidate!.preferences!.preferred_job_titles!.length > 1">
-              +{{ selectedCandidate!.preferences!.preferred_job_titles!.length - 1 }}
-            </span>
-          </span>
-          <span class="pref-tag location" *ngIf="selectedCandidate?.preferences?.preferred_locations?.length">
-            {{ selectedCandidate!.preferences!.preferred_locations![0] }}
-          </span>
-          <span
-            class="pref-tag work-type"
-            *ngFor="let wt of selectedCandidate?.preferences?.preferred_work_type"
-            [class]="wt"
-          >
-            {{ wt | titlecase }}
-          </span>
+      <!-- Right side: refresh controls + new jobs badge -->
+      <div class="candidate-bar-right" *ngIf="selectedCandidate">
+        <span class="refresh-status-text" *ngIf="!isRefreshing && !autoRefreshPaused">
+          Next in {{ refreshCountdown }}
+        </span>
+        <span class="refresh-status-text refreshing" *ngIf="isRefreshing">
+          <span class="spinner-small"></span> Refreshing...
+        </span>
+        <span class="refresh-status-text paused" *ngIf="autoRefreshPaused && !isRefreshing">Paused</span>
+
+        <div class="bar-controls">
+          <button class="bar-btn primary" (click)="manualRefresh()" [disabled]="isRefreshing" title="Refresh Now">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M8 2V5L10 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Refresh
+          </button>
+          <button class="bar-btn" (click)="toggleAutoRefresh()" title="{{ autoRefreshPaused ? 'Resume auto-refresh' : 'Pause auto-refresh' }}">
+            {{ autoRefreshPaused ? 'Resume' : 'Pause' }}
+          </button>
+          <button class="bar-btn danger" (click)="clearAllCaches()" title="Clear cached analysis data">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M6 2H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M3 4L4 14H12L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Clear
+          </button>
+        </div>
+
+        <div class="new-jobs-badge" *ngIf="newJobsCount > 0" (click)="scrollToNewJobs()">
+          {{ newJobsCount }} new
         </div>
       </div>
     </div>
@@ -86,65 +124,9 @@
             </button>
           </div>
 
-          <!-- Gmail Integration Button -->
-          <button class="gmail-header-btn" [class.connected]="gmailStatus.connected" (click)="toggleGmailPanel()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
-              <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
-              <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
-              <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
-            </svg>
-            <span *ngIf="!gmailStatus.connected">Connect Gmail</span>
-            <span *ngIf="gmailStatus.connected" class="gmail-status-indicator">
-              <span class="status-dot"></span>
-              {{ gmailStatus.emails_synced_count || 0 }} synced
-            </span>
-          </button>
         </div>
       </div>
 
-      <!-- Auto-Refresh Status Bar -->
-      <div class="auto-refresh-bar" *ngIf="selectedCandidate">
-        <div class="refresh-status">
-          <span class="last-updated" *ngIf="lastRefreshTime">
-            Last updated: {{ lastRefreshTime | date:'shortTime' }}
-          </span>
-          <span class="next-refresh" *ngIf="!isRefreshing && !autoRefreshPaused">
-            Next refresh in {{ refreshCountdown }}
-          </span>
-          <span class="refreshing" *ngIf="isRefreshing">
-            <span class="spinner-small"></span> Refreshing...
-          </span>
-          <span class="paused" *ngIf="autoRefreshPaused && !isRefreshing">Auto-refresh paused</span>
-        </div>
-
-        <div class="refresh-controls">
-          <button class="btn-refresh" (click)="manualRefresh()" [disabled]="isRefreshing">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M8 2V5L10 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Refresh Now
-          </button>
-          <button class="btn-pause" (click)="toggleAutoRefresh()">
-            {{ autoRefreshPaused ? 'Resume' : 'Pause' }}
-          </button>
-          <button class="btn-clear-cache" (click)="clearAllCaches()" title="Clear cached analysis data">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M2 4H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M6 2H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M3 4L4 14H12L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M6 7V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M10 7V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-            Clear Cache
-          </button>
-        </div>
-
-        <div class="new-jobs-badge" *ngIf="newJobsCount > 0" (click)="scrollToNewJobs()">
-          {{ newJobsCount }} new job{{ newJobsCount > 1 ? 's' : '' }}
-        </div>
-      </div>
 
       <!-- Global Analysis Progress -->
       <div class="analysis-progress-global" *ngIf="analysisInProgress">
@@ -154,43 +136,6 @@
         </div>
         <div class="progress-bar">
           <div class="progress-fill" [style.width.%]="analysisProgress"></div>
-        </div>
-      </div>
-
-      <!-- Unified Feed Controls -->
-      <div class="feed-controls" *ngIf="unifiedJobs.length > 0 || selectedCandidate">
-        <div class="source-filters">
-          <button
-            class="source-btn"
-            [class.active]="sourceFilter === 'all'"
-            (click)="filterBySource('all')"
-          >
-            All Sources
-            <span class="count" *ngIf="unifiedJobs.length">{{ unifiedJobs.length }}</span>
-          </button>
-          <button
-            class="source-btn"
-            [class.active]="sourceFilter === 'api'"
-            (click)="filterBySource('api')"
-          >
-            Job Boards
-          </button>
-          <button
-            class="source-btn"
-            [class.active]="sourceFilter === 'email'"
-            (click)="filterBySource('email')"
-          >
-            Email Jobs
-          </button>
-        </div>
-
-        <div class="sort-controls">
-          <label>Sort by:</label>
-          <select [(ngModel)]="sortBy" (change)="sortJobsBy(sortBy)">
-            <option value="date">Newest First</option>
-            <option value="match">Best Match</option>
-            <option value="salary">Highest Salary</option>
-          </select>
         </div>
       </div>
 
@@ -357,17 +302,6 @@
           <div class="loading-step-text">{{ searchLoadingText }}</div>
         </div>
 
-        <!-- Popular Searches -->
-        <div class="popular-searches" *ngIf="jobs.length === 0 && !searching">
-          <span class="label">Popular:</span>
-          <button
-            class="quick-search"
-            *ngFor="let search of popularSearches"
-            (click)="quickSearch(search)"
-          >
-            {{ search }}
-          </button>
-        </div>
       </div>
 
       <!-- Email Jobs View -->
@@ -459,10 +393,13 @@
                 </button>
                 <!-- Add Gmail Button (inline with other actions) -->
                 <button class="btn-add-another-gmail" *ngIf="gmailStatus.connected && gmailAccounts.length < 3" (click)="connectGmail()" [disabled]="gmailConnecting">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M7 2V12M2 7H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+                    <path d="M20 6H4L12 11L20 6Z" fill="#FBBC04"/>
+                    <path d="M4 6V18H2V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V18H20V6H4Z" fill="#34A853"/>
+                    <path d="M20 6V8L12 13L4 8V6H20Z" fill="#4285F4"/>
                   </svg>
-                  <span *ngIf="!gmailConnecting">Connect Another Gmail ({{ gmailAccounts.length || 1 }}/3)</span>
+                  <span *ngIf="!gmailConnecting">+ Add Gmail ({{ gmailAccounts.length || 1 }}/3)</span>
                   <span *ngIf="gmailConnecting">Connecting...</span>
                 </button>
               </div>
@@ -691,215 +628,196 @@
       </div>
     </div>
 
-    <!-- Unified Feed Section (real-time job feed) -->
-    <div class="unified-feed-section" *ngIf="unifiedJobs.length > 0">
-      <div class="unified-job-list">
-        <div
-          class="job-card unified-job-card"
-          *ngFor="let job of unifiedJobs"
-          [class.is-new]="job.is_new"
-          [class.high-match]="job.match_score !== undefined && job.match_score >= 80"
-          [class.medium-match]="job.match_score !== undefined && job.match_score >= 60 && job.match_score < 80"
-          [class.low-match]="job.match_score !== undefined && job.match_score < 60"
-          (click)="markUnifiedJobAsSeen(job.id)"
-        >
-          <!-- New Badge -->
-          <span class="new-badge" *ngIf="job.is_new">NEW</span>
+    <!-- Source Tabs + Search (above table) -->
+    <div class="feed-controls" *ngIf="unifiedJobs.length > 0 || selectedCandidate">
 
-          <div class="job-card-header">
-            <div class="job-main">
-              <h3 class="job-title">{{ job.title }}</h3>
-              <p class="job-company">{{ job.company }}</p>
-            </div>
-            <div class="job-badges">
-              <!-- Match Score Badge -->
-              <div class="match-badge" *ngIf="job.match_score !== undefined" [class]="getMatchClass(job.match_score)">
-                <span class="score">{{ job.match_score }}%</span>
-                <span class="label">Match</span>
-              </div>
-              <!-- Analyzing Spinner -->
-              <div class="analyzing-badge" *ngIf="job.analyzing">
-                <span class="spinner-sm"></span>
-              </div>
-              <!-- Source Badge -->
-              <span class="source-badge" [class]="job.source_type">
-                {{ job.source_platform }}
-              </span>
-            </div>
-          </div>
-
-          <div class="job-meta">
-            <span class="meta-item location" *ngIf="job.location">{{ job.location }}</span>
-            <span class="meta-item salary" *ngIf="job.salary_text || job.salary_min">
-              {{ job.salary_text || ('$' + (job.salary_min | number) + (job.salary_max ? ' - $' + (job.salary_max | number) : '')) }}
-            </span>
-            <span class="meta-item type" *ngIf="job.employment_type">{{ job.employment_type }}</span>
-            <span class="meta-item work-arrangement" *ngIf="job.work_arrangement && job.work_arrangement !== 'unknown'">
-              {{ job.work_arrangement | titlecase }}
-            </span>
-            <span class="meta-item date">{{ formatDate(job.posted_date) }}</span>
-          </div>
-
-          <!-- Matching Skills Preview -->
-          <div class="skills-preview" *ngIf="job.matching_skills && job.matching_skills.length > 0">
-            <span class="skill-tag matching" *ngFor="let skill of job.matching_skills.slice(0, 4)">
-              {{ skill }}
-            </span>
-            <span class="more-skills" *ngIf="job.matching_skills.length > 4">
-              +{{ job.matching_skills.length - 4 }} more
-            </span>
-          </div>
-
-          <!-- Email-specific info -->
-          <div class="email-job-info" *ngIf="job.source_type === 'email'">
-            <span class="recruiter" *ngIf="job.recruiter_name">
-              From: {{ job.recruiter_name }}
-              <span *ngIf="job.vendor_company"> ({{ job.vendor_company }})</span>
-            </span>
-          </div>
-
-          <p class="job-description">{{ truncateDescription(job.description, 150) }}</p>
-
-          <div class="job-card-footer">
-            <button class="btn-view" *ngIf="job.url" (click)="openJobUrl(job.url); $event.stopPropagation()">
-              View Job
-            </button>
-            <button class="btn-apply" *ngIf="job.url" (click)="openJobUrl(job.url); $event.stopPropagation()">
-              Apply Now
-            </button>
-            <button class="btn-contact" *ngIf="job.recruiter_email" (click)="$event.stopPropagation()">
-              <a [href]="'mailto:' + job.recruiter_email" style="color: inherit; text-decoration: none;">
-                Contact Recruiter
-              </a>
-            </button>
-          </div>
-        </div>
+      <div class="feed-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="text"
+          [(ngModel)]="unifiedTableSearchTerm"
+          (input)="onUnifiedTableFilter($event)"
+          placeholder="Search title, company, skill, location..."
+        />
       </div>
     </div>
 
-    <!-- Results Section (only for search view) -->
-    <div class="results-section" *ngIf="activeView === 'search' && (jobs.length > 0 || searching)">
-      <!-- Stats Bar -->
-      <div class="stats-bar" *ngIf="jobs.length > 0">
-        <div class="stat">
-          <span class="stat-value">{{ stats.totalFound | number }}</span>
-          <span class="stat-label">Jobs Found</span>
-        </div>
-        <div class="stat" *ngIf="stats.averageSalary > 0">
-          <span class="stat-value">${{ stats.averageSalary | number }}</span>
-          <span class="stat-label">Avg Salary</span>
-        </div>
-        <div class="stat" *ngIf="stats.avgMatchScore > 0">
-          <span class="stat-value">{{ stats.avgMatchScore }}%</span>
-          <span class="stat-label">Avg Match</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ currentPage }}/{{ totalPages }}</span>
-          <span class="stat-label">Page</span>
-        </div>
-      </div>
-
-      <!-- Analysis Progress -->
-      <div class="analysis-progress" *ngIf="analyzingAll">
-        <div class="progress-bar">
-          <div class="progress-fill" [style.width.%]="(analyzedCount / jobs.length) * 100"></div>
-        </div>
-        <span class="progress-text">Analyzing jobs... {{ analyzedCount }}/{{ jobs.length }}</span>
-      </div>
-
-      <!-- Job List -->
-      <div class="job-list">
-        <div
-          class="job-card"
-          *ngFor="let job of jobs"
-          [class.selected]="selectedJob?.id === job.id"
-          [class.high-match]="job.match_score !== undefined && job.match_score >= 80"
-          [class.medium-match]="job.match_score !== undefined && job.match_score >= 60 && job.match_score < 80"
-          [class.low-match]="job.match_score !== undefined && job.match_score < 60"
-          (click)="selectJob(job)"
-        >
-          <div class="job-card-header">
-            <div class="job-main">
-              <h3 class="job-title">{{ job.title }}</h3>
-              <p class="job-company">{{ job.company }}</p>
-            </div>
-            <div class="job-badges">
-              <!-- Match Score Badge -->
-              <div class="match-badge" *ngIf="job.match_score !== undefined" [class]="getMatchClass(job.match_score)">
-                <span class="score">{{ job.match_score }}%</span>
-                <span class="label">Match</span>
+    <!-- Unified Feed Table -->
+    <div class="unified-feed-section" *ngIf="unifiedJobs.length > 0 || selectedCandidate">
+      <p-table
+        #unifiedTable
+        [value]="unifiedJobs"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[5, 10, 25, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} jobs"
+        [globalFilterFields]="['title', 'company', 'location', 'source_platform', 'description']"
+        dataKey="id"
+        [rowHover]="true"
+        [expandedRowKeys]="expandedUnifiedRows"
+        styleClass="p-datatable-sm jobs-table"
+        [tableStyle]="{ 'table-layout': 'fixed', 'width': '100%' }"
+      >
+        <!-- Header -->
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="width: 44px"></th>
+            <th (click)="onUnifiedSort($event, 'match_score')" class="sortable-col" style="width: 70px">
+              <div class="header-cell">
+                <span>Match</span>
+                <i class="pi sort-icon" [ngClass]="getUnifiedSortIcon('match_score')"></i>
               </div>
-              <!-- Analyzing Spinner -->
-              <div class="analyzing-badge" *ngIf="job.analyzing">
-                <span class="spinner-sm"></span>
+            </th>
+            <th (click)="onUnifiedSort($event, 'title')" class="sortable-col" style="min-width: 180px">
+              <div class="header-cell">
+                <span>Title / Company</span>
+                <i class="pi sort-icon" [ngClass]="getUnifiedSortIcon('title')"></i>
               </div>
-              <span class="source-badge" [class]="job.source">{{ job.source }}</span>
-            </div>
-          </div>
+            </th>
+            <th style="width: 150px">Salary</th>
+            <th (click)="onUnifiedSort($event, 'location')" class="sortable-col" style="width: 140px">
+              <div class="header-cell">
+                <span>Location</span>
+                <i class="pi sort-icon" [ngClass]="getUnifiedSortIcon('location')"></i>
+              </div>
+            </th>
+            <th (click)="onUnifiedSort($event, 'posted_date')" class="sortable-col" style="width: 95px">
+              <div class="header-cell">
+                <span>Posted</span>
+                <i class="pi sort-icon" [ngClass]="getUnifiedSortIcon('posted_date')"></i>
+              </div>
+            </th>
+            <th class="platform-col" style="width: 130px">
+              <div class="header-cell">
+                <span (click)="onUnifiedSort($event, 'source_platform')" class="sortable-label">Platform</span>
+                <i class="pi sort-icon" [ngClass]="getUnifiedSortIcon('source_platform')" (click)="onUnifiedSort($event, 'source_platform')"></i>
+                <button class="filter-icon-btn" [class.active]="platformFilter !== 'All'" (click)="togglePlatformFilter($event)">
+                  <svg width="11" height="11" viewBox="0 0 12 12">
+                    <path d="M1 2h10L7 6.5V10L5 11V6.5L1 2z" [attr.fill]="platformFilter !== 'All' ? '#000' : 'none'" [attr.stroke]="platformFilter !== 'All' ? '#000' : '#bbb'" stroke-width="1" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="platform-filter-dropdown" *ngIf="showPlatformFilter" (click)="$event.stopPropagation()">
+                <div
+                  class="dropdown-option"
+                  *ngFor="let platform of availablePlatforms"
+                  [class.selected]="platformFilter === platform"
+                  (click)="filterByPlatform(platform)"
+                >{{ platform }}</div>
+              </div>
+            </th>
+            <th style="width: 110px; text-align: center">Actions</th>
+          </tr>
+        </ng-template>
 
-          <div class="job-meta">
-            <span class="meta-item location">{{ job.location }}</span>
-            <span class="meta-item salary" *ngIf="job.salary_text">{{ job.salary_text }}</span>
-            <span class="meta-item type" *ngIf="job.employment_type">{{ job.employment_type }}</span>
-            <span class="meta-item date">{{ formatDate(job.posted_date) }}</span>
-            <span
-              class="meta-item work-type-indicator"
-              *ngIf="selectedCandidate?.preferences?.preferred_work_type?.length"
-              [class.matches]="checkWorkTypeMatch(job).matches"
-              [class.no-match]="!checkWorkTypeMatch(job).matches"
-              [title]="checkWorkTypeMatch(job).reason"
-            >
-              <span *ngIf="checkWorkTypeMatch(job).matches">✓ Work type</span>
-              <span *ngIf="!checkWorkTypeMatch(job).matches">⚠ Work type</span>
-            </span>
-          </div>
+        <!-- Body -->
+        <ng-template pTemplate="body" let-job let-expanded="expanded">
+          <tr class="job-row" [class.is-new]="job.is_new" [class.high-match]="job.match_score >= 80" (click)="markUnifiedJobAsSeen(job.id)">
+            <td class="expand-cell">
+              <button type="button" [pRowToggler]="job" class="expand-btn">
+                <i class="pi" [ngClass]="expanded ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
+              </button>
+            </td>
+            <td class="match-cell">
+              <span class="match-pill" *ngIf="job.match_score !== undefined" [class.high]="job.match_score >= 80" [class.medium]="job.match_score >= 60 && job.match_score < 80" [class.low]="job.match_score < 60">{{ job.match_score }}%</span>
+              <span class="analyzing-spinner" *ngIf="job.analyzing"><i class="pi pi-spin pi-spinner"></i></span>
+            </td>
+            <td class="title-cell">
+              <div class="title-info">
+                <span class="job-title-text">{{ job.title }}</span>
+                <span class="company-text">{{ job.company }}</span>
+              </div>
+              <span class="new-badge-inline" *ngIf="job.is_new">NEW</span>
+            </td>
+            <td class="salary-cell">{{ formatSalaryRange(job) }}</td>
+            <td class="location-cell">{{ job.location || '—' }}</td>
+            <td class="date-cell">{{ formatDate(job.posted_date) }}</td>
+            <td class="source-cell">
+              <span class="source-pill" [attr.data-source]="job.source_platform?.toLowerCase()">{{ job.source_platform }}</span>
+            </td>
+            <td class="actions-cell">
+              <button class="action-btn-round" (click)="$event.stopPropagation()" title="View">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
 
-          <!-- Matching Skills Preview -->
-          <div class="skills-preview" *ngIf="job.matching_skills && job.matching_skills.length > 0">
-            <span class="skill-tag matching" *ngFor="let skill of job.matching_skills!.slice(0, 4)">
-              {{ skill }}
-            </span>
-            <span class="more-skills" *ngIf="job.matching_skills!.length > 4">
-              +{{ job.matching_skills!.length - 4 }} more
-            </span>
-          </div>
+        <!-- Row Expansion -->
+        <ng-template pTemplate="rowexpansion" let-job>
+          <tr class="expand-row">
+            <td colspan="8">
+              <div class="expand-content">
+                <div class="expand-grid">
+                  <div class="expand-main">
+                    <div class="expand-label">Description</div>
+                    <div class="description-text" [innerHTML]="job.description"></div>
 
-          <p class="job-description">{{ truncateDescription(job.description, 150) }}</p>
+                    <div class="expand-label" *ngIf="job.matching_skills?.length || job.missing_skills?.length">Skills</div>
+                    <div class="expand-skills" *ngIf="job.matching_skills?.length || job.missing_skills?.length">
+                      <span class="skill-tag-lg" *ngFor="let skill of job.matching_skills">{{ skill }}</span>
+                      <span class="skill-tag-lg missing" *ngFor="let skill of job.missing_skills">{{ skill }}</span>
+                    </div>
 
-          <div class="job-card-footer">
-            <button class="btn-save" (click)="saveJob(job); $event.stopPropagation()" *ngIf="selectedResumeId">
-              Save Job
-            </button>
-            <button class="btn-apply" (click)="applyToJob(job); $event.stopPropagation()">
-              Apply Now
-            </button>
-          </div>
-        </div>
+                    <div class="expand-meta-row">
+                      <div class="meta-item">
+                        <div class="meta-label">Platform</div>
+                        <div class="meta-value">{{ job.source_platform || '—' }}</div>
+                      </div>
+                      <div class="meta-item" *ngIf="job.posted_date">
+                        <div class="meta-label">Posted</div>
+                        <div class="meta-value">{{ formatDate(job.posted_date) }}</div>
+                      </div>
+                      <div class="meta-item" *ngIf="job.location">
+                        <div class="meta-label">Location</div>
+                        <div class="meta-value">{{ job.location }}</div>
+                      </div>
+                      <div class="meta-item">
+                        <div class="meta-label">Salary</div>
+                        <div class="meta-value">{{ formatSalaryRange(job) }}</div>
+                      </div>
+                      <div class="meta-item" *ngIf="job.recruiter_name">
+                        <div class="meta-label">Recruiter</div>
+                        <div class="meta-value">{{ job.recruiter_name }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="expand-actions-col">
+                    <button class="btn-apply" *ngIf="job.url" (click)="openJobUrl(job.url)">
+                      Apply Now &rarr;
+                    </button>
+                    <button class="btn-outlined" *ngIf="job.url" (click)="openJobUrl(job.url)">
+                      View Full Post
+                    </button>
+                    <button class="btn-outlined" *ngIf="job.recruiter_email">
+                      <a [href]="'mailto:' + job.recruiter_email" style="color: inherit; text-decoration: none;">
+                        Contact Recruiter
+                      </a>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
 
-        <!-- Loading More -->
-        <div class="loading-more" *ngIf="loading">
-          <div class="spinner"></div>
-          <span>Loading more jobs...</span>
-        </div>
-
-        <!-- Load More Button -->
-        <button
-          class="btn-load-more"
-          *ngIf="currentPage < totalPages && !loading"
-          (click)="loadMore()"
-        >
-          Load More Jobs
-        </button>
-      </div>
-
+        <!-- Empty Message -->
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="8" class="empty-table-message">
+              <i class="pi pi-inbox"></i>
+              <p>No jobs in feed yet. Jobs will appear after auto-refresh or search.</p>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
     </div>
 
-    <!-- Empty State (only for search view) -->
-    <div class="empty-state" *ngIf="activeView === 'search' && jobs.length === 0 && !searching && searchQuery">
-      <div class="empty-icon">No Results</div>
-      <h3>No jobs found</h3>
-      <p>Try adjusting your search terms or location</p>
-    </div>
 
     <!-- Vendor Jobs Section (Hidden - now using view toggle) -->
     <div class="vendor-jobs-section" *ngIf="false">

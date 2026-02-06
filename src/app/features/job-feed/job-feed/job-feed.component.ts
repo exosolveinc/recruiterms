@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -13,6 +13,7 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 import { UnifiedFeedService } from '../../../core/services/unified-feed.service';
 import { GmailConnectionStatus, GmailSyncResult, VendorEmailService, VendorJob, VendorJobStats } from '../../../core/services/vendor-email.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
+import { TableModule, Table } from 'primeng/table';
 
 interface JobWithMatch extends ExternalJob {
   match_score?: number;
@@ -25,7 +26,7 @@ interface JobWithMatch extends ExternalJob {
 @Component({
   selector: 'app-job-feed',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, HttpClientModule, SidebarComponent, TableModule],
   templateUrl: './job-feed.component.html',
   styleUrl: './job-feed.component.scss'
 })
@@ -150,6 +151,27 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   // View Toggle
   activeView: 'search' | 'email' = 'search';
+
+  // PrimeNG Table State
+  @ViewChild('jobsTable') jobsTable!: Table;
+  @ViewChild('unifiedTable') unifiedTable!: Table;
+
+  // Search results table state
+  expandedJobRows: { [key: string]: boolean } = {};
+  jobSortField = '';
+  jobSortOrder = 0;
+  jobTableSearchTerm = '';
+
+  // Unified feed table state
+  expandedUnifiedRows: { [key: string]: boolean } = {};
+  unifiedSortField = '';
+  unifiedSortOrder = 0;
+  unifiedTableSearchTerm = '';
+
+  // Platform column filter
+  showPlatformFilter = false;
+  platformFilter = 'All';
+  availablePlatforms = ['All', 'RapidAPI', 'LinkedIn', 'Indeed', 'Adzuna', 'Gmail', 'Dice', 'Glassdoor'];
 
   // Session state key
   private readonly SESSION_STATE_KEY = 'jobFeed_sessionState';
@@ -801,12 +823,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   }
 
   sortJobsByMatch() {
-    this.jobs.sort((a, b) => {
-      if (a.match_score === undefined && b.match_score === undefined) return 0;
-      if (a.match_score === undefined) return 1;
-      if (b.match_score === undefined) return -1;
-      return b.match_score - a.match_score;
-    });
+    // Now handled by PrimeNG table column sorting
   }
 
   quickSearch(query: string) {
@@ -1418,6 +1435,115 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   }
 
+  // ============ PrimeNG Table Methods ============
+
+  // --- Search Results Table ---
+  onJobSort(event: Event, field: string) {
+    if (this.jobSortField === field) {
+      this.jobSortOrder = this.jobSortOrder === 1 ? -1 : 0;
+    } else {
+      this.jobSortField = field;
+      this.jobSortOrder = 1;
+    }
+
+    if (this.jobSortOrder !== 0) {
+      this.jobsTable.sortField = this.jobSortField;
+      this.jobsTable.sortOrder = this.jobSortOrder;
+      this.jobsTable.sortSingle();
+    } else {
+      this.jobsTable.sortField = '';
+      this.jobsTable.sortOrder = 0;
+      this.jobsTable.reset();
+    }
+  }
+
+  getJobSortIcon(field: string): string {
+    if (this.jobSortField !== field || this.jobSortOrder === 0) return 'pi-sort-alt';
+    return this.jobSortOrder === 1 ? 'pi-sort-amount-up-alt' : 'pi-sort-amount-down';
+  }
+
+  onJobTableFilter(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.jobsTable.filterGlobal(value, 'contains');
+  }
+
+  clearJobTableFilters() {
+    this.jobsTable.clear();
+    this.jobTableSearchTerm = '';
+    this.jobSortField = '';
+    this.jobSortOrder = 0;
+  }
+
+  // --- Unified Feed Table ---
+  onUnifiedSort(event: Event, field: string) {
+    if (this.unifiedSortField === field) {
+      this.unifiedSortOrder = this.unifiedSortOrder === 1 ? -1 : 0;
+    } else {
+      this.unifiedSortField = field;
+      this.unifiedSortOrder = 1;
+    }
+
+    if (this.unifiedSortOrder !== 0) {
+      this.unifiedTable.sortField = this.unifiedSortField;
+      this.unifiedTable.sortOrder = this.unifiedSortOrder;
+      this.unifiedTable.sortSingle();
+    } else {
+      this.unifiedTable.sortField = '';
+      this.unifiedTable.sortOrder = 0;
+      this.unifiedTable.reset();
+    }
+  }
+
+  getUnifiedSortIcon(field: string): string {
+    if (this.unifiedSortField !== field || this.unifiedSortOrder === 0) return 'pi-sort-alt';
+    return this.unifiedSortOrder === 1 ? 'pi-sort-amount-up-alt' : 'pi-sort-amount-down';
+  }
+
+  onUnifiedTableFilter(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.unifiedTable.filterGlobal(value, 'contains');
+  }
+
+  clearUnifiedTableFilters() {
+    this.unifiedTable.clear();
+    this.unifiedTableSearchTerm = '';
+    this.unifiedSortField = '';
+    this.unifiedSortOrder = 0;
+    this.platformFilter = 'All';
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.showPlatformFilter = false;
+  }
+
+  togglePlatformFilter(event: Event) {
+    event.stopPropagation();
+    this.showPlatformFilter = !this.showPlatformFilter;
+  }
+
+  filterByPlatform(platform: string) {
+    this.platformFilter = platform;
+    this.showPlatformFilter = false;
+    if (platform === 'All') {
+      this.unifiedTable.filter('', 'source_platform', 'contains');
+    } else {
+      this.unifiedTable.filter(platform, 'source_platform', 'equals');
+    }
+  }
+
+  // --- Display Helpers ---
+  formatSalaryRange(job: any): string {
+    if (job.salary_text) return job.salary_text;
+    if (job.salary_min && job.salary_max) {
+      return `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`;
+    }
+    if (job.salary_min) return `$${job.salary_min.toLocaleString()}+`;
+    if (job.salary_max) return `Up to $${job.salary_max.toLocaleString()}`;
+    return '—';
+  }
+
+
   // ============ Unified Feed & Auto-Refresh Methods ============
 
   ngOnDestroy() {
@@ -1555,37 +1681,11 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   sortJobsBy(sortBy: 'date' | 'match' | 'salary') {
     this.sortBy = sortBy;
-    this.applySorting();
+    // Now handled by PrimeNG table column sorting
   }
 
   private applySorting() {
-    const jobs = [...this.unifiedJobs];
-
-    switch (this.sortBy) {
-      case 'date':
-        jobs.sort((a, b) => {
-          const dateA = new Date(a.discovered_at || a.posted_date || 0).getTime();
-          const dateB = new Date(b.discovered_at || b.posted_date || 0).getTime();
-          return dateB - dateA;
-        });
-        break;
-      case 'match':
-        jobs.sort((a, b) => {
-          const scoreA = a.match_score ?? -1;
-          const scoreB = b.match_score ?? -1;
-          return scoreB - scoreA;
-        });
-        break;
-      case 'salary':
-        jobs.sort((a, b) => {
-          const salaryA = a.salary_max || a.salary_min || 0;
-          const salaryB = b.salary_max || b.salary_min || 0;
-          return salaryB - salaryA;
-        });
-        break;
-    }
-
-    this.unifiedJobs = jobs;
+    // Now handled by PrimeNG table column sorting — no-op
   }
 
   scrollToNewJobs() {
