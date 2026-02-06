@@ -2230,6 +2230,283 @@ table {
 }
 
 // ============================================================================
+// UPLOAD RESUME BUTTON
+// ============================================================================
+
+.upload-resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #111;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  i {
+    font-size: 14px;
+  }
+
+  &:hover:not(.uploading) {
+    background: #333;
+  }
+
+  &.uploading {
+    opacity: 0.7;
+    cursor: wait;
+  }
+}
+
+.upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+
+  i {
+    font-size: 14px;
+  }
+
+  &.uploading {
+    opacity: 0.7;
+    cursor: wait;
+  }
+}
+
+// ============================================================================
+// EXTRACTION STATUS BADGE
+// ============================================================================
+
+.extraction-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  &.status-success {
+    background: #dcfce7;
+    color: #16a34a;
+
+    .status-dot {
+      background: #16a34a;
+    }
+  }
+
+  &.status-processing {
+    background: #fef3c7;
+    color: #d97706;
+
+    .status-dot {
+      background: #d97706;
+      animation: pulse 1.5s infinite;
+    }
+  }
+
+  &.status-failed {
+    background: #fee2e2;
+    color: #dc2626;
+
+    .status-dot {
+      background: #dc2626;
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+// ============================================================================
+// PRIMARY BADGE (SMALL)
+// ============================================================================
+
+.primary-badge-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #fef3c7;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+
+  i {
+    font-size: 10px;
+    color: #f59e0b;
+  }
+}
+
+// ============================================================================
+// EXPANDED ROW RESUME ENHANCEMENTS
+// ============================================================================
+
+.resume-display-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111;
+  display: block;
+}
+
+.resume-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.resume-item {
+  &.primary {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+  }
+}
+
+.resume-action-btn {
+  &.analyze {
+    &:hover {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      color: #b45309;
+    }
+  }
+
+  &.primary {
+    &:hover {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      color: #b45309;
+    }
+  }
+
+  &.delete {
+    &:hover {
+      background: #fef2f2;
+      border-color: #f87171;
+      color: #dc2626;
+    }
+  }
+}
+
+// ============================================================================
+// MODAL RESUME CARD ENHANCEMENTS
+// ============================================================================
+
+.resume-card {
+  &.primary {
+    border-color: #f59e0b;
+    background: #fffbeb;
+  }
+}
+
+.resume-card-display-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+}
+
+.resume-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.btn-action {
+  &.analyze {
+    &:hover {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      color: #b45309;
+    }
+  }
+
+  &.set-primary {
+    &:hover {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      color: #b45309;
+    }
+  }
+
+  &.delete {
+    &:hover {
+      background: #fef2f2;
+      border-color: #f87171;
+      color: #dc2626;
+    }
+  }
+}
+
+// ============================================================================
+// DELETE RESUME MODAL
+// ============================================================================
+
+.delete-resume-modal {
+  max-width: 400px;
+}
+
+.delete-resume-info {
+  padding: 16px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin: 16px 0;
+
+  .delete-resume-name {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    color: #111;
+    margin-bottom: 4px;
+  }
+
+  .delete-file-name {
+    font-size: 13px;
+    color: #666;
+  }
+}
+
+.warning-text {
+  color: #dc2626;
+  font-size: 13px;
+  margin: 0;
+}
+
+.btn-danger {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #dc2626;
+  border: none;
+  color: white;
+
+  &:hover {
+    background: #b91c1c;
+  }
+}
+
+// ============================================================================
 // RESPONSIVE
 // ============================================================================
 

@@ -9,29 +9,29 @@
 
         <ng-container *ngIf="!loading">
             <!-- Stats Row -->
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-info">
-                        <span class="stat-value">{{ stats.totalCandidates }}</span>
-                        <span class="stat-label">Total Candidates</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📄</div>
-                    <div class="stat-info">
-                        <span class="stat-value">{{ stats.totalResumes }}</span>
-                        <span class="stat-label">Total Resumes</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🛠️</div>
-                    <div class="stat-info">
-                        <span class="stat-value">{{ stats.totalSkills }}</span>
-                        <span class="stat-label">Unique Skills</span>
-                    </div>
-                </div>
-            </div>
+<!--            <div class="stats-row">-->
+<!--                <div class="stat-card">-->
+<!--                    <div class="stat-icon">👥</div>-->
+<!--                    <div class="stat-info">-->
+<!--                        <span class="stat-value">{{ stats.totalCandidates }}</span>-->
+<!--                        <span class="stat-label">Total Candidates</span>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="stat-card">-->
+<!--                    <div class="stat-icon">📄</div>-->
+<!--                    <div class="stat-info">-->
+<!--                        <span class="stat-value">{{ stats.totalResumes }}</span>-->
+<!--                        <span class="stat-label">Total Resumes</span>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="stat-card">-->
+<!--                    <div class="stat-icon">🛠️</div>-->
+<!--                    <div class="stat-info">-->
+<!--                        <span class="stat-value">{{ stats.totalSkills }}</span>-->
+<!--                        <span class="stat-label">Unique Skills</span>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
 
             <!-- Candidates Section -->
             <div class="candidates-section">
@@ -39,7 +39,11 @@
                 <div class="empty-state" *ngIf="candidates.length === 0">
                     <div class="empty-icon">👥</div>
                     <p>No candidates yet. Upload resumes to see candidates here!</p>
-                    <button class="btn-primary" (click)="goToResumes()">Upload Resumes</button>
+                    <label class="btn-primary upload-label" [class.uploading]="uploading">
+                        <span *ngIf="!uploading"><i class="pi pi-upload"></i> Upload Resume</span>
+                        <span *ngIf="uploading">Uploading & Extracting...</span>
+                        <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event)" hidden [disabled]="uploading" />
+                    </label>
                 </div>
 
                 <!-- PrimeNG Data Table -->
@@ -76,6 +80,12 @@
                                         placeholder="Search candidates..."
                                     />
                                 </div>
+                                <label class="upload-resume-btn" [class.uploading]="uploading">
+                                    <i class="pi pi-upload" *ngIf="!uploading"></i>
+                                    <span *ngIf="!uploading">Upload Resume</span>
+                                    <span *ngIf="uploading">Uploading...</span>
+                                    <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event)" hidden [disabled]="uploading" />
+                                </label>
                                 <button class="clear-filters-btn" (click)="clearFilters()" *ngIf="searchTerm || selectedCompanies.length || selectedLocations.length">
                                     <i class="pi pi-filter-slash"></i>
                                     Clear
@@ -252,17 +262,34 @@
                                         <div class="expand-section">
                                             <h4><i class="pi pi-file"></i> Resumes ({{ candidate.resume_count }})</h4>
                                             <div class="resume-list">
-                                                <div class="resume-item" *ngFor="let resume of candidate.resumes">
+                                                <div class="resume-item" *ngFor="let resume of candidate.resumes" [class.primary]="resume.is_primary">
                                                     <div class="resume-info">
+                                                        <span class="resume-display-name">{{ getResumeDisplayName(resume) }}</span>
                                                         <span class="resume-name">{{ resume.file_name }}</span>
-                                                        <span class="resume-date">{{ formatDate(resume.created_at) }}</span>
+                                                        <div class="resume-meta">
+                                                            <span class="extraction-status" [ngClass]="getStatusClass(resume.extraction_status)">
+                                                                <span class="status-dot"></span>
+                                                                {{ getStatusText(resume.extraction_status) }}
+                                                            </span>
+                                                            <span class="primary-badge-sm" *ngIf="resume.is_primary"><i class="pi pi-star-fill"></i> Primary</span>
+                                                            <span class="resume-date">{{ formatDate(resume.created_at) }}</span>
+                                                        </div>
                                                     </div>
                                                     <div class="resume-actions">
-                                                        <button class="btn-sm" (click)="openResumeFile(resume)">
-                                                            <i class="pi pi-external-link"></i> Open
+                                                        <button class="btn-sm" (click)="openResumeFile(resume)" title="Open">
+                                                            <i class="pi pi-external-link"></i>
                                                         </button>
-                                                        <button class="btn-sm" (click)="downloadResume(resume)">
+                                                        <button class="btn-sm" (click)="downloadResume(resume)" title="Download">
                                                             <i class="pi pi-download"></i>
+                                                        </button>
+                                                        <button class="btn-sm resume-action-btn analyze" (click)="goToAnalyzer(resume)" title="Analyze">
+                                                            <i class="pi pi-chart-bar"></i>
+                                                        </button>
+                                                        <button class="btn-sm resume-action-btn primary" (click)="setResumePrimary(resume); $event.stopPropagation()" title="Set as Primary" *ngIf="!resume.is_primary">
+                                                            <i class="pi pi-star"></i>
+                                                        </button>
+                                                        <button class="btn-sm resume-action-btn delete" (click)="confirmDeleteResume(resume); $event.stopPropagation()" title="Delete">
+                                                            <i class="pi pi-trash"></i>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -365,17 +392,28 @@
                             <div class="detail-section">
                                 <h4>Resumes ({{ selectedCandidate.resume_count }})</h4>
                                 <div class="resume-selector">
-                                    <div class="resume-card" *ngFor="let resume of selectedCandidate.resumes" [class.selected]="selectedResume?.id === resume.id" (click)="selectResume(resume)">
+                                    <div class="resume-card" *ngFor="let resume of selectedCandidate.resumes" [class.selected]="selectedResume?.id === resume.id" [class.primary]="resume.is_primary" (click)="selectResume(resume)">
                                         <div class="resume-card-header">
                                             <span class="resume-icon">📄</span>
                                             <div class="resume-card-info">
+                                                <span class="resume-card-display-name">{{ getResumeDisplayName(resume) }}</span>
                                                 <span class="resume-card-name">{{ resume.file_name }}</span>
                                                 <span class="resume-card-date">Uploaded {{ formatDate(resume.created_at) }}</span>
                                             </div>
+                                            <div class="resume-card-badges">
+                                                <span class="extraction-status" [ngClass]="getStatusClass(resume.extraction_status)">
+                                                    <span class="status-dot"></span>
+                                                    {{ getStatusText(resume.extraction_status) }}
+                                                </span>
+                                                <span class="primary-badge-sm" *ngIf="resume.is_primary"><i class="pi pi-star-fill"></i> Primary</span>
+                                            </div>
                                         </div>
                                         <div class="resume-card-actions">
-                                            <button class="btn-action" (click)="openResumeFile(resume); $event.stopPropagation()">🔗 Open</button>
-                                            <button class="btn-action" (click)="downloadResume(resume); $event.stopPropagation()">⬇️ Download</button>
+                                            <button class="btn-action" (click)="openResumeFile(resume); $event.stopPropagation()"><i class="pi pi-external-link"></i> Open</button>
+                                            <button class="btn-action" (click)="downloadResume(resume); $event.stopPropagation()"><i class="pi pi-download"></i> Download</button>
+                                            <button class="btn-action analyze" (click)="goToAnalyzer(resume); $event.stopPropagation()"><i class="pi pi-chart-bar"></i> Analyze</button>
+                                            <button class="btn-action set-primary" (click)="setResumePrimary(resume); $event.stopPropagation()" *ngIf="!resume.is_primary"><i class="pi pi-star"></i> Primary</button>
+                                            <button class="btn-action delete" (click)="confirmDeleteResume(resume); $event.stopPropagation()"><i class="pi pi-trash"></i> Delete</button>
                                         </div>
                                     </div>
                                 </div>
@@ -649,6 +687,28 @@
                 <button class="btn-primary" *ngIf="selectedResume && activeTab === 'overview'" (click)="downloadResume(selectedResume)">
                     ⬇️ Download Resume
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Resume Confirmation Modal -->
+    <div class="modal-overlay" *ngIf="showDeleteResumeConfirm" (click)="cancelDeleteResume()">
+        <div class="modal delete-resume-modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h3><i class="pi pi-trash" style="color: #dc2626;"></i> Delete Resume</h3>
+                <button class="close-btn" (click)="cancelDeleteResume()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this resume?</p>
+                <div class="delete-resume-info" *ngIf="resumeToDelete">
+                    <span class="delete-resume-name">{{ getResumeDisplayName(resumeToDelete) }}</span>
+                    <span class="delete-file-name">{{ resumeToDelete.file_name }}</span>
+                </div>
+                <p class="warning-text">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" (click)="cancelDeleteResume()">Cancel</button>
+                <button class="btn-danger" (click)="executeDeleteResume()">Delete</button>
             </div>
         </div>
     </div>
