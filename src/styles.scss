@@ -96,6 +96,157 @@ button {
   }
 }
 // ============================================================================
+// PRIMENG MULTISELECT DROPDOWN
+// ============================================================================
+
+.p-multiselect-panel.p-component {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
+  min-width: 220px !important;
+  margin-top: 6px !important;
+
+  .p-multiselect-header {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    background: #fafafa !important;
+  }
+
+  .p-multiselect-items-wrapper {
+    padding: 4px !important;
+    max-height: 280px !important;
+  }
+
+  ul.p-multiselect-items {
+    padding: 0 !important;
+    margin: 0 !important;
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+
+  .p-multiselect-item {
+    padding: 8px 12px !important;
+    margin: 0 !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    color: #333 !important;
+    gap: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    transition: background 0.15s !important;
+
+    &:hover:not(.p-highlight) {
+      background: #f5f5f5 !important;
+    }
+
+    &.p-highlight {
+      background: #f0f4ff !important;
+      color: #111 !important;
+    }
+
+    .p-checkbox .p-checkbox-box {
+      width: 16px !important;
+      height: 16px !important;
+      border-radius: 4px !important;
+      border: 1.5px solid #d1d5db !important;
+
+      &.p-highlight {
+        background: #111 !important;
+        border-color: #111 !important;
+
+        .p-checkbox-icon {
+          color: white !important;
+          font-size: 10px !important;
+        }
+      }
+    }
+  }
+
+  .p-multiselect-empty-message {
+    padding: 16px !important;
+    text-align: center !important;
+    color: #999 !important;
+    font-size: 13px !important;
+  }
+}
+
+// ============================================================================
+// PRIMENG PAGINATOR DROPDOWN (Rows per page)
+// ============================================================================
+
+.p-paginator {
+  .p-paginator-rpp-options.p-dropdown {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    background: white !important;
+    min-width: 72px !important;
+    height: 34px !important;
+    box-shadow: none !important;
+
+    &:hover {
+      border-color: #cbd5e1 !important;
+    }
+
+    &.p-focus {
+      border-color: #111 !important;
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .p-dropdown-label {
+      font-size: 13px !important;
+      color: #111 !important;
+      padding: 6px 10px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+
+    .p-dropdown-trigger {
+      width: 28px !important;
+      color: #666 !important;
+    }
+  }
+}
+
+// Paginator dropdown panel (rows per page options)
+.p-dropdown-panel.p-component {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
+  margin-top: 4px !important;
+
+  .p-dropdown-items-wrapper {
+    padding: 4px !important;
+  }
+
+  .p-dropdown-items {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .p-dropdown-item {
+    padding: 8px 12px !important;
+    margin: 0 !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    color: #333 !important;
+    transition: background 0.15s !important;
+
+    &:hover:not(.p-highlight) {
+      background: #f5f5f5 !important;
+    }
+
+    &.p-highlight {
+      background: #111 !important;
+      color: white !important;
+    }
+  }
+}
+
+// ============================================================================
 // ANGULAR CALENDAR OVERRIDES
 // ============================================================================
 

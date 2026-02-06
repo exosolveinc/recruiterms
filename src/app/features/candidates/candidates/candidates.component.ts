@@ -43,6 +43,8 @@ export class CandidatesComponent implements OnInit {
 
   // PrimeNG Table
   expandedRows: { [key: string]: boolean } = {};
+  sortField: string = '';
+  sortOrder: number = 0;
 
   // Filter options
   companyOptions: { label: string; value: string }[] = [];
@@ -175,6 +177,32 @@ export class CandidatesComponent implements OnInit {
     this.locationOptions = Array.from(locations).sort().map(l => ({ label: l, value: l }));
   }
 
+  onSort(event: Event, field: string) {
+    if (this.sortField === field) {
+      this.sortOrder = this.sortOrder === 1 ? -1 : 0;
+    } else {
+      this.sortField = field;
+      this.sortOrder = 1;
+    }
+
+    if (this.sortOrder !== 0) {
+      this.dt.sortField = this.sortField;
+      this.dt.sortOrder = this.sortOrder;
+      this.dt.sortSingle();
+    } else {
+      this.sortField = '';
+      this.dt.reset();
+      if (this.searchTerm) this.dt.filterGlobal(this.searchTerm, 'contains');
+      if (this.selectedCompanies.length) this.dt.filter(this.selectedCompanies, 'current_company', 'in');
+      if (this.selectedLocations.length) this.dt.filter(this.selectedLocations, 'location', 'in');
+    }
+  }
+
+  getSortIcon(field: string): string {
+    if (this.sortField !== field || this.sortOrder === 0) return 'pi-sort-alt';
+    return this.sortOrder === 1 ? 'pi-sort-amount-up-alt' : 'pi-sort-amount-down';
+  }
+
   onGlobalFilter(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.dt.filterGlobal(value, 'contains');
@@ -185,6 +213,8 @@ export class CandidatesComponent implements OnInit {
     this.searchTerm = '';
     this.selectedCompanies = [];
     this.selectedLocations = [];
+    this.sortField = '';
+    this.sortOrder = 0;
   }
 
   onCompanyFilterChange() {

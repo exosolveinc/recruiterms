@@ -102,24 +102,24 @@
           <!-- Actions -->
           <div class="card-actions">
             <button class="action-btn view" (click)="viewResume(resume)" title="View Details">
-              👁️
+              <i class="pi pi-eye"></i> View
             </button>
             <button class="action-btn analyze" (click)="goToAnalyzer(resume)" title="Analyze Against Job">
-              🎯
+              <i class="pi pi-chart-bar"></i> Analyze
             </button>
             <button class="action-btn download" (click)="downloadFile(resume)" title="Download">
-              ⬇️
+              <i class="pi pi-download"></i> Download
             </button>
-            <button 
-              class="action-btn primary" 
-              (click)="setPrimary(resume)" 
+            <button
+              class="action-btn primary"
+              (click)="setPrimary(resume)"
               title="Set as Primary"
               *ngIf="!resume.is_primary"
             >
-              ⭐
+              <i class="pi pi-star"></i> Primary
             </button>
             <button class="action-btn delete" (click)="confirmDelete(resume)" title="Delete">
-              🗑️
+              <i class="pi pi-trash"></i> Delete
             </button>
           </div>
         </div>
@@ -268,10 +268,10 @@
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeModal()">Close</button>
         <button class="btn-analyze" (click)="goToAnalyzer(selectedResume!)">
-          🎯 Analyze Against Job
+          <i class="pi pi-chart-bar"></i> Analyze Against Job
         </button>
         <button class="btn-primary" (click)="downloadFile(selectedResume!)">
-          ⬇️ Download
+          <i class="pi pi-download"></i> Download
         </button>
       </div>
     </div>
@@ -281,7 +281,7 @@
   <div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
     <div class="modal delete-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>🗑️ Delete Resume</h3>
+        <h3><i class="pi pi-trash" style="color: #dc2626;"></i> Delete Resume</h3>
         <button class="close-btn" (click)="cancelDelete()">✕</button>
       </div>
       <div class="modal-body">

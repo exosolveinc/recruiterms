@@ -88,16 +88,16 @@
                     <ng-template pTemplate="header">
                         <tr>
                             <th style="width: 48px"></th>
-                            <th pSortableColumn="name" style="width: 220px">
+                            <th (click)="onSort($event, 'name')" class="sortable-col" style="width: 220px">
                                 <div class="header-cell">
                                     <span>Name</span>
-                                    <i class="pi pi-sort-alt sort-icon"></i>
+                                    <i class="pi sort-icon" [ngClass]="getSortIcon('name')"></i>
                                 </div>
                             </th>
-                            <th pSortableColumn="current_company" style="min-width: 200px">
+                            <th (click)="onSort($event, 'current_company')" class="sortable-col" style="min-width: 200px">
                                 <div class="header-cell">
                                     <span>Title / Company</span>
-                                    <i class="pi pi-sort-alt sort-icon"></i>
+                                    <i class="pi sort-icon" [ngClass]="getSortIcon('current_company')"></i>
                                     <div class="filter-wrapper" (click)="$event.stopPropagation()">
                                         <i class="pi pi-filter" [class.active]="selectedCompanies.length > 0"></i>
                                         <span class="filter-count" *ngIf="selectedCompanies.length > 0">{{ selectedCompanies.length }}</span>
@@ -115,10 +115,10 @@
                                 </div>
                             </th>
                             <th style="min-width: 180px">Contact</th>
-                            <th pSortableColumn="location" style="width: 150px; max-width: 150px">
+                            <th (click)="onSort($event, 'location')" class="sortable-col" style="width: 150px; max-width: 150px">
                                 <div class="header-cell">
                                     <span>Location</span>
-                                    <i class="pi pi-sort-alt sort-icon"></i>
+                                    <i class="pi sort-icon" [ngClass]="getSortIcon('location')"></i>
                                     <div class="filter-wrapper" (click)="$event.stopPropagation()">
                                         <i class="pi pi-filter" [class.active]="selectedLocations.length > 0"></i>
                                         <span class="filter-count" *ngIf="selectedLocations.length > 0">{{ selectedLocations.length }}</span>
@@ -135,10 +135,10 @@
                                     </div>
                                 </div>
                             </th>
-                            <th pSortableColumn="years_of_experience" style="width: 120px">
+                            <th (click)="onSort($event, 'years_of_experience')" class="sortable-col" style="width: 120px">
                                 <div class="header-cell">
                                     <span>Experience</span>
-                                    <i class="pi pi-sort-alt sort-icon"></i>
+                                    <i class="pi sort-icon" [ngClass]="getSortIcon('years_of_experience')"></i>
                                 </div>
                             </th>
                             <th style="width: 220px; max-width: 220px">Top Skills</th>
