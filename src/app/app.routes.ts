@@ -65,6 +65,11 @@ export const routes: Routes = [
   canActivate: [AuthGuard]
 },
 {
+  path: 'job-search',
+  loadComponent: () => import('./features/job-search/job-search/job-search.component').then(m => m.JobSearchComponent),
+  canActivate: [AuthGuard]
+},
+{
   path: 'job-feed',
   loadComponent: () => import('./features/job-feed/job-feed/job-feed.component').then(m => m.JobFeedComponent),
   canActivate: [AuthGuard]

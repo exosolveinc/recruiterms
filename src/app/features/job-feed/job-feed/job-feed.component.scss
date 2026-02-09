@@ -4,8 +4,6 @@
   margin-left: 64px;
 }
 
-// (Unused candidate panel/selector styles removed)
-
 .no-candidates-message {
   padding: 16px 20px;
   background: #fff7ed;
@@ -27,354 +25,6 @@
   }
 }
 
-// Analysis Progress
-.analysis-progress {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 20px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 10px;
-  margin-bottom: 16px;
-
-  .progress-bar {
-    flex: 1;
-    height: 8px;
-    background: #e0f2fe;
-    border-radius: 4px;
-    overflow: hidden;
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
-      border-radius: 4px;
-      transition: width 0.3s ease;
-    }
-  }
-
-  .progress-text {
-    font-size: 13px;
-    color: #0369a1;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-}
-
-// Job Badges
-.job-badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-// Match Badge
-.match-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 8px;
-  min-width: 50px;
-
-  .score {
-    font-size: 16px;
-    font-weight: 700;
-  }
-
-  .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    font-weight: 500;
-  }
-
-  &.match-high {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    .score { color: #065f46; }
-    .label { color: #047857; }
-  }
-
-  &.match-medium {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    .score { color: #92400e; }
-    .label { color: #b45309; }
-  }
-
-  &.match-low {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    .score { color: #991b1b; }
-    .label { color: #b91c1c; }
-  }
-
-  &.large {
-    padding: 10px 16px;
-    .score { font-size: 20px; }
-    .label { font-size: 11px; }
-  }
-}
-
-.analyzing-badge {
-  padding: 8px;
-
-  .spinner-sm {
-    width: 16px;
-    height: 16px;
-    border: 2px solid #e5e7eb;
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-}
-
-// Job Card Match States
-.job-card {
-  &.high-match {
-    border-left: 4px solid #10b981;
-  }
-
-  &.medium-match {
-    border-left: 4px solid #f59e0b;
-  }
-
-  &.low-match {
-    border-left: 4px solid #ef4444;
-  }
-}
-
-// Skills Preview
-.skills-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
-
-  .skill-tag {
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-
-    &.matching {
-      background: #d1fae5;
-      color: #065f46;
-    }
-
-    &.missing {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-  }
-
-  .more-skills {
-    padding: 4px 10px;
-    font-size: 11px;
-    color: #666;
-  }
-}
-
-// Save Button
-.btn-save {
-  padding: 10px 16px;
-  background: white;
-  border: 1px solid #10b981;
-  border-radius: 8px;
-  color: #10b981;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-  margin-right: 8px;
-
-  &:hover {
-    background: #10b981;
-    color: white;
-  }
-}
-
-// Match Analysis Section in Modal
-.match-analysis-section {
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  margin-bottom: 24px;
-
-  h4 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #111;
-    margin: 0 0 16px;
-  }
-}
-
-.match-score-display {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 16px;
-  background: white;
-  border-radius: 10px;
-  margin-bottom: 20px;
-
-  .score-circle {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .score-value {
-      font-size: 24px;
-      font-weight: 700;
-    }
-  }
-
-  .score-details {
-    flex: 1;
-
-    .score-label {
-      font-size: 14px;
-      font-weight: 600;
-      color: #111;
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .score-description {
-      font-size: 13px;
-      color: #666;
-      margin: 0;
-    }
-  }
-
-  &.match-high .score-circle {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    .score-value { color: #065f46; }
-  }
-
-  &.match-medium .score-circle {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    .score-value { color: #92400e; }
-  }
-
-  &.match-low .score-circle {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    .score-value { color: #991b1b; }
-  }
-}
-
-.skills-section {
-  margin-bottom: 16px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  h5 {
-    font-size: 13px;
-    font-weight: 600;
-    color: #666;
-    margin: 0 0 10px;
-  }
-
-  .skill-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  &.matching .skill-tags .skill-tag {
-    background: #d1fae5;
-    color: #065f46;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  &.missing .skill-tags .skill-tag {
-    background: #fef3c7;
-    color: #92400e;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-}
-
-.analyzing-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px;
-  background: #f8f9fa;
-  border-radius: 10px;
-  margin-bottom: 24px;
-  color: #666;
-  font-size: 14px;
-}
-
-.header-badges {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-// Header
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 32px;
-  background: white;
-  border-bottom: 1px solid #eee;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  .logo-icon {
-    font-size: 20px;
-  }
-
-  .logo-text {
-    font-size: 18px;
-    font-weight: 700;
-    color: #111;
-  }
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  .user-name {
-    font-size: 14px;
-    color: #64748b;
-  }
-
-  .btn-nav,
-  .btn-logout {
-    padding: 8px 14px;
-    background: white;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    color: #666;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.15s;
-
-    &:hover {
-      background: #f5f5f5;
-      border-color: #ddd;
-    }
-  }
-}
-
 // Main Content
 .main-content {
   max-width: 1200px;
@@ -382,1115 +32,9 @@
   padding: 32px;
 }
 
-// Search Section
-.search-section {
-  text-align: center;
-  margin-bottom: 40px;
-
-  > h1 {
-    font-size: 32px;
-    font-weight: 700;
-    color: #111;
-    margin: 0 0 8px;
-  }
-
-  > .subtitle {
-    color: #666;
-    font-size: 16px;
-    margin: 0 0 32px;
-  }
-}
-
-// Search Header with Gmail Integration
-.search-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 6px;
-  gap: 16px;
-
-  .search-header-text {
-    text-align: center;
-    width: 100%;
-    margin-top: 4px;
-
-    h1 {
-      font-size: 26px;
-      font-weight: 700;
-      color: #000;
-      margin: 0 0 4px;
-      letter-spacing: -0.02em;
-    }
-
-    .subtitle {
-      color: #888;
-      font-size: 14px;
-      margin: 0;
-    }
-  }
-
-  .search-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-}
-
-// View Toggle Switch
-.view-toggle-switch {
-  display: flex;
-  background: #f3f4f6;
-  border-radius: 10px;
-  padding: 4px;
-  gap: 4px;
-
-  .toggle-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 18px;
-    background: transparent;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #6b7280;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-
-    svg {
-      opacity: 0.7;
-      transition: opacity 0.2s;
-    }
-
-    &:hover {
-      color: #374151;
-      background: rgba(255, 255, 255, 0.5);
-
-      svg {
-        opacity: 0.9;
-      }
-    }
-
-    &.active {
-      background: white;
-      color: #111;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-      svg {
-        opacity: 1;
-      }
-    }
-
-    .email-count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 20px;
-      height: 20px;
-      padding: 0 6px;
-      background: #3b82f6;
-      color: white;
-      font-size: 11px;
-      font-weight: 600;
-      border-radius: 10px;
-    }
-  }
-}
-
-// Email Jobs View
-.email-jobs-view {
-  margin-top: 24px;
-
-  .gmail-integration-bar-inline {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    overflow: hidden;
-
-    .gmail-status {
-      padding: 16px 20px;
-    }
-
-    .gmail-connect,
-    .gmail-connected {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .gmail-icon {
-      width: 48px;
-      height: 48px;
-      background: #f3f4f6;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      position: relative;
-
-      &.connected {
-        background: #dcfce7;
-      }
-
-      .connected-check {
-        position: absolute;
-        bottom: -2px;
-        right: -2px;
-        width: 18px;
-        height: 18px;
-        background: #22c55e;
-        border-radius: 50%;
-        color: white;
-        font-size: 11px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid white;
-      }
-    }
-
-    .gmail-info {
-      flex: 1;
-      min-width: 0;
-
-      .gmail-title-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 4px;
-      }
-
-      .gmail-title {
-        display: block;
-        font-size: 15px;
-        font-weight: 600;
-        color: #111;
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .btn-gmail-disconnect-inline {
-        flex-shrink: 0;
-        width: 24px;
-        height: 24px;
-        padding: 0;
-        background: transparent;
-        border: 1px solid #fca5a5;
-        border-radius: 4px;
-        color: #dc2626;
-        cursor: pointer;
-        transition: all 0.15s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        svg {
-          width: 14px;
-          height: 14px;
-        }
-
-        &:hover {
-          background: #fef2f2;
-          border-color: #f87171;
-        }
-
-        &:active {
-          transform: scale(0.95);
-        }
-      }
-
-      .gmail-desc {
-        display: block;
-        font-size: 13px;
-        color: #6b7280;
-
-        .sync-count-highlight {
-          color: #10b981;
-          font-weight: 500;
-        }
-
-        .debug-info {
-          color: #9ca3af;
-          font-size: 11px;
-
-          .btn-refresh-status-inline {
-            margin-left: 8px;
-            padding: 2px 8px;
-            background: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            color: #6b7280;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.15s;
-
-            &:hover {
-              background: #e5e7eb;
-              border-color: #9ca3af;
-            }
-          }
-        }
-      }
-
-      .no-email-warning {
-        color: #f59e0b;
-        font-style: italic;
-      }
-    }
-
-    .gmail-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      .btn-gmail-disconnect {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 16px;
-        background: transparent;
-        border: 1px solid #fca5a5;
-        border-radius: 6px;
-        color: #dc2626;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        svg {
-          flex-shrink: 0;
-          width: 14px;
-          height: 14px;
-        }
-
-        &:hover {
-          background: #fef2f2;
-          border-color: #f87171;
-        }
-
-        &:active {
-          transform: scale(0.98);
-        }
-      }
-
-      .btn-gmail-sync {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 16px;
-        background: #3b82f6;
-        border: none;
-        border-radius: 6px;
-        color: white;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        svg {
-          flex-shrink: 0;
-        }
-
-        &:hover {
-          background: #2563eb;
-        }
-
-        &:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-      }
-
-      .btn-gmail-sync-all {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 12px;
-        background: #10b981;
-        border: none;
-        border-radius: 6px;
-        color: white;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        svg {
-          flex-shrink: 0;
-        }
-
-        &:hover {
-          background: #059669;
-        }
-
-        &:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-      }
-    }
-
-    // Multiple Gmail Accounts Section
-    .gmail-accounts-section {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #e5e7eb;
-
-      .accounts-header-small {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
-
-        .accounts-label {
-          font-size: 12px;
-          font-weight: 600;
-          color: #6b7280;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .btn-add-gmail-small {
-          padding: 4px 10px;
-          background: #3b82f6;
-          border: none;
-          border-radius: 4px;
-          color: white;
-          font-size: 12px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.15s;
-
-          &:hover {
-            background: #2563eb;
-          }
-
-          &:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
-        }
-      }
-
-      .accounts-list-compact {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-
-        .account-compact-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 8px 12px;
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-          transition: all 0.15s;
-
-          &:hover {
-            background: #f3f4f6;
-          }
-
-          .account-email-compact {
-            font-size: 13px;
-            color: #374151;
-            font-weight: 500;
-          }
-
-          .btn-disconnect-compact {
-            padding: 2px 6px;
-            background: transparent;
-            border: 1px solid #fca5a5;
-            border-radius: 4px;
-            color: #dc2626;
-            font-size: 16px;
-            font-weight: 600;
-            line-height: 1;
-            cursor: pointer;
-            transition: all 0.15s;
-
-            &:hover {
-              background: #fef2f2;
-              border-color: #f87171;
-            }
-          }
-        }
-      }
-    }
-
-    .gmail-actions {
-      display: flex;
-      align-items: center;
-
-      .btn-add-vendor {
-        padding: 8px 14px;
-        background: #f3f4f6;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        color: #374151;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        &:hover {
-          background: #e5e7eb;
-        }
-      }
-
-      .btn-add-another-gmail {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 18px;
-        margin-left: 8px;
-        background: #000;
-        border: none;
-        border-radius: 8px;
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.15s;
-        white-space: nowrap;
-
-        svg {
-          flex-shrink: 0;
-        }
-
-        &:hover {
-          background: #222;
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-    }
-
-    .btn-gmail-connect {
-      padding: 10px 20px;
-      background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
-      }
-
-      &:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-        transform: none;
-      }
-
-      .loading-text {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-    }
-
-    .gmail-sync-result {
-      padding: 0 20px 16px;
-
-      .sync-result-content {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-
-        &.success {
-          background: #dcfce7;
-          color: #166534;
-        }
-
-        &.error {
-          background: #fef2f2;
-          color: #dc2626;
-        }
-
-        .dismiss-btn {
-          background: none;
-          border: none;
-          font-size: 18px;
-          cursor: pointer;
-          color: inherit;
-          opacity: 0.6;
-          padding: 0;
-          line-height: 1;
-
-          &:hover {
-            opacity: 1;
-          }
-        }
-      }
-    }
-  }
-
-  .email-jobs-filters {
-    margin-bottom: 20px;
-
-    .filter-tabs {
-      display: flex;
-      gap: 8px;
-
-      .filter-tab {
-        padding: 10px 20px;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        color: #6b7280;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        &:hover {
-          background: #f9fafb;
-          border-color: #d1d5db;
-        }
-
-        &.active {
-          background: #111;
-          border-color: #111;
-          color: white;
-        }
-      }
-    }
-  }
-
-  .vendor-empty-state {
-    text-align: center;
-    padding: 60px 24px;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-
-    .empty-icon-large {
-      margin-bottom: 20px;
-      opacity: 0.5;
-    }
-
-    h3 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #111;
-      margin: 0 0 8px;
-    }
-
-    p {
-      color: #6b7280;
-      margin: 0 0 20px;
-      font-size: 14px;
-    }
-  }
-}
-
-.gmail-header-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-
-  &:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  }
-
-  &.connected {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    border-color: #86efac;
-
-    &:hover {
-      border-color: #4ade80;
-    }
-  }
-
-  .gmail-status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background: #22c55e;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-  }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-// Gmail Header Panel
-.gmail-header-panel {
-  position: absolute;
-  top: 50px;
-  right: 0;
-  width: 380px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-  border: 1px solid #e5e7eb;
-  z-index: 100;
-  text-align: left;
-  overflow: hidden;
-
-  .gmail-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid #f3f4f6;
-    background: #fafafa;
-
-    h3 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 600;
-      color: #111;
-    }
-
-    .close-panel-btn {
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      border: none;
-      font-size: 20px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-
-      &:hover {
-        background: #e5e7eb;
-        color: #111;
-      }
-    }
-  }
-
-  .gmail-panel-content {
-    padding: 24px 20px;
-
-    .gmail-panel-icon {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 16px;
-
-      &.connected {
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-
-        .connected-badge {
-          font-size: 12px;
-          font-weight: 600;
-          color: #16a34a;
-          background: #dcfce7;
-          padding: 4px 10px;
-          border-radius: 12px;
-        }
-      }
-    }
-
-    h4 {
-      margin: 0 0 8px;
-      font-size: 18px;
-      font-weight: 600;
-      color: #111;
-      text-align: center;
-    }
-
-    > p {
-      color: #6b7280;
-      font-size: 14px;
-      line-height: 1.5;
-      margin: 0 0 20px;
-      text-align: center;
-    }
-
-    &.connected {
-      padding: 20px;
-    }
-  }
-
-  .gmail-account-card {
-    margin-bottom: 20px;
-    padding: 16px;
-    background: linear-gradient(135deg, #f0f9ff 0%, #f9fafb 100%);
-    border: 1px solid #e0f2fe;
-    border-radius: 12px;
-
-    .gmail-account-header {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-    }
-  }
-
-  .gmail-account-info {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f3f4f6;
-
-    .gmail-account-details {
-      flex: 1;
-
-      .connected-label {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        font-weight: 600;
-        color: #10b981;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-
-        svg {
-          flex-shrink: 0;
-        }
-      }
-
-      .gmail-email-display {
-        font-size: 16px;
-        font-weight: 600;
-        color: #111827;
-        margin-bottom: 6px;
-        word-break: break-all;
-      }
-
-      .gmail-email {
-        display: block;
-        font-weight: 600;
-        color: #111;
-        font-size: 14px;
-      }
-
-      .gmail-stats {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 4px;
-        font-size: 12px;
-        color: #6b7280;
-        margin-top: 4px;
-
-        .sync-count {
-          color: #10b981;
-          font-weight: 500;
-        }
-      }
-    }
-  }
-
-  .gmail-panel-actions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
-
-    .btn-sync {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 16px;
-      background: #3b82f6;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-
-      &:hover {
-        background: #2563eb;
-      }
-
-      &:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-      }
-    }
-
-    .btn-sync-all {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 14px;
-      background: #10b981;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-
-      &:hover {
-        background: #059669;
-      }
-
-      &:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-      }
-    }
-
-    .btn-disconnect,
-    .btn-disconnect-gmail {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 14px;
-      background: transparent;
-      border: 1px solid #fca5a5;
-      border-radius: 8px;
-      color: #dc2626;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-
-      svg {
-        flex-shrink: 0;
-      }
-
-      &:hover {
-        border-color: #ef4444;
-        color: #ef4444;
-        background: #fef2f2;
-      }
-
-      &:active {
-        transform: scale(0.98);
-      }
-    }
-  }
-
-  .gmail-sync-result-panel {
-    margin-bottom: 16px;
-
-    .sync-result {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-
-      &.success {
-        background: #f0fdf4;
-        color: #166534;
-        border: 1px solid #86efac;
-      }
-
-      &.error {
-        background: #fef2f2;
-        color: #991b1b;
-        border: 1px solid #fca5a5;
-      }
-
-      .dismiss-btn {
-        background: none;
-        border: none;
-        font-size: 18px;
-        cursor: pointer;
-        color: inherit;
-        opacity: 0.6;
-        padding: 0 4px;
-
-        &:hover {
-          opacity: 1;
-        }
-      }
-    }
-  }
-
-  .gmail-panel-info {
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 8px;
-
-    p {
-      margin: 0;
-      font-size: 12px;
-      color: #6b7280;
-      line-height: 1.4;
-
-      strong {
-        color: #374151;
-      }
-    }
-  }
-}
-
-.btn-gmail-connect-panel {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc04 75%, #ea4335 100%);
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  .loading-text {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-}
-
-.search-box {
-  background: white;
-  border: 1px solid #eee;
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.search-inputs {
-  display: grid;
-  grid-template-columns: 2fr 1.5fr 1fr;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.input-group {
-  text-align: left;
-
-  label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-  }
-
-  input,
-  select {
-    width: 100%;
-    padding: 12px 14px;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    font-size: 15px;
-    color: #111;
-    background: #fafafa;
-    transition: all 0.15s;
-
-    &:focus {
-      outline: none;
-      border-color: #111;
-      background: white;
-    }
-
-    &::placeholder {
-      color: #999;
-    }
-  }
-
-  select {
-    cursor: pointer;
-  }
-}
-
-.btn-search {
-  width: 100%;
-  padding: 14px;
-  background: #111;
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 48px;
-  transition: background 0.15s;
-
-  &:hover:not(:disabled) {
-    background: #333;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .loading-text {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-}
+// ============================================================================
+// SPINNER & ANIMATIONS
+// ============================================================================
 
 .spinner-small {
   width: 16px;
@@ -1516,232 +60,19 @@
   }
 }
 
-// Loading Card Animation
-.loading-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 48px 32px;
-  text-align: center;
-  margin: 24px auto;
-  max-width: 500px;
-
-  .loader {
-    position: relative;
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 24px;
-
-    .loader-ring {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      border: 3px solid transparent;
-      border-top-color: #111;
-      border-radius: 50%;
-      animation: spin 1.5s ease-in-out infinite;
-
-      &:nth-child(2) {
-        width: 70%;
-        height: 70%;
-        top: 15%;
-        left: 15%;
-        border-top-color: #666;
-        animation-delay: 0.15s;
-        animation-direction: reverse;
-      }
-
-      &:nth-child(3) {
-        width: 40%;
-        height: 40%;
-        top: 30%;
-        left: 30%;
-        border-top-color: #999;
-        animation-delay: 0.3s;
-      }
-    }
-  }
-
-  .loading-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #111;
-    margin-bottom: 8px;
-  }
-
-  .loading-step-text {
-    font-size: 14px;
-    color: #666;
-    min-height: 20px;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-// Popular Searches
-.popular-searches {
-  margin-top: 24px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-
-  .label {
-    font-size: 14px;
-    color: #666;
-  }
-
-  .quick-search {
-    padding: 8px 16px;
-    background: white;
-    border: 1px solid #eee;
-    border-radius: 20px;
-    font-size: 13px;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.15s;
-
-    &:hover {
-      background: #111;
-      color: white;
-      border-color: #111;
-    }
-  }
+@keyframes pulse-new {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
 }
 
-// (Results section removed - single unified table)
-
-// (Stats bar, loading more, empty state removed - single unified table)
-
-// Modal
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.modal {
-  background: white;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.job-preview-modal {
-  max-width: 800px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #eee;
-
-  .modal-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    h3 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #111;
-      margin: 0;
-    }
-  }
-
-  .close-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid #eee;
-    background: white;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 18px;
-    color: #666;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-      background: #f5f5f5;
-    }
-  }
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.job-preview-header {
-  margin-bottom: 24px;
-
-  h2 {
-    font-size: 20px;
-    font-weight: 600;
-    color: #111;
-    margin: 0 0 12px;
-  }
-}
-
-.job-preview-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  font-size: 14px;
-  color: #666;
-}
-
-.job-preview-description {
-  h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #111;
-    margin: 0 0 12px;
-  }
-
-  .description-content {
-    font-size: 14px;
-    color: #666;
-    line-height: 1.7;
-    max-height: 400px;
-    overflow-y: auto;
-    padding-right: 8px;
-
-    // Style any HTML content
-    p {
-      margin: 0 0 12px;
-    }
-
-    ul,
-    ol {
-      margin: 0 0 12px;
-      padding-left: 20px;
-    }
-
-    li {
-      margin-bottom: 4px;
-    }
-  }
-}
-
-.modal-footer {
-  display: flex;
-  gap: 12px;
-  padding: 20px 24px;
-  border-top: 1px solid #eee;
-  justify-content: flex-end;
-}
+// ============================================================================
+// GENERIC BUTTONS
+// ============================================================================
 
 .btn-secondary,
 .btn-primary {
@@ -1770,6 +101,24 @@
 
   &:hover {
     background: #333;
+  }
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #eee;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #f5f5f5;
   }
 }
 
@@ -1902,54 +251,6 @@
   }
 }
 
-.gmail-connect-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 500;
-  color: #444;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    border-color: #bbb;
-    background: #fafafa;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  &.connected {
-    border-color: #d1fae5;
-    background: #f0fdf4;
-  }
-
-  .gmail-connected-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-
-    .connected-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #10b981;
-    }
-  }
-
-  svg {
-    flex-shrink: 0;
-  }
-}
-
 .selected-candidate-display {
   display: flex;
   align-items: center;
@@ -2019,84 +320,6 @@
   }
 }
 
-.preferences-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #eee;
-
-  .pref-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .pref-tag {
-    padding: 6px 12px;
-    background: #f5f5f5;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    color: #666;
-
-    &.location {
-      background: #e0f2fe;
-      color: #0369a1;
-    }
-
-    &.work-type {
-      &.remote {
-        background: #dbeafe;
-        color: #1d4ed8;
-      }
-      &.hybrid {
-        background: #fef3c7;
-        color: #b45309;
-      }
-      &.onsite {
-        background: #e5e7eb;
-        color: #374151;
-      }
-    }
-  }
-
-  .btn-search-preferences {
-    padding: 10px 20px;
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .spinner-sm {
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-  }
-}
-
 // ============================================================================
 // CANDIDATE DRAWER
 // ============================================================================
@@ -2110,11 +333,6 @@
   background: rgba(0, 0, 0, 0.4);
   z-index: 999;
   animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .candidate-drawer {
@@ -2467,1343 +685,6 @@
   }
 }
 
-// Responsive
-@media (max-width: 768px) {
-  .header {
-    padding: 12px 16px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .main-content {
-    padding: 16px;
-  }
-
-  .search-section h1 {
-    font-size: 24px;
-  }
-
-  .search-inputs {
-    grid-template-columns: 1fr;
-  }
-
-  .search-box {
-    padding: 16px;
-  }
-
-  .popular-searches {
-    flex-wrap: wrap;
-  }
-
-  .modal {
-    margin: 10px;
-    max-height: calc(100vh - 20px);
-  }
-
-  .candidate-drawer {
-    width: 100%;
-  }
-
-  .candidate-selection-bar {
-    padding: 12px 16px;
-  }
-
-  .selected-candidate-display {
-    .candidate-avatar {
-      width: 40px;
-      height: 40px;
-      font-size: 14px;
-    }
-
-    .candidate-details .candidate-name {
-      font-size: 14px;
-    }
-  }
-
-  .preferences-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-
-    .pref-tags {
-      justify-content: flex-start;
-    }
-
-    .btn-search-preferences {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-}
-
-// ============ Vendor Jobs Section ============
-.vendor-jobs-section {
-  margin-top: 48px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.vendor-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  cursor: pointer;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-
-  &:hover {
-    background: #f3f4f6;
-  }
-
-  .vendor-header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-
-    h2 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #111;
-      margin: 0;
-    }
-  }
-
-  .vendor-stats {
-    display: flex;
-    gap: 8px;
-
-    .stat-badge {
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 500;
-
-      &.new {
-        background: #dcfce7;
-        color: #166534;
-      }
-
-      &.total {
-        background: #e0e7ff;
-        color: #4338ca;
-      }
-    }
-  }
-
-  .toggle-btn {
-    background: none;
-    border: none;
-    padding: 8px;
-    cursor: pointer;
-    color: #6b7280;
-    transition: transform 0.2s;
-
-    &.open {
-      transform: rotate(180deg);
-    }
-  }
-}
-
-.vendor-section-content {
-  padding: 24px;
-}
-
-.vendor-actions-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 12px;
-
-  .filter-tabs {
-    display: flex;
-    gap: 8px;
-
-    .filter-tab {
-      padding: 8px 16px;
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #6b7280;
-      cursor: pointer;
-      transition: all 0.15s;
-
-      &:hover {
-        background: #f9fafb;
-        border-color: #d1d5db;
-      }
-
-      &.active {
-        background: #111;
-        border-color: #111;
-        color: white;
-      }
-    }
-  }
-
-  .btn-add-vendor {
-    padding: 10px 20px;
-    background: #111;
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s;
-
-    &:hover {
-      background: #333;
-    }
-  }
-}
-
-.vendor-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 48px;
-  color: #6b7280;
-
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #e5e7eb;
-    border-top-color: #111;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-}
-
-.vendor-jobs-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.vendor-job-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  }
-
-  &.selected {
-    border-color: #111;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  }
-
-  .vendor-job-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-
-    .job-main-info {
-      .job-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #111;
-        margin: 0 0 4px;
-      }
-
-      .job-companies {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-
-        .client-company {
-          color: #374151;
-          font-weight: 500;
-        }
-
-        .vendor-company {
-          color: #6b7280;
-        }
-      }
-    }
-
-    .job-badges {
-      display: flex;
-      gap: 8px;
-
-      .status-badge {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-
-        &.status-new {
-          background: #dcfce7;
-          color: #166534;
-        }
-
-        &.status-reviewed {
-          background: #e0e7ff;
-          color: #4338ca;
-        }
-
-        &.status-interested {
-          background: #fef3c7;
-          color: #92400e;
-        }
-
-        &.status-not-interested {
-          background: #f3f4f6;
-          color: #6b7280;
-        }
-
-        &.status-applied {
-          background: #dbeafe;
-          color: #1e40af;
-        }
-
-        &.status-archived {
-          background: #f3f4f6;
-          color: #9ca3af;
-        }
-      }
-
-      .employment-badge {
-        padding: 4px 10px;
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
-        color: #15803d;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 600;
-      }
-    }
-  }
-
-  .vendor-job-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 12px;
-
-    .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 13px;
-      color: #6b7280;
-
-      &.work-type {
-        color: #7c3aed;
-      }
-
-      &.pay {
-        color: #059669;
-        font-weight: 500;
-      }
-
-      &.date {
-        color: #9ca3af;
-      }
-
-      &.source-gmail {
-        color: #2563eb;
-        background: #eff6ff;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-
-        svg {
-          color: #3b82f6;
-        }
-      }
-    }
-  }
-
-  .tech-stack-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 12px;
-
-    .tech-tag {
-      padding: 4px 10px;
-      background: #f3f4f6;
-      border-radius: 6px;
-      font-size: 12px;
-      color: #374151;
-      font-weight: 500;
-    }
-  }
-
-  .special-requirements {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: #fef3c7;
-    border: 1px solid #fde68a;
-    border-radius: 8px;
-    font-size: 13px;
-    color: #92400e;
-    margin-bottom: 12px;
-
-    .warning-icon {
-      width: 20px;
-      height: 20px;
-      background: #f59e0b;
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: bold;
-    }
-  }
-
-  .recruiter-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 10px 14px;
-    background: #f9fafb;
-    border-radius: 8px;
-    font-size: 13px;
-    margin-bottom: 12px;
-
-    .recruiter-name {
-      font-weight: 500;
-      color: #374151;
-    }
-
-    .recruiter-email, .recruiter-phone {
-      color: #6b7280;
-    }
-  }
-
-  .vendor-job-actions {
-    display: flex;
-    gap: 8px;
-    padding-top: 12px;
-    border-top: 1px solid #f3f4f6;
-
-    .action-btn {
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-      border: 1px solid transparent;
-
-      &.interested {
-        background: #dcfce7;
-        color: #166534;
-        border-color: #bbf7d0;
-
-        &:hover {
-          background: #bbf7d0;
-        }
-      }
-
-      &.not-interested {
-        background: #f3f4f6;
-        color: #6b7280;
-
-        &:hover {
-          background: #e5e7eb;
-        }
-      }
-
-      &.archive {
-        background: white;
-        color: #6b7280;
-        border-color: #e5e7eb;
-
-        &:hover {
-          background: #f9fafb;
-        }
-      }
-
-      &.delete {
-        background: white;
-        color: #dc2626;
-        border-color: #fecaca;
-
-        &:hover {
-          background: #fef2f2;
-        }
-      }
-    }
-  }
-}
-
-.vendor-empty-state {
-  text-align: center;
-  padding: 48px 24px;
-  color: #6b7280;
-
-  p {
-    margin-bottom: 16px;
-  }
-}
-
-// Add Vendor Modal
-.add-vendor-modal {
-  max-width: 600px;
-
-  .modal-description {
-    color: #6b7280;
-    margin-bottom: 20px;
-    line-height: 1.6;
-  }
-
-  .form-group {
-    label {
-      display: block;
-      font-size: 14px;
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 8px;
-    }
-
-    textarea {
-      width: 100%;
-      padding: 14px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-      resize: vertical;
-      min-height: 300px;
-
-      &:focus {
-        outline: none;
-        border-color: #111;
-      }
-
-      &::placeholder {
-        color: #9ca3af;
-      }
-    }
-  }
-
-  .error-message {
-    margin-top: 12px;
-    padding: 12px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    color: #dc2626;
-    font-size: 13px;
-  }
-}
-
-// Vendor Job Detail Modal
-.vendor-job-modal {
-  max-width: 700px;
-
-  .vendor-detail-section {
-    margin-bottom: 24px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid #f3f4f6;
-
-    &:last-child {
-      margin-bottom: 0;
-      padding-bottom: 0;
-      border-bottom: none;
-    }
-
-    h4 {
-      font-size: 14px;
-      font-weight: 600;
-      color: #374151;
-      margin: 0 0 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    &.warning {
-      background: #fef3c7;
-      border: 1px solid #fde68a;
-      border-radius: 8px;
-      padding: 16px;
-
-      h4 {
-        color: #92400e;
-      }
-
-      p {
-        margin: 0;
-        color: #92400e;
-      }
-    }
-
-    &.recruiter {
-      background: #f0f9ff;
-      border: 1px solid #bae6fd;
-      border-radius: 8px;
-      padding: 16px;
-
-      h4 {
-        color: #0369a1;
-      }
-    }
-  }
-
-  .company-info {
-    display: flex;
-    gap: 24px;
-
-    .client-info, .vendor-info {
-      .label {
-        font-size: 12px;
-        color: #6b7280;
-        margin-right: 8px;
-      }
-
-      .value {
-        font-size: 16px;
-        font-weight: 600;
-        color: #111;
-      }
-    }
-  }
-
-  .details-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 16px;
-
-    .detail-item {
-      .detail-label {
-        display: block;
-        font-size: 12px;
-        color: #6b7280;
-        margin-bottom: 4px;
-      }
-
-      .detail-value {
-        font-size: 14px;
-        font-weight: 500;
-        color: #111;
-      }
-    }
-  }
-
-  .tech-categories {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-
-    .tech-category {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-
-      .category-label {
-        font-size: 13px;
-        color: #6b7280;
-        min-width: 80px;
-      }
-
-      .tech-tag {
-        padding: 4px 12px;
-        background: #f3f4f6;
-        border-radius: 6px;
-        font-size: 13px;
-        color: #374151;
-        font-weight: 500;
-      }
-    }
-  }
-
-  .skills-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-
-    .skill-tag {
-      padding: 6px 14px;
-      background: #e0e7ff;
-      color: #4338ca;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-    }
-  }
-
-  .description-content {
-    font-size: 14px;
-    line-height: 1.7;
-    color: #374151;
-    white-space: pre-wrap;
-  }
-
-  .recruiter-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
-
-    .recruiter-item {
-      .label {
-        font-size: 12px;
-        color: #0369a1;
-        margin-right: 8px;
-      }
-
-      .value {
-        font-size: 14px;
-        color: #111;
-
-        &.email, &.phone {
-          color: #2563eb;
-          text-decoration: none;
-
-          &:hover {
-            text-decoration: underline;
-          }
-        }
-      }
-    }
-  }
-}
-
-.btn-interested {
-  padding: 10px 20px;
-  background: #dcfce7;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
-  color: #166534;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    background: #bbf7d0;
-  }
-}
-
-// Gmail Integration Styles
-.gmail-integration-bar {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  margin: 16px 0;
-  overflow: hidden;
-
-  .gmail-status {
-    padding: 16px 20px;
-  }
-
-  .gmail-connect,
-  .gmail-connected {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .gmail-icon {
-    width: 48px;
-    height: 48px;
-    background: #f3f4f6;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    position: relative;
-
-    svg {
-      width: 28px;
-      height: 28px;
-    }
-
-    &.connected {
-      background: #dcfce7;
-    }
-
-    .connected-check {
-      position: absolute;
-      bottom: -2px;
-      right: -2px;
-      width: 18px;
-      height: 18px;
-      background: #22c55e;
-      border-radius: 50%;
-      color: white;
-      font-size: 11px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid white;
-    }
-  }
-
-  .gmail-info {
-    flex: 1;
-    min-width: 0;
-
-    .gmail-title {
-      display: block;
-      font-size: 15px;
-      font-weight: 600;
-      color: #111;
-      margin-bottom: 2px;
-    }
-
-    .gmail-desc {
-      display: block;
-      font-size: 13px;
-      color: #6b7280;
-    }
-  }
-
-  .gmail-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .btn-gmail-connect {
-    padding: 10px 20px;
-    background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
-    }
-
-    &:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-      transform: none;
-    }
-  }
-
-  .btn-gmail-sync {
-    padding: 8px 16px;
-    background: #3b82f6;
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    &:hover {
-      background: #2563eb;
-    }
-
-    &:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-  }
-
-  .btn-gmail-sync-all {
-    padding: 8px 12px;
-    background: #10b981;
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    &:hover {
-      background: #059669;
-    }
-
-    &:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-  }
-
-  .btn-gmail-settings {
-    padding: 8px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    color: #6b7280;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-      background: #e5e7eb;
-      color: #374151;
-    }
-  }
-
-  .btn-gmail-disconnect {
-    padding: 8px 12px;
-    background: transparent;
-    border: 1px solid #fecaca;
-    border-radius: 6px;
-    color: #dc2626;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-
-    &:hover {
-      background: #fef2f2;
-    }
-  }
-
-  .loading-text {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    .spinner-small {
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-  }
-
-  .gmail-sync-result {
-    padding: 0 20px 16px;
-
-    .sync-result-content {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-
-      &.success {
-        background: #dcfce7;
-        color: #166534;
-      }
-
-      &.error {
-        background: #fef2f2;
-        color: #dc2626;
-      }
-
-      .dismiss-btn {
-        background: none;
-        border: none;
-        font-size: 18px;
-        cursor: pointer;
-        color: inherit;
-        opacity: 0.6;
-        padding: 0;
-        line-height: 1;
-
-        &:hover {
-          opacity: 1;
-        }
-      }
-    }
-  }
-
-  .gmail-settings-panel {
-    border-top: 1px solid #e5e7eb;
-    background: #f9fafb;
-
-    .settings-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 20px;
-      border-bottom: 1px solid #e5e7eb;
-
-      h4 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 600;
-        color: #111;
-      }
-
-      .close-settings {
-        background: none;
-        border: none;
-        font-size: 20px;
-        color: #9ca3af;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-
-        &:hover {
-          color: #6b7280;
-        }
-      }
-    }
-
-    .settings-content {
-      padding: 16px 20px;
-
-      .settings-info {
-        font-size: 13px;
-        color: #374151;
-        margin: 0 0 12px;
-        line-height: 1.5;
-
-        strong {
-          color: #111;
-          background: #e0e7ff;
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 12px;
-        }
-      }
-
-      .settings-note {
-        font-size: 12px;
-        color: #6b7280;
-        margin: 0;
-        line-height: 1.5;
-      }
-    }
-  }
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-// Vendor Jobs Pagination
-.vendor-jobs-pagination {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  margin-top: 24px;
-  padding: 20px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-
-  .pagination-info {
-    font-size: 14px;
-    color: #6b7280;
-  }
-
-  .pagination-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .pagination-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 16px;
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #374151;
-      cursor: pointer;
-      transition: all 0.15s;
-
-      &:hover:not(:disabled) {
-        background: #f9fafb;
-        border-color: #d1d5db;
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      svg {
-        width: 16px;
-        height: 16px;
-      }
-    }
-
-    .pagination-pages {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-
-      .pagination-page {
-        min-width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        color: #374151;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        &:hover:not(.active) {
-          background: #f9fafb;
-          border-color: #d1d5db;
-        }
-
-        &.active {
-          background: #111;
-          border-color: #111;
-          color: white;
-        }
-      }
-
-      .pagination-ellipsis {
-        width: 40px;
-        text-align: center;
-        color: #9ca3af;
-        font-size: 14px;
-      }
-    }
-  }
-}
-
-// Responsive pagination
-@media (max-width: 640px) {
-  .vendor-jobs-pagination {
-    .pagination-controls {
-      flex-wrap: wrap;
-      justify-content: center;
-
-      .pagination-btn {
-        padding: 8px 12px;
-        font-size: 13px;
-
-        &.prev svg,
-        &.next svg {
-          display: none;
-        }
-      }
-
-      .pagination-pages {
-        order: -1;
-        width: 100%;
-        justify-content: center;
-        margin-bottom: 8px;
-
-        .pagination-page {
-          min-width: 36px;
-          height: 36px;
-          font-size: 13px;
-        }
-      }
-    }
-  }
-}
-
-// ============================================================================
-// AUTO-REFRESH BAR
-// ============================================================================
-
-.auto-refresh-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 20px;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 10px;
-  margin-bottom: 16px;
-
-  .refresh-status {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: #888;
-    font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
-
-    .last-updated {
-      color: #666;
-      font-weight: 500;
-    }
-
-    .next-refresh {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      &::before {
-        content: '';
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #000;
-        display: inline-block;
-      }
-    }
-
-    .refreshing {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #3b82f6;
-      font-weight: 500;
-    }
-
-    .paused {
-      color: #ccc;
-      font-weight: 500;
-
-      &::before {
-        content: '';
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #ccc;
-        display: inline-block;
-        margin-right: 8px;
-      }
-    }
-  }
-
-  .refresh-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .btn-refresh {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 16px;
-      background: #000;
-      border: none;
-      border-radius: 6px;
-      color: white;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
-
-      &:hover:not(:disabled) {
-        opacity: 0.8;
-      }
-
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-
-      svg {
-        transition: transform 0.3s ease;
-      }
-
-      &:not(:disabled):hover svg {
-        transform: rotate(180deg);
-      }
-    }
-
-    .btn-pause {
-      padding: 6px 14px;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      color: #555;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-
-      &:hover {
-        border-color: #aaa;
-        color: #333;
-      }
-    }
-
-    .btn-clear-cache {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      color: #c00;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-
-      svg {
-        flex-shrink: 0;
-      }
-
-      &:hover {
-        border-color: #fca5a5;
-        background: #fef2f2;
-      }
-
-      &:active {
-        transform: scale(0.98);
-      }
-    }
-  }
-
-  .new-jobs-badge {
-    padding: 8px 16px;
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-    border-radius: 20px;
-    color: white;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    animation: pulse-badge 2s infinite;
-    transition: transform 0.15s;
-
-    &:hover {
-      transform: scale(1.05);
-    }
-  }
-}
-
-@keyframes pulse-badge {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
-}
-
 // ============================================================================
 // GLOBAL ANALYSIS PROGRESS
 // ============================================================================
@@ -3851,8 +732,66 @@
 }
 
 // ============================================================================
-// FEED CONTROLS
+// FEED CONTROLS (Search above table)
 // ============================================================================
+
+.feed-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.feed-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  input {
+    padding: 8px 14px 8px 34px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background: #fff;
+    font-size: 13px;
+    width: 300px;
+    outline: none;
+    color: #222;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:focus {
+      border-color: #999;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.03);
+    }
+
+    &::placeholder {
+      color: #aaa;
+    }
+  }
+}
+
+// ============================================================================
+// UNIFIED FEED SECTION
+// ============================================================================
+
+.unified-feed-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin-bottom: 32px;
+}
 
 // ============================================================================
 // PRIMENG TABLE STYLES
@@ -4049,54 +988,6 @@
   }
 }
 
-// (Table caption styles removed - source tabs and search moved outside table)
-
-// Source Filter Tabs
-.source-filter-tabs {
-  display: flex;
-  gap: 4px;
-
-  .source-tab {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 16px;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 500;
-    color: #555;
-    cursor: pointer;
-    transition: all 0.15s;
-
-    &:hover {
-      border-color: #aaa;
-      color: #333;
-    }
-
-    &.active {
-      background: #000;
-      border-color: #000;
-      color: #fff;
-    }
-
-    .count-badge {
-      padding: 1px 7px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 600;
-      background: #f0f0f0;
-      color: #888;
-    }
-
-    &.active .count-badge {
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
-    }
-  }
-}
-
 // ============================================================================
 // TABLE COLUMN STYLES
 // ============================================================================
@@ -4115,6 +1006,10 @@
   &:hover {
     background: #f5f5f5 !important;
   }
+}
+
+.sortable-label {
+  cursor: pointer;
 }
 
 .sort-icon {
@@ -4316,32 +1211,6 @@
   }
 }
 
-.actions-cell {
-  text-align: center;
-  white-space: nowrap;
-
-  .action-btn-round {
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    transition: background-color 0.15s;
-    padding: 0;
-
-    &:hover {
-      background: #f0f0f0;
-
-      svg {
-        stroke: #555;
-      }
-    }
-  }
-}
 
 // Platform column filter
 .platform-col {
@@ -4388,6 +1257,109 @@
       font-weight: 600;
       color: #000;
     }
+  }
+}
+
+// Salary column filter
+.salary-col {
+  position: relative;
+  overflow: visible !important;
+}
+
+.salary-filter-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+
+  .pi-filter {
+    font-size: 11px;
+    color: #bbb;
+    cursor: pointer;
+    transition: color 0.15s;
+
+    &.active {
+      color: #000;
+    }
+  }
+
+  .salary-filter-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 8px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    padding: 20px;
+    padding-bottom: 24px;
+    z-index: 1000;
+    min-width: 260px;
+    display: none;
+    overflow: visible;
+  }
+
+  &:hover .salary-filter-dropdown,
+  .salary-filter-dropdown:hover {
+    display: block;
+  }
+
+  .salary-filter-content {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 0 12px;
+    overflow: visible;
+
+    ::ng-deep p-slider {
+      display: block;
+      padding: 12px 0;
+      overflow: visible;
+    }
+  }
+
+  .salary-range-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .salary-range-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #111;
+    }
+
+    .clear-salary-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: #fee2e2;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s;
+
+      i {
+        font-size: 10px;
+        color: #dc2626;
+      }
+
+      &:hover {
+        background: #fecaca;
+      }
+    }
+  }
+
+  .salary-range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #9ca3af;
+    margin-top: -4px;
   }
 }
 
@@ -4536,8 +1508,6 @@
   }
 }
 
-// (skills-list-expand replaced by expand-skills)
-
 .skill-tag-lg {
   display: inline-block;
   padding: 3px 10px;
@@ -4555,10 +1525,6 @@
     border-color: #fde68a;
   }
 }
-
-// (recruiter-details-expand replaced by expand-meta-row)
-
-// (expand-actions replaced by expand-actions-col)
 
 // Empty Table Message
 .empty-table-message {
@@ -4593,77 +1559,22 @@
 }
 
 // ============================================================================
-// FEED CONTROLS (Source Tabs + Search above table)
+// RESPONSIVE
 // ============================================================================
 
-.feed-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.feed-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-
-  svg {
-    position: absolute;
-    left: 11px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-  }
-
-  input {
-    padding: 8px 14px 8px 34px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    background: #fff;
-    font-size: 13px;
-    width: 300px;
-    outline: none;
-    color: #222;
-    font-family: inherit;
-    transition: border-color 0.15s, box-shadow 0.15s;
-
-    &:focus {
-      border-color: #999;
-      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.03);
-    }
-
-    &::placeholder {
-      color: #aaa;
-    }
-  }
-}
-
-// ============================================================================
-// UNIFIED FEED SECTION
-// ============================================================================
-
-.unified-feed-section {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  margin-bottom: 32px;
-}
-
-@keyframes pulse-new {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
-}
-
-// Responsive for new features
 @media (max-width: 768px) {
+  .main-content {
+    padding: 16px;
+  }
+
+  .candidate-drawer {
+    width: 100%;
+  }
+
   .candidate-selection-bar {
     flex-direction: column;
     gap: 12px;
+    padding: 12px 16px;
   }
 
   .candidate-bar-right {
@@ -4672,14 +1583,21 @@
     flex-wrap: wrap;
   }
 
+  .selected-candidate-display {
+    .candidate-avatar {
+      width: 40px;
+      height: 40px;
+      font-size: 14px;
+    }
+
+    .candidate-details .candidate-name {
+      font-size: 14px;
+    }
+  }
+
   .feed-controls {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .source-filter-tabs {
-    flex-wrap: wrap;
-    justify-content: center;
   }
 
   .feed-search input {
@@ -4702,5 +1620,42 @@
   .expand-meta-row {
     flex-wrap: wrap;
     gap: 16px;
+  }
+}
+
+.filter-salary-icon{
+  color: #6b7280 !important;
+}
+
+// Salary slider handle alignment
+::ng-deep .salary-slider.p-slider {
+  background: #e5e7eb !important;
+  height: 8px !important;
+  border-radius: 4px !important;
+  position: relative !important;
+  overflow: visible !important;
+
+  .p-slider-range {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa) !important;
+    border-radius: 4px !important;
+  }
+
+  .p-slider-handle {
+    width: 22px !important;
+    height: 22px !important;
+    background: white !important;
+    border: 3px solid #3b82f6 !important;
+    border-radius: 50% !important;
+    top: -7px !important;
+    margin-top: 0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.15s, box-shadow 0.15s !important;
+
+    &:hover,
+    &:focus,
+    &:active {
+      transform: scale(1.1) !important;
+      box-shadow: 0 3px 12px rgba(59, 130, 246, 0.4) !important;
+    }
   }
 }

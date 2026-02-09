@@ -226,26 +226,40 @@
                                             <div class="no-skills" *ngIf="!candidate.skills?.length">No skills extracted</div>
                                         </div>
 
-                                        <!-- Contact Details -->
+                                        <!-- Preferences & Experience -->
                                         <div class="expand-section">
-                                            <h4><i class="pi pi-user"></i> Contact Details</h4>
-                                            <div class="contact-details">
-                                                <div class="detail-item" *ngIf="candidate.email">
-                                                    <i class="pi pi-envelope"></i>
-                                                    <a [href]="'mailto:' + candidate.email">{{ candidate.email }}</a>
+                                            <h4><i class="pi pi-briefcase"></i> Preferences & Experience</h4>
+                                            <div class="pref-details">
+                                                <div class="detail-item" *ngIf="candidate.experience_level">
+                                                    <span class="detail-label">Level</span>
+                                                    <span class="detail-value">{{ candidate.experience_level }}</span>
                                                 </div>
-                                                <div class="detail-item" *ngIf="candidate.phone">
-                                                    <i class="pi pi-phone"></i>
-                                                    <a [href]="'tel:' + candidate.phone">{{ candidate.phone }}</a>
+                                                <div class="detail-item" *ngIf="candidate.preferences?.preferred_work_type?.length">
+                                                    <span class="detail-label">Work Type</span>
+                                                    <span class="detail-value">{{ candidate.preferences!.preferred_work_type.join(', ') | titlecase }}</span>
                                                 </div>
-                                                <div class="detail-item" *ngIf="candidate.linkedin">
-                                                    <i class="pi pi-linkedin"></i>
-                                                    <a [href]="candidate.linkedin" target="_blank">LinkedIn Profile</a>
+                                                <div class="detail-item" *ngIf="candidate.preferences?.preferred_locations?.length">
+                                                    <span class="detail-label">Preferred Locations</span>
+                                                    <span class="detail-value">{{ candidate.preferences!.preferred_locations.join(', ') }}</span>
                                                 </div>
-                                                <div class="detail-item" *ngIf="candidate.location">
-                                                    <i class="pi pi-map-marker"></i>
-                                                    <span>{{ candidate.location }}</span>
+                                                <div class="detail-item" *ngIf="candidate.preferences?.salary_expectation_min || candidate.preferences?.salary_expectation_max">
+                                                    <span class="detail-label">Salary</span>
+                                                    <span class="detail-value">
+                                                        {{ candidate.preferences!.salary_currency || 'USD' }}
+                                                        <span *ngIf="candidate.preferences!.salary_expectation_min">{{ candidate.preferences!.salary_expectation_min | number }}</span>
+                                                        <span *ngIf="candidate.preferences!.salary_expectation_min && candidate.preferences!.salary_expectation_max"> - </span>
+                                                        <span *ngIf="candidate.preferences!.salary_expectation_max">{{ candidate.preferences!.salary_expectation_max | number }}</span>
+                                                    </span>
                                                 </div>
+                                                <div class="detail-item" *ngIf="candidate.preferences?.preferred_job_titles?.length">
+                                                    <span class="detail-label">Target Roles</span>
+                                                    <span class="detail-value">{{ candidate.preferences!.preferred_job_titles.join(', ') }}</span>
+                                                </div>
+                                                <div class="detail-item" *ngIf="candidate.preferences?.willing_to_relocate">
+                                                    <span class="detail-label">Relocate</span>
+                                                    <span class="detail-value">Yes</span>
+                                                </div>
+                                                <div class="no-skills" *ngIf="!candidate.experience_level && !candidate.preferences">No preferences set</div>
                                             </div>
                                         </div>
 

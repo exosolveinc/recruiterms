@@ -6,7 +6,7 @@ import { UnifiedJob, AnalysisCacheEntry } from '../models/unified-job.model';
 import { Resume } from '../models';
 
 const ANALYSIS_CACHE_KEY = 'jobFeed_analysisCache';
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 export interface AnalysisProgress {
   isProcessing: boolean;
@@ -279,7 +279,7 @@ export class AnalysisQueueService {
   /**
    * Cache analysis result
    */
-  private cacheAnalysis(jobId: string, resumeId: string, result: AnalysisCacheEntry['result']): void {
+  cacheAnalysis(jobId: string, resumeId: string, result: AnalysisCacheEntry['result']): void {
     const key = this.getCacheKey(jobId, resumeId);
     const entry: AnalysisCacheEntry = {
       jobId,
