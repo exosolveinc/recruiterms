@@ -59,11 +59,6 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/admin-dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent),
     canActivate: [AuthGuard]
   },
-  {
-  path: 'resumes',
-  loadComponent: () => import('./features/resumes/resume-manager/resume-manager.component').then(m => m.ResumeManagerComponent),
-  canActivate: [AuthGuard]
-},
 {
   path: 'candidates',
   loadComponent: () => import('./features/candidates/candidates/candidates.component').then(m => m.CandidatesComponent),
