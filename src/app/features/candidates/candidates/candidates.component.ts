@@ -93,6 +93,11 @@ export class CandidatesComponent implements OnInit {
   workTypeOptions = ['remote', 'hybrid', 'onsite'];
   companySizeOptions = ['startup', 'small', 'medium', 'large', 'enterprise'];
 
+  // Resume management
+  uploading = false;
+  showDeleteResumeConfirm = false;
+  resumeToDelete: Resume | null = null;
+
   // Stats
   stats = {
     totalCandidates: 0,
@@ -627,12 +632,153 @@ export class CandidatesComponent implements OnInit {
     return '';
   }
 
-  goToDashboard() {
-    this.router.navigate(['/dashboard']);
+  // ============================================================================
+  // RESUME MANAGEMENT
+  // ============================================================================
+
+  async onResumeFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file = input.files[0];
+    const extension = file.name.split('.').pop()?.toLowerCase();
+
+    if (!extension || !['pdf', 'docx'].includes(extension)) {
+      alert('Please upload a PDF or DOCX file.');
+      return;
+    }
+
+    this.uploading = true;
+
+    try {
+      const { url } = await this.supabase.uploadResumeFile(file);
+
+      const resume = await this.supabase.createResume({
+        file_name: file.name,
+        file_url: url,
+        file_type: file.type,
+        extraction_status: 'processing',
+        label: this.generateDefaultLabel()
+      });
+
+      let extractedData: Partial<Resume>;
+      try {
+        extractedData = await this.supabase.extractResumeFromUrl(url, file.name);
+        extractedData.extraction_status = 'completed';
+      } catch (aiError: any) {
+        console.error('AI extraction failed:', aiError);
+        extractedData = {
+          extraction_status: 'failed',
+          extraction_confidence: 0
+        };
+      }
+
+      await this.supabase.updateResume(resume.id, extractedData);
+
+      // Invalidate and refresh candidates
+      this.appState.invalidateCandidates();
+      const candidates = await this.supabase.getCandidates();
+      this.appState.setCandidates(candidates);
+      this.candidates = candidates;
+      this.calculateStats();
+
+    } catch (err: any) {
+      alert('Failed to upload resume: ' + err.message);
+    } finally {
+      this.uploading = false;
+      input.value = '';
+    }
   }
 
-  goToResumes() {
-    this.router.navigate(['/resumes']);
+  generateDefaultLabel(): string {
+    const date = new Date();
+    return `Resume ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  }
+
+  async setResumePrimary(resume: Resume) {
+    try {
+      await this.supabase.setPrimaryResume(resume.id);
+      // Update in local candidate's resumes
+      const candidate = this.candidates.find(c => c.resumes.some(r => r.id === resume.id));
+      if (candidate) {
+        candidate.resumes.forEach(r => r.is_primary = r.id === resume.id);
+      }
+      if (this.selectedCandidate) {
+        this.selectedCandidate.resumes.forEach(r => r.is_primary = r.id === resume.id);
+      }
+    } catch (err: any) {
+      alert('Failed to set primary: ' + err.message);
+    }
+  }
+
+  confirmDeleteResume(resume: Resume) {
+    this.resumeToDelete = resume;
+    this.showDeleteResumeConfirm = true;
+  }
+
+  cancelDeleteResume() {
+    this.resumeToDelete = null;
+    this.showDeleteResumeConfirm = false;
+  }
+
+  async executeDeleteResume() {
+    if (!this.resumeToDelete) return;
+
+    const resumeId = this.resumeToDelete.id;
+
+    try {
+      await this.supabase.deleteResume(resumeId);
+
+      // Remove from local candidate's resumes
+      for (const candidate of this.candidates) {
+        candidate.resumes = candidate.resumes.filter(r => r.id !== resumeId);
+        candidate.resume_count = candidate.resumes.length;
+      }
+
+      if (this.selectedCandidate) {
+        this.selectedCandidate.resumes = this.selectedCandidate.resumes.filter(r => r.id !== resumeId);
+        this.selectedCandidate.resume_count = this.selectedCandidate.resumes.length;
+        if (this.selectedResume?.id === resumeId) {
+          this.selectedResume = this.selectedCandidate.resumes[0] || null;
+        }
+      }
+
+      this.appState.removeResume(resumeId);
+      this.cancelDeleteResume();
+      this.calculateStats();
+    } catch (err: any) {
+      alert('Failed to delete resume: ' + err.message);
+    }
+  }
+
+  goToAnalyzer(resume: Resume) {
+    this.router.navigate(['/analyzer'], { queryParams: { resumeId: resume.id } });
+  }
+
+  getResumeDisplayName(resume: Resume): string {
+    return resume.label || resume.candidate_name || resume.file_name;
+  }
+
+  getStatusClass(status: string): string {
+    switch (status) {
+      case 'completed': return 'status-success';
+      case 'processing': return 'status-processing';
+      case 'failed': return 'status-failed';
+      default: return '';
+    }
+  }
+
+  getStatusText(status: string): string {
+    switch (status) {
+      case 'completed': return 'Extracted';
+      case 'processing': return 'Processing...';
+      case 'failed': return 'Failed';
+      default: return 'Pending';
+    }
+  }
+
+  goToDashboard() {
+    this.router.navigate(['/dashboard']);
   }
 
   async logout() {

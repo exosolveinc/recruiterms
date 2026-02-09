@@ -31,8 +31,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { icon: 'fi-rr-apps', label: 'Admin Dashboard', route: '/admin', id: 'admin', adminOnly: true },
     { icon: 'fi-rr-clipboard-list', label: 'Applications', route: '/dashboard', id: 'dashboard' },
     { icon: 'fi-rr-columns-3', label: 'Applications Board', route: '/applications-board', id: 'applications-board' },
-    { icon: 'fi-rr-document', label: 'Resumes', route: '/resumes', id: 'resumes' },
-    { icon: 'fi-rr-users', label: 'Candidates', route: '/candidates', id: 'candidates' },
+{ icon: 'fi-rr-users', label: 'Candidates', route: '/candidates', id: 'candidates' },
     { icon: 'fi-rr-briefcase', label: 'Job Feed', route: '/job-feed', id: 'job-feed' },
     { icon: 'fi-rr-calendar-clock', label: 'Interview Management', route: '/interviews', id: 'interviews' },
   ];
