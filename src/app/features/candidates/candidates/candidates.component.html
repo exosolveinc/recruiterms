@@ -151,7 +151,6 @@
                                     <i class="pi sort-icon" [ngClass]="getSortIcon('years_of_experience')"></i>
                                 </div>
                             </th>
-                            <th style="width: 220px; max-width: 220px">Top Skills</th>
                             <th style="width: 100px; text-align: center">Actions</th>
                         </tr>
                     </ng-template>
@@ -199,15 +198,6 @@
                                     <span class="exp-years" *ngIf="candidate.years_of_experience">{{ candidate.years_of_experience }} yrs</span>
                                 </div>
                             </td>
-                            <!-- Skills -->
-                            <td class="skills-cell">
-                                <div class="skills-container" *ngIf="candidate.skills?.length">
-                                    <span class="skill-tag" *ngFor="let skill of candidate.skills.slice(0, 3)">{{ skill.name }}</span>
-                                    <span class="skills-more" *ngIf="candidate.skills.length > 3">+{{ candidate.skills.length - 3 }}</span>
-                                </div>
-                                <span class="no-data" *ngIf="!candidate.skills?.length">—</span>
-                            </td>
-
                             <!-- Actions -->
                             <td class="actions-cell">
                                 <button class="action-btn" (click)="viewCandidate(candidate)" title="View details">
@@ -220,17 +210,18 @@
                     <!-- Row Expansion -->
                     <ng-template pTemplate="rowexpansion" let-candidate>
                         <tr class="expand-row">
-                            <td colspan="8">
+                            <td colspan="7">
                                 <div class="expand-content">
                                     <div class="expand-grid">
                                         <!-- All Skills -->
                                         <div class="expand-section">
-                                            <h4><i class="pi pi-tags"></i> All Skills</h4>
+                                            <h4><i class="pi pi-tags"></i> Top Skills</h4>
                                             <div class="skills-full">
-                                                <span class="skill-tag-lg" *ngFor="let skill of candidate.skills">
+                                                <span class="skill-tag-lg" *ngFor="let skill of candidate.skills?.slice(0, 6)">
                                                     {{ skill.name }}
                                                     <span class="proficiency" *ngIf="skill.proficiency">({{ skill.proficiency }})</span>
                                                 </span>
+                                                <span class="skills-more" *ngIf="candidate.skills?.length > 6">+{{ candidate.skills.length - 6 }} more</span>
                                             </div>
                                             <div class="no-skills" *ngIf="!candidate.skills?.length">No skills extracted</div>
                                         </div>
@@ -304,7 +295,7 @@
                     <!-- Empty Message -->
                     <ng-template pTemplate="emptymessage">
                         <tr>
-                            <td colspan="8" class="empty-table-message">
+                            <td colspan="7" class="empty-table-message">
                                 <i class="pi pi-search"></i>
                                 <p>No candidates match your filters.</p>
                                 <button class="btn-text" (click)="clearFilters()">Clear Filters</button>
