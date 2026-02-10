@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, effect } from '@angular/core';
+import { Component, OnInit, computed, inject, effect, ElementRef, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Job, Resume, UserApplicationView } from '../../core/models';
@@ -11,11 +11,12 @@ import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 import { InterviewModalComponent } from '../../shared/interview-modal/interview-modal.component';
 import { TableModule } from 'primeng/table';
 import { RippleModule } from 'primeng/ripple';
+import { MultiSelectModule } from 'primeng/multiselect';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent, InterviewModalComponent, TableModule, RippleModule],
+  imports: [CommonModule, FormsModule, SidebarComponent, InterviewModalComponent, TableModule, RippleModule, MultiSelectModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -23,6 +24,7 @@ export class DashboardComponent implements OnInit {
   // Inject services
   private appState = inject(AppStateService);
   private vendorEmailService = inject(VendorEmailService);
+  private el = inject(ElementRef);
 
   // Use signals from AppStateService
   readonly profile = this.appState.profile;
@@ -55,16 +57,19 @@ export class DashboardComponent implements OnInit {
     }
   });
 
-  // Computed filtered applications with search
+  // Computed filtered applications with enhanced search
   readonly filteredApplications = computed(() => {
     let filtered = this.appState.filteredApplications();
 
-    // Apply search filter
+    // Apply search filter (enhanced: company, title, location, skills)
     if (this.searchTerm) {
       const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(app =>
         app.company_name?.toLowerCase().includes(term) ||
-        app.job_title?.toLowerCase().includes(term)
+        app.job_title?.toLowerCase().includes(term) ||
+        app.location?.toLowerCase().includes(term) ||
+        app.matching_skills?.some(s => s.toLowerCase().includes(term)) ||
+        app.missing_skills?.some(s => s.toLowerCase().includes(term))
       );
     }
 
@@ -105,6 +110,101 @@ export class DashboardComponent implements OnInit {
     suggestions: string[];
   } | null = null;
   pendingJob: Partial<Job> | null = null;
+
+  // Status filter pills
+  statusFilter = 'All';
+  statusOptions = ['All', 'Extracted', 'Applied', 'Screening', 'Interview', 'Offer', 'Rejected'];
+
+  // Column sorting
+  sortField = '';
+  sortOrder = 1; // 1=asc, -1=desc
+
+  // Column filter values
+  selectedStatuses: string[] = [];
+  selectedPlatforms: string[] = [];
+
+  // Signal to trigger computed re-evaluation when sort/filter plain properties change
+  private filterSortTrigger = signal(0);
+
+  // Filter options (computed from data)
+  readonly statusFilterOptions = computed(() => {
+    const apps = this.applications();
+    const statuses = [...new Set(apps.map(a => a.status).filter(Boolean))];
+    return statuses.map(s => ({ label: this.getStatusLabel(s), value: s }));
+  });
+
+  readonly platformOptions = computed(() => {
+    const apps = this.applications();
+    const platforms = [...new Set(apps.map(a => a.platform).filter(Boolean))] as string[];
+    return platforms.map(p => ({ label: p, value: p }));
+  });
+
+  // Filtered applications with status filter, column filters, and sort applied
+  readonly statusFilteredApplications = computed(() => {
+    // Read trigger signal to re-evaluate when sort/filter changes
+    this.filterSortTrigger();
+    let apps = this.filteredApplications();
+
+    // Status pill filter
+    if (this.statusFilter !== 'All') {
+      apps = apps.filter(a => this.getStatusLabel(a.status).toLowerCase() === this.statusFilter.toLowerCase());
+    }
+
+    // Column filter: status multi-select
+    if (this.selectedStatuses.length > 0) {
+      apps = apps.filter(a => this.selectedStatuses.includes(a.status));
+    }
+
+    // Column filter: platform multi-select
+    if (this.selectedPlatforms.length > 0) {
+      apps = apps.filter(a => a.platform && this.selectedPlatforms.includes(a.platform));
+    }
+
+    // Sort
+    if (this.sortField) {
+      apps = [...apps].sort((a, b) => {
+        let valueA: any;
+        let valueB: any;
+
+        switch (this.sortField) {
+          case 'status':
+            const statusOrder: Record<string, number> = {
+              'extracted': 0, 'applied': 1, 'screening': 2, 'interviewing': 3,
+              'offer': 4, 'accepted': 5, 'rejected': 6, 'withdrawn': 7
+            };
+            valueA = statusOrder[a.status] ?? 99;
+            valueB = statusOrder[b.status] ?? 99;
+            break;
+          case 'applied_at':
+            valueA = a.applied_at ? new Date(a.applied_at).getTime() : 0;
+            valueB = b.applied_at ? new Date(b.applied_at).getTime() : 0;
+            break;
+          case 'match_score':
+            valueA = a.match_score ?? 0;
+            valueB = b.match_score ?? 0;
+            break;
+          case 'salary_min':
+            valueA = a.salary_min ?? 0;
+            valueB = b.salary_min ?? 0;
+            break;
+          case 'company_name':
+            valueA = a.company_name || '';
+            valueB = b.company_name || '';
+            break;
+          default:
+            valueA = (a as any)[this.sortField] || '';
+            valueB = (b as any)[this.sortField] || '';
+        }
+
+        if (typeof valueA === 'string') {
+          return this.sortOrder * valueA.localeCompare(valueB);
+        }
+        return this.sortOrder * (valueA - valueB);
+      });
+    }
+
+    return apps;
+  });
 
   // Search term (local state)
   searchTerm = '';
@@ -551,6 +651,24 @@ export class DashboardComponent implements OnInit {
     this.expandedRows = { [app.id]: true };
     this.loadJobDetailsIfNeeded(app);
     this.loadInterviewsForApp(app.id);
+    setTimeout(() => this.adjustExpandCardHeights(), 50);
+  }
+
+  private adjustExpandCardHeights() {
+    const grid = this.el.nativeElement.querySelector('.expand-grid-3col') as HTMLElement;
+    if (!grid) return;
+    const anchor = grid.querySelector('.expand-card-anchor') as HTMLElement;
+    if (!anchor) return;
+    const cards = Array.from(grid.querySelectorAll('.expand-card')) as HTMLElement[];
+    // Reset so we can measure natural heights
+    cards.forEach(c => { c.style.maxHeight = ''; c.style.overflowY = ''; });
+    const anchorH = anchor.scrollHeight;
+    cards.forEach(c => {
+      if (c !== anchor && c.scrollHeight > anchorH) {
+        c.style.maxHeight = anchorH + 'px';
+        c.style.overflowY = 'auto';
+      }
+    });
   }
 
   onRowCollapse(event: any) {
@@ -850,6 +968,76 @@ export class DashboardComponent implements OnInit {
     if (appsWithMatch.length === 0) return 0;
     const total = appsWithMatch.reduce((sum, a) => sum + (a.match_score || 0), 0);
     return Math.round(total / appsWithMatch.length);
+  }
+
+  setStatusFilter(status: string) {
+    this.statusFilter = status;
+  }
+
+  // Column sort: 3-state toggle (asc → desc → clear)
+  onSort(field: string): void {
+    if (this.sortField === field) {
+      if (this.sortOrder === 1) {
+        this.sortOrder = -1;
+      } else {
+        this.sortField = '';
+        this.sortOrder = 1;
+      }
+    } else {
+      this.sortField = field;
+      this.sortOrder = 1;
+    }
+    this.filterSortTrigger.update(v => v + 1);
+  }
+
+  getSortIconClass(field: string): string {
+    if (this.sortField !== field) {
+      return 'pi pi-sort-alt';
+    }
+    return this.sortOrder === 1 ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down';
+  }
+
+  hasActiveFilters(): boolean {
+    return this.selectedStatuses.length > 0 ||
+      this.selectedPlatforms.length > 0 ||
+      this.sortField !== '';
+  }
+
+  clearAllFilters(): void {
+    this.selectedStatuses = [];
+    this.selectedPlatforms = [];
+    this.sortField = '';
+    this.sortOrder = 1;
+    this.filterSortTrigger.update(v => v + 1);
+  }
+
+  onColumnFilterChange(): void {
+    this.filterSortTrigger.update(v => v + 1);
+  }
+
+  // SVG Match Ring helpers
+  getMatchRingColor(score: number): string {
+    if (score >= 80) return '#16A34A';
+    if (score >= 60) return '#EAB308';
+    return '#EF4444';
+  }
+
+  getMatchRingOffset(score: number): number {
+    const circumference = 2 * Math.PI * 16; // r=16
+    return circumference - (score / 100) * circumference;
+  }
+
+  // Skill count for actions column
+  getSkillMatchCount(app: UserApplicationView): string {
+    const matched = app.matching_skills?.length || 0;
+    const total = matched + (app.missing_skills?.length || 0);
+    return `${matched}/${total}`;
+  }
+
+  getSkillMatchPercent(app: UserApplicationView): number {
+    const matched = app.matching_skills?.length || 0;
+    const total = matched + (app.missing_skills?.length || 0);
+    return total > 0 ? Math.round((matched / total) * 100) : 0;
   }
 
   // Get applications for selected candidate - uses computed signal
