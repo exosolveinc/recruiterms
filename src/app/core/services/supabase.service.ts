@@ -1222,6 +1222,82 @@ export class SupabaseService {
     return data;
   }
 
+  // ============================================================================
+  // BATCH ANALYSIS + REALTIME (for Job Search)
+  // ============================================================================
+
+  async insertPendingSearchResults(
+    sessionId: string,
+    resumeId: string,
+    jobs: { id: string; title: string; company: string }[]
+  ): Promise<void> {
+    const user = this._user.value;
+    if (!user) throw new Error('Not authenticated');
+
+    const rows = jobs.map(job => ({
+      session_id: sessionId,
+      user_id: user.id,
+      resume_id: resumeId,
+      external_job_id: job.id,
+      job_title: job.title,
+      company: job.company,
+      status: 'pending'
+    }));
+
+    const { error } = await this.supabase
+      .from('search_results')
+      .insert(rows);
+
+    if (error) throw error;
+  }
+
+  startBatchAnalysis(
+    sessionId: string,
+    resume: Resume,
+    jobs: { external_job_id: string; job_title: string; company_name: string; location: string; description: string }[]
+  ): void {
+    // Fire-and-forget: invoke edge function without awaiting
+    this.supabase.functions.invoke('batch-analyze-jobs', {
+      body: { session_id: sessionId, resume, jobs }
+    }).then(({ error }) => {
+      if (error) {
+        console.error('Batch analysis invocation error:', error);
+      }
+    });
+  }
+
+  async getSearchResultsByResume(resumeId: string): Promise<any[]> {
+    const { data, error } = await this.supabase
+      .from('search_results')
+      .select('external_job_id, match_score, matching_skills, missing_skills, status')
+      .eq('resume_id', resumeId)
+      .eq('status', 'completed');
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  subscribeToSearchResults(
+    sessionId: string,
+    callback: (payload: any) => void
+  ): any {
+    const channel = this.supabase
+      .channel(`search-results-${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'search_results',
+          filter: `session_id=eq.${sessionId}`
+        },
+        callback
+      )
+      .subscribe();
+
+    return channel;
+  }
+
   async extractResumeFromUrl(fileUrl: string, fileName: string): Promise<Partial<Resume>> {
     console.log('Calling extract-resume-from-url Edge Function...');
 

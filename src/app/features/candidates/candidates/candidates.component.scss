@@ -1170,6 +1170,12 @@ table {
   gap: 12px;
 }
 
+.pref-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .detail-item {
   display: flex;
   align-items: center;
@@ -1177,6 +1183,21 @@ table {
 
   .detail-icon {
     font-size: 16px;
+  }
+
+  .detail-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    min-width: 110px;
+    flex-shrink: 0;
+  }
+
+  .detail-value {
+    font-size: 14px;
+    color: #333;
   }
 
   a {
