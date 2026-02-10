@@ -217,7 +217,7 @@
                                         <div class="expand-section">
                                             <h4><i class="pi pi-tags"></i> Top Skills</h4>
                                             <div class="skills-full">
-                                                <span class="skill-tag-lg" *ngFor="let skill of candidate.skills?.slice(0, 6)">
+                                                <span class="skill-tag-lg" [ngClass]="getProficiencyClass(skill.proficiency)" *ngFor="let skill of candidate.skills?.slice(0, 6)">
                                                     {{ skill.name }}
                                                     <span class="proficiency" *ngIf="skill.proficiency">({{ skill.proficiency }})</span>
                                                 </span>
@@ -385,7 +385,7 @@
                             <div class="detail-section" *ngIf="selectedCandidate.skills?.length">
                                 <h4>Skills ({{ selectedCandidate.skills.length }})</h4>
                                 <div class="skills-grid">
-                                    <div class="skill-item" *ngFor="let skill of selectedCandidate.skills">
+                                    <div class="skill-item" [ngClass]="getProficiencyClass(skill.proficiency)" *ngFor="let skill of selectedCandidate.skills">
                                         <span class="skill-name">{{ skill.name }}</span>
                                         <span class="skill-proficiency" *ngIf="skill.proficiency">{{ skill.proficiency }}</span>
                                     </div>

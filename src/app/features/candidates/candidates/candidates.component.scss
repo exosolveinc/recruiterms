@@ -1156,6 +1156,30 @@ table {
     color: #666;
     margin-left: 4px;
   }
+
+  &.proficiency-expert {
+    background: #F0FDF4;
+    color: #15803D;
+    border: 1px solid #D1FAE5;
+
+    .proficiency { color: #15803D; }
+  }
+
+  &.proficiency-advanced {
+    background: #F9FAFB;
+    color: #374151;
+    border: 1px solid #E5E7EB;
+
+    .proficiency { color: #374151; }
+  }
+
+  &.proficiency-intermediate {
+    background: #FFFBEB;
+    color: #92400E;
+    border: 1px solid #FDE68A;
+
+    .proficiency { color: #92400E; }
+  }
 }
 
 .no-skills {
@@ -1487,6 +1511,27 @@ table {
       padding: 2px 6px;
       background: white;
       border-radius: 4px;
+    }
+
+    &.proficiency-expert {
+      background: #F0FDF4;
+      border: 1px solid #D1FAE5;
+      .skill-name { color: #15803D; }
+      .skill-proficiency { background: #D1FAE5; color: #15803D; }
+    }
+
+    &.proficiency-advanced {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      .skill-name { color: #374151; }
+      .skill-proficiency { background: #E5E7EB; color: #374151; }
+    }
+
+    &.proficiency-intermediate {
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      .skill-name { color: #92400E; }
+      .skill-proficiency { background: #FDE68A; color: #92400E; }
     }
   }
 }

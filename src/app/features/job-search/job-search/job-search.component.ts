@@ -8,6 +8,7 @@ import { takeUntil } from 'rxjs/operators';
 import { Candidate, Profile, Resume } from '../../../core/models';
 import { AnalysisQueueService } from '../../../core/services/analysis-queue.service';
 import { ExternalJob, JobFeedService, JobPlatform, JobSearchParams } from '../../../core/services/job-feed.service';
+import { AppStateService } from '../../../core/services/app-state.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { GmailConnectionStatus, GmailSyncResult, VendorEmailService, VendorJob, VendorJobStats } from '../../../core/services/vendor-email.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
@@ -158,20 +159,16 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   salaryRange: number[] = [0, 300000];
   salaryFilterActive = false;
 
-  // Session state key
-  private readonly SESSION_STATE_KEY = 'jobSearch_sessionState';
-
   constructor(
     private supabase: SupabaseService,
     private jobFeedService: JobFeedService,
     private vendorEmailService: VendorEmailService,
     private analysisQueueService: AnalysisQueueService,
+    private appState: AppStateService,
     private router: Router
   ) {}
 
   async ngOnInit() {
-    await this.restoreSessionState();
-
     // Subscribe to analysis progress
     this.analysisQueueService.progress$
       .pipe(takeUntil(this.destroy$))
@@ -184,6 +181,12 @@ export class JobSearchComponent implements OnInit, OnDestroy {
 
     await this.loadProfile();
     await this.loadCandidates();
+
+    // After loadCandidates sets selectedResumeId, load jobs from DB
+    if (this.selectedResumeId) {
+      await this.loadJobsFromDB();
+    }
+
     await this.loadVendorJobStats();
     await this.checkGmailStatus();
 
@@ -191,102 +194,53 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     this.handleGmailConnected();
   }
 
-  // ============ Session State Management ============
-
-  private saveSessionState() {
-    const state = {
-      searchQuery: this.searchQuery,
-      searchLocation: this.searchLocation,
-      selectedSource: this.selectedSource,
-      selectedCandidateId: this.selectedCandidateId,
-      selectedResumeId: this.selectedResumeId,
-      vendorStatusFilter: this.vendorStatusFilter,
-      currentPage: this.currentPage,
-      jobs: this.jobs,
-      vendorJobs: this.vendorJobs,
-      totalJobs: this.totalJobs,
-      totalPages: this.totalPages,
-      stats: this.stats,
-      activeView: this.activeView,
-      vendorJobsPage: this.vendorJobsPage,
-      vendorJobsTotal: this.vendorJobsTotal,
-      vendorJobsTotalPages: this.vendorJobsTotalPages,
-      analysisSessionId: this.analysisSessionId
-    };
-    sessionStorage.setItem(this.SESSION_STATE_KEY, JSON.stringify(state));
-  }
-
-  private async restoreSessionState() {
-    const savedState = sessionStorage.getItem(this.SESSION_STATE_KEY);
-    if (savedState) {
-      try {
-        const state = JSON.parse(savedState);
-        this.searchQuery = state.searchQuery || '';
-        this.searchLocation = state.searchLocation || '';
-        this.selectedSource = state.selectedSource || 'adzuna';
-        this.selectedCandidateId = state.selectedCandidateId || '';
-        this.selectedResumeId = state.selectedResumeId || '';
-        this.vendorStatusFilter = state.vendorStatusFilter || '';
-        this.currentPage = state.currentPage || 1;
-        this.jobs = state.jobs || [];
-        this.vendorJobs = state.vendorJobs || [];
-        this.totalJobs = state.totalJobs || 0;
-        this.totalPages = state.totalPages || 0;
-        this.stats = state.stats || { totalFound: 0, averageSalary: 0, avgMatchScore: 0 };
-        this.activeView = state.activeView || 'search';
-        this.vendorJobsPage = state.vendorJobsPage || 1;
-        this.vendorJobsTotal = state.vendorJobsTotal || 0;
-        this.vendorJobsTotalPages = state.vendorJobsTotalPages || 0;
-
-        // Restore the analysis session ID
-        this.analysisSessionId = state.analysisSessionId || null;
-
-        // Restore analysis results from database
-        if (this.selectedResumeId && this.jobs.length > 0) {
-          try {
-            const dbResults = await this.supabase.getSearchResultsByResume(this.selectedResumeId);
-            const resultsMap = new Map(dbResults.map(r => [r.external_job_id, r]));
-
-            for (const job of this.jobs) {
-              const result = resultsMap.get(job.id);
-              if (result) {
-                job.match_score = result.match_score;
-                job.matching_skills = result.matching_skills || [];
-                job.missing_skills = result.missing_skills || [];
-                job.analyzed = true;
-              }
-            }
-            this.calculateStats();
-
-            // If there are still unanalyzed jobs and we have a session ID,
-            // the edge function may still be running — re-subscribe to realtime
-            const stillPending = this.jobs.filter(j => !j.analyzed);
-            if (stillPending.length > 0 && this.analysisSessionId) {
-              stillPending.forEach(j => j.analyzing = true);
-              this.analysisInProgress = true;
-              this.totalToAnalyze = stillPending.length;
-              this.analyzedCount = 0;
-
-              this.realtimeChannel = this.supabase.subscribeToSearchResults(
-                this.analysisSessionId,
-                (payload: any) => this.handleRealtimeUpdate(payload)
-              );
-            }
-          } catch (e) {
-            console.error('Failed to restore analysis from DB:', e);
-          }
-        }
-      } catch (e) {
-        console.error('Failed to restore session state:', e);
-      }
-    }
-  }
-
   ngOnDestroy() {
-    this.saveSessionState();
     this.cleanupRealtimeChannel();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private async loadJobsFromDB() {
+    if (!this.selectedResumeId) return;
+    try {
+      const dbResults = await this.supabase.getSearchResultsByResume(this.selectedResumeId);
+      if (dbResults.length === 0) return;
+
+      // Reconstruct jobs from stored job_data
+      this.jobs = dbResults
+        .filter((r: any) => r.job_data)
+        .map((r: any) => ({
+          ...r.job_data,
+          match_score: r.status === 'completed' ? r.match_score : undefined,
+          matching_skills: r.status === 'completed' ? (r.matching_skills || []) : undefined,
+          missing_skills: r.status === 'completed' ? (r.missing_skills || []) : undefined,
+          analyzed: r.status === 'completed',
+          analyzing: r.status === 'pending'
+        }));
+
+      this.totalJobs = this.jobs.length;
+      this.totalPages = 1;
+      this.calculateStats();
+
+      // Re-subscribe to pending analyses
+      const pending = this.jobs.filter((j: any) => j.analyzing);
+      if (pending.length > 0) {
+        const pendingResult = dbResults.find((r: any) => r.status === 'pending');
+        if (pendingResult?.session_id) {
+          this.analysisSessionId = pendingResult.session_id;
+          this.analysisInProgress = true;
+          this.totalToAnalyze = pending.length;
+          this.analyzedCount = 0;
+
+          this.realtimeChannel = this.supabase.subscribeToSearchResults(
+            pendingResult.session_id,
+            (payload: any) => this.handleRealtimeUpdate(payload)
+          );
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load jobs from DB:', e);
+    }
   }
 
   async loadProfile() {
@@ -300,19 +254,14 @@ export class JobSearchComponent implements OnInit, OnDestroy {
 
   async loadCandidates() {
     try {
-      this.candidates = await this.supabase.getCandidates();
-      if (this.candidates.length > 0) {
-        // If we already have a selected candidate from session state, just set the resume
-        // without triggering a full search + analyze cycle
-        if (this.selectedCandidateId && this.candidates.find(c => c.id === this.selectedCandidateId)) {
-          const candidate = this.candidates.find(c => c.id === this.selectedCandidateId)!;
-          if (!this.selectedResumeId && candidate.resumes.length > 0) {
-            const primary = candidate.resumes.find(r => r.is_primary);
-            this.selectedResumeId = primary?.id || candidate.resumes[0].id;
-          }
-        } else {
-          this.selectCandidate(this.candidates[0].id);
-        }
+      if (this.appState.candidatesLoaded()) {
+        this.candidates = this.appState.candidates();
+      } else {
+        this.candidates = await this.supabase.getCandidates();
+        this.appState.setCandidates(this.candidates);
+      }
+      if (this.candidates.length > 0 && !this.selectedCandidateId) {
+        this.selectCandidate(this.candidates[0].id);
       }
     } catch (err) {
       console.error('Failed to load candidates:', err);
@@ -363,6 +312,9 @@ export class JobSearchComponent implements OnInit, OnDestroy {
       this.analysisQueueService.invalidateForResume(this.selectedResumeId);
     }
 
+    // Cleanup realtime channel from previous candidate
+    this.cleanupRealtimeChannel();
+
     this.selectedCandidateId = candidateId;
     const candidate = this.candidates.find(c => c.id === candidateId);
     if (candidate && candidate.resumes.length > 0) {
@@ -371,13 +323,18 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     } else {
       this.selectedResumeId = '';
     }
-    // Reset match scores when candidate changes
-    this.jobs.forEach(job => {
-      job.match_score = undefined;
-      job.matching_skills = undefined;
-      job.missing_skills = undefined;
-      job.analyzed = false;
-    });
+
+    // Clear current state and load from DB
+    this.jobs = [];
+    this.totalJobs = 0;
+    this.totalPages = 0;
+    this.currentPage = 1;
+    this.stats = { totalFound: 0, averageSalary: 0, avgMatchScore: 0 };
+
+    // Load this candidate's jobs from DB
+    if (this.selectedResumeId) {
+      this.loadJobsFromDB();
+    }
 
     // Auto-fill search fields from preferences if enabled
     if (this.usePreferences && candidate) {
@@ -389,9 +346,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
 
     // Check Gmail status for new candidate
     this.checkGmailStatus();
-
-    // Auto-fill search fields but don't auto-search — let the user trigger it
-
   }
 
   fillSearchFromPreferences(candidate: Candidate) {
@@ -630,7 +584,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
       this.totalJobs = result.total;
       this.totalPages = result.totalPages;
       this.calculateStats();
-      this.saveSessionState();
 
       // Start passive background analysis
       if (this.selectedResumeId && this.jobs.length > 0) {
@@ -749,11 +702,25 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     unanalyzed.forEach(j => j.analyzing = true);
 
     try {
-      // Insert pending rows in DB
+      // Insert pending rows in DB (with full job data for persistence)
       await this.supabase.insertPendingSearchResults(
         sessionId,
         this.selectedResumeId,
-        unanalyzed.map(j => ({ id: j.id, title: j.title, company: j.company }))
+        unanalyzed.map(j => ({
+          id: j.id,
+          title: j.title,
+          company: j.company,
+          jobData: {
+            id: j.id, title: j.title, company: j.company,
+            location: j.location, description: j.description,
+            salary_min: j.salary_min, salary_max: j.salary_max,
+            salary_text: j.salary_text, url: j.url,
+            posted_date: j.posted_date, source: j.source,
+            employment_type: j.employment_type, category: j.category,
+            work_type: j.work_type, experience_level: j.experience_level,
+            required_skills: j.required_skills
+          }
+        }))
       );
 
       // Subscribe to Realtime updates
@@ -794,15 +761,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
       job.missing_skills = row.missing_skills || [];
       job.analyzed = true;
       job.analyzing = false;
-
-      // Persist to localStorage cache for cross-refresh survival
-      if (this.selectedResumeId) {
-        this.analysisQueueService.cacheAnalysis(job.id, this.selectedResumeId, {
-          match_score: row.match_score,
-          matching_skills: row.matching_skills || [],
-          missing_skills: row.missing_skills || []
-        });
-      }
     } else if (row.status === 'error') {
       job.analyzing = false;
     }
@@ -829,7 +787,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     if (totalAnalyzing === 0 && this.analysisInProgress) {
       this.analysisInProgress = false;
       this.cleanupRealtimeChannel();
-      this.saveSessionState();
     }
   }
 
@@ -1131,7 +1088,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     if (view === 'email' && this.vendorJobs.length === 0) {
       this.loadVendorJobs();
     }
-    this.saveSessionState();
   }
 
   async loadVendorJobs() {
@@ -1160,8 +1116,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
         limit: this.vendorJobsPerPage,
         offset: offset
       });
-
-      this.saveSessionState();
     } catch (err) {
       console.error('Failed to load vendor jobs:', err);
     } finally {

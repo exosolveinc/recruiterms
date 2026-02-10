@@ -1229,7 +1229,7 @@ export class SupabaseService {
   async insertPendingSearchResults(
     sessionId: string,
     resumeId: string,
-    jobs: { id: string; title: string; company: string }[]
+    jobs: { id: string; title: string; company: string; jobData?: any }[]
   ): Promise<void> {
     const user = this._user.value;
     if (!user) throw new Error('Not authenticated');
@@ -1241,7 +1241,8 @@ export class SupabaseService {
       external_job_id: job.id,
       job_title: job.title,
       company: job.company,
-      status: 'pending'
+      status: 'pending',
+      job_data: job.jobData || null
     }));
 
     const { error } = await this.supabase
@@ -1269,9 +1270,8 @@ export class SupabaseService {
   async getSearchResultsByResume(resumeId: string): Promise<any[]> {
     const { data, error } = await this.supabase
       .from('search_results')
-      .select('external_job_id, match_score, matching_skills, missing_skills, status')
-      .eq('resume_id', resumeId)
-      .eq('status', 'completed');
+      .select('external_job_id, match_score, matching_skills, missing_skills, status, job_data, session_id')
+      .eq('resume_id', resumeId);
 
     if (error) throw error;
     return data || [];

@@ -623,6 +623,15 @@ export class CandidatesComponent implements OnInit {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
+  getProficiencyClass(proficiency: string | undefined): string {
+    if (!proficiency) return '';
+    const p = proficiency.toLowerCase();
+    if (p === 'expert') return 'proficiency-expert';
+    if (p === 'advanced') return 'proficiency-advanced';
+    if (p === 'intermediate') return 'proficiency-intermediate';
+    return '';
+  }
+
   getExperienceBadgeClass(level: string | null): string {
     if (!level) return '';
     const l = level.toLowerCase();

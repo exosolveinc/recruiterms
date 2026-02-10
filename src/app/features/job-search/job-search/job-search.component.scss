@@ -982,7 +982,7 @@
 
 // Main Content
 .main-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 32px;
 }
@@ -2441,9 +2441,8 @@
 // ============================================================================
 
 .candidate-selection-bar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
   background: white;
   border: 1px solid #e5e5e5;
   border-radius: 12px;
