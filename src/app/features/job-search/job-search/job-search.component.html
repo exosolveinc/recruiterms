@@ -90,16 +90,6 @@
         </div>
       </div>
 
-      <!-- Global Analysis Progress -->
-      <div class="analysis-progress-global" *ngIf="analysisInProgress">
-        <div class="progress-info">
-          <span class="progress-label">Analyzing jobs...</span>
-          <span class="progress-count">{{ analyzedCount }}/{{ totalToAnalyze }}</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" [style.width.%]="analysisProgress"></div>
-        </div>
-      </div>
 
       <!-- Gmail Panel (shown when toggled) -->
       <div class="gmail-header-panel" *ngIf="showGmailPanel" (click)="$event.stopPropagation()">
