@@ -533,15 +533,19 @@ export class UnifiedFeedService {
 
   private sortJobs(jobs: UnifiedJob[], sortBy: 'date' | 'match' | 'salary'): UnifiedJob[] {
     return [...jobs].sort((a, b) => {
+      // Use discovered_at (scrape time) as primary date, fall back to posted_date
+      const dateA = new Date(a.discovered_at || a.posted_date).getTime();
+      const dateB = new Date(b.discovered_at || b.posted_date).getTime();
+
       switch (sortBy) {
         case 'date':
-          return new Date(b.posted_date).getTime() - new Date(a.posted_date).getTime();
+          return dateB - dateA;
 
         case 'match':
           const scoreA = a.match_score ?? -1;
           const scoreB = b.match_score ?? -1;
           if (scoreA === scoreB) {
-            return new Date(b.posted_date).getTime() - new Date(a.posted_date).getTime();
+            return dateB - dateA;
           }
           return scoreB - scoreA;
 
@@ -549,7 +553,7 @@ export class UnifiedFeedService {
           const salaryA = a.salary_max || a.salary_min || 0;
           const salaryB = b.salary_max || b.salary_min || 0;
           if (salaryA === salaryB) {
-            return new Date(b.posted_date).getTime() - new Date(a.posted_date).getTime();
+            return dateB - dateA;
           }
           return salaryB - salaryA;
 

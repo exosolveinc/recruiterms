@@ -1119,9 +1119,24 @@ table {
 }
 
 .expand-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  display: flex;
   gap: 24px;
+  align-items: stretch;
+}
+
+.expand-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.expand-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .expand-section {
@@ -1135,50 +1150,181 @@ table {
     font-weight: 600;
     color: #111;
     margin: 0 0 16px;
+
+    i {
+      margin-right: 6px;
+      color: #666;
+    }
   }
 }
 
-.skills-full {
+.expand-right .expand-section {
+  flex: 1;
+}
+
+// Preferences badges
+.pref-badges {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.skill-tag-lg {
+.pref-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 12px;
-  background: #f5f5f5;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-size: 13px;
-  color: #111;
+  color: #333;
 
-  .proficiency {
+  .pref-badge-label {
     font-size: 11px;
-    color: #666;
-    margin-left: 4px;
+    font-weight: 600;
+    color: #999;
+    letter-spacing: 0.3px;
   }
+}
 
-  &.proficiency-expert {
+// Skills section
+.skills-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.skills-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h4 {
+    margin: 0 !important;
+  }
+}
+
+.skills-legend {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #666;
+
+  &.expert { color: #15803D; }
+  &.advanced { color: #374151; }
+  &.intermediate { color: #92400E; }
+}
+
+.legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+
+  .expert & { background: #16a34a; }
+  .advanced & { background: #6b7280; }
+  .intermediate & { background: #d97706; }
+}
+
+.skill-group {
+  margin-bottom: 14px;
+
+  &:last-of-type {
+    margin-bottom: 8px;
+  }
+}
+
+.skill-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+
+  &.expert { color: #15803D; }
+  &.advanced { color: #6b7280; }
+  &.intermediate { color: #d97706; }
+}
+
+.skill-group-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.skill-chip {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 450;
+
+  &.expert {
     background: #F0FDF4;
     color: #15803D;
     border: 1px solid #D1FAE5;
-
-    .proficiency { color: #15803D; }
   }
 
-  &.proficiency-advanced {
+  &.advanced {
     background: #F9FAFB;
     color: #374151;
     border: 1px solid #E5E7EB;
-
-    .proficiency { color: #374151; }
   }
 
-  &.proficiency-intermediate {
+  &.intermediate {
     background: #FFFBEB;
     color: #92400E;
     border: 1px solid #FDE68A;
+  }
+}
 
-    .proficiency { color: #92400E; }
+.btn-show-all-skills {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #111;
+  }
+}
+
+// Add Resume button
+.add-resume-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px;
+  margin-top: 12px;
+  background: #fafafa;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(.uploading) {
+    background: #f0f0f0;
+    border-color: #999;
+    color: #333;
+  }
+
+  &.uploading {
+    opacity: 0.6;
+    cursor: wait;
   }
 }
 
@@ -1186,12 +1332,6 @@ table {
   color: #999;
   font-size: 13px;
   font-style: italic;
-}
-
-.contact-details {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .pref-details {
@@ -1204,10 +1344,6 @@ table {
   display: flex;
   align-items: center;
   gap: 10px;
-
-  .detail-icon {
-    font-size: 16px;
-  }
 
   .detail-label {
     font-size: 12px;
@@ -1258,13 +1394,20 @@ table {
   .resume-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .resume-name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   .resume-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: #111;
+    font-size: 12px;
+    color: #999;
   }
 
   .resume-date {
@@ -2578,7 +2721,7 @@ table {
 
 @media (max-width: 1024px) {
   .expand-grid {
-    grid-template-columns: 1fr 1fr;
+    flex-direction: column;
   }
 
   .candidate-details-grid {
@@ -2616,7 +2759,7 @@ table {
   }
 
   .expand-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 
   .expand-content {

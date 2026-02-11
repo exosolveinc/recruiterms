@@ -98,6 +98,10 @@ export class CandidatesComponent implements OnInit {
   showDeleteResumeConfirm = false;
   resumeToDelete: Resume | null = null;
 
+  // Skills expand state per candidate
+  skillsExpandedMap: { [candidateId: string]: boolean } = {};
+  skillsVisibleCount = 12;
+
   // Stats
   stats = {
     totalCandidates: 0,
@@ -630,6 +634,43 @@ export class CandidatesComponent implements OnInit {
     if (p === 'advanced') return 'proficiency-advanced';
     if (p === 'intermediate') return 'proficiency-intermediate';
     return '';
+  }
+
+  getSkillsByProficiency(candidate: Candidate, level: string): { name: string; proficiency?: string }[] {
+    if (!candidate.skills?.length) return [];
+    return candidate.skills.filter(s => (s.proficiency || '').toLowerCase() === level.toLowerCase());
+  }
+
+  getVisibleSkillsByProficiency(candidate: Candidate, level: string): { name: string; proficiency?: string }[] {
+    if (this.skillsExpandedMap[candidate.id]) {
+      return this.getSkillsByProficiency(candidate, level);
+    }
+    // When collapsed, show up to skillsVisibleCount total across all groups
+    const expert = this.getSkillsByProficiency(candidate, 'expert');
+    const advanced = this.getSkillsByProficiency(candidate, 'advanced');
+    const intermediate = this.getSkillsByProficiency(candidate, 'intermediate');
+
+    let remaining = this.skillsVisibleCount;
+    if (level === 'expert') {
+      return expert.slice(0, remaining);
+    }
+    remaining -= expert.length;
+    if (level === 'advanced') {
+      return remaining > 0 ? advanced.slice(0, remaining) : [];
+    }
+    remaining -= advanced.length;
+    if (level === 'intermediate') {
+      return remaining > 0 ? intermediate.slice(0, remaining) : [];
+    }
+    return [];
+  }
+
+  toggleSkillsExpanded(candidateId: string) {
+    this.skillsExpandedMap[candidateId] = !this.skillsExpandedMap[candidateId];
+  }
+
+  isSkillsExpanded(candidateId: string): boolean {
+    return !!this.skillsExpandedMap[candidateId];
   }
 
   getExperienceBadgeClass(level: string | null): string {
