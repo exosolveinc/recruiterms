@@ -728,8 +728,19 @@
       background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
       border-radius: 4px;
       transition: width 0.3s ease;
+
+      &.indeterminate {
+        width: 30% !important;
+        animation: indeterminate 1.5s ease-in-out infinite;
+      }
     }
   }
+}
+
+@keyframes indeterminate {
+  0% { margin-left: 0; width: 30%; }
+  50% { margin-left: 40%; width: 40%; }
+  100% { margin-left: 70%; width: 30%; }
 }
 
 // ============================================================================

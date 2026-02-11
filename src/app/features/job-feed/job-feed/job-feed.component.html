@@ -31,14 +31,13 @@
       <p>No candidates found. <a (click)="goToCandidates()">Add a candidate</a> to analyze job matches.</p>
     </div>
 
-    <!-- Global Analysis Progress -->
-    <div class="analysis-progress-global" *ngIf="analysisInProgress">
+    <!-- Loading / Refreshing Indicator -->
+    <div class="analysis-progress-global" *ngIf="isRefreshing || isLoading">
       <div class="progress-info">
-        <span class="progress-label">Analyzing jobs...</span>
-        <span class="progress-count">{{ analyzedCount }}/{{ totalToAnalyze }}</span>
+        <span class="progress-label">{{ isRefreshing ? 'Fetching & analyzing jobs...' : 'Loading jobs...' }}</span>
       </div>
       <div class="progress-bar">
-        <div class="progress-fill" [style.width.%]="analysisProgress"></div>
+        <div class="progress-fill indeterminate"></div>
       </div>
     </div>
 
