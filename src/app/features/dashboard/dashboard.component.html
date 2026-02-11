@@ -325,12 +325,22 @@
                             </div>
                             <span class="no-match-text" *ngIf="!app.match_score">—</span>
                         </td>
-                        <td>
-                            <!-- Status Pill Badge -->
-                            <span class="status-badge" [attr.data-status]="app.status"
-                                (click)="$event.stopPropagation()">
-                                {{ getStatusLabel(app.status) }}
-                            </span>
+                        <td class="status-col" (click)="$event.stopPropagation()">
+                            <select
+                                class="status-dropdown"
+                                [value]="app.status"
+                                [attr.data-status]="app.status"
+                                (change)="updateStatus(app, $any($event.target).value)"
+                            >
+                                <option value="extracted">Extracted</option>
+                                <option value="applied">Applied</option>
+                                <option value="screening">Screening</option>
+                                <option value="interviewing">Interview</option>
+                                <option value="offer">Offer</option>
+                                <option value="accepted">Accepted</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="withdrawn">Withdrawn</option>
+                            </select>
                         </td>
                         <td class="date-col">
                             <span class="applied-date">{{ formatAppliedDate(app.applied_at) }}</span>
@@ -572,7 +582,7 @@
                                     </div>
 
                                     <!-- Column 2: Job Summary -->
-                                    <div class="expand-card">
+                                    <div class="expand-card job-summary-card" [class.scrollable]="jobSummaryExpanded === app.id">
                                         <h4>Job Summary</h4>
 
                                         <!-- Loading State -->
@@ -582,39 +592,48 @@
                                         </div>
 
                                         <ng-container *ngIf="loadingJobDetailsFor !== app.id">
-                                            <!-- Description -->
-                                            <div class="expand-job-desc" *ngIf="getJobDescription(app.job_id)">
-                                                <p>{{ getJobDescription(app.job_id) }}</p>
+                                            <div class="job-summary-body">
+                                                <!-- Description -->
+                                                <div class="expand-job-desc" *ngIf="getJobDescription(app.job_id)">
+                                                    <p>{{ getJobDescription(app.job_id) }}</p>
+                                                </div>
+
+                                                <!-- Qualifications -->
+                                                <div class="expand-job-quals" *ngIf="getJobQualifications(app.job_id).length > 0">
+                                                    <h5>Qualifications</h5>
+                                                    <ul>
+                                                        <li *ngFor="let qual of getJobQualifications(app.job_id).slice(0, 5)">{{ qual }}</li>
+                                                    </ul>
+                                                    <span class="more-items" *ngIf="getJobQualifications(app.job_id).length > 5">
+                                                        +{{ getJobQualifications(app.job_id).length - 5 }} more
+                                                    </span>
+                                                </div>
+
+                                                <!-- Responsibilities -->
+                                                <div class="expand-job-quals" *ngIf="getJobResponsibilities(app.job_id).length > 0">
+                                                    <h5>Responsibilities</h5>
+                                                    <ul>
+                                                        <li *ngFor="let resp of getJobResponsibilities(app.job_id).slice(0, 5)">{{ resp }}</li>
+                                                    </ul>
+                                                    <span class="more-items" *ngIf="getJobResponsibilities(app.job_id).length > 5">
+                                                        +{{ getJobResponsibilities(app.job_id).length - 5 }} more
+                                                    </span>
+                                                </div>
+
+                                                <!-- No Description -->
+                                                <div class="no-description" *ngIf="!getJobDescription(app.job_id) && getJobResponsibilities(app.job_id).length === 0 && getJobQualifications(app.job_id).length === 0">
+                                                    <p>No job description available</p>
+                                                    <a class="btn-view-original" *ngIf="app.source_url && !app.source_url.startsWith('manual')" [href]="app.source_url" target="_blank">
+                                                        View Original Posting
+                                                    </a>
+                                                </div>
                                             </div>
 
-                                            <!-- Qualifications -->
-                                            <div class="expand-job-quals" *ngIf="getJobQualifications(app.job_id).length > 0">
-                                                <h5>Qualifications</h5>
-                                                <ul>
-                                                    <li *ngFor="let qual of getJobQualifications(app.job_id).slice(0, 5)">{{ qual }}</li>
-                                                </ul>
-                                                <span class="more-items" *ngIf="getJobQualifications(app.job_id).length > 5">
-                                                    +{{ getJobQualifications(app.job_id).length - 5 }} more
-                                                </span>
-                                            </div>
-
-                                            <!-- Responsibilities -->
-                                            <div class="expand-job-quals" *ngIf="getJobResponsibilities(app.job_id).length > 0">
-                                                <h5>Responsibilities</h5>
-                                                <ul>
-                                                    <li *ngFor="let resp of getJobResponsibilities(app.job_id).slice(0, 5)">{{ resp }}</li>
-                                                </ul>
-                                                <span class="more-items" *ngIf="getJobResponsibilities(app.job_id).length > 5">
-                                                    +{{ getJobResponsibilities(app.job_id).length - 5 }} more
-                                                </span>
-                                            </div>
-
-                                            <!-- No Description -->
-                                            <div class="no-description" *ngIf="!getJobDescription(app.job_id) && getJobResponsibilities(app.job_id).length === 0 && getJobQualifications(app.job_id).length === 0">
-                                                <p>No job description available</p>
-                                                <a class="btn-view-original" *ngIf="app.source_url && !app.source_url.startsWith('manual')" [href]="app.source_url" target="_blank">
-                                                    View Original Posting
-                                                </a>
+                                            <!-- Learn More toggle -->
+                                            <div class="learn-more-row" *ngIf="getJobDescription(app.job_id) || getJobQualifications(app.job_id).length > 0 || getJobResponsibilities(app.job_id).length > 0">
+                                                <button class="btn-learn-more" (click)="toggleJobSummary(app.id); $event.stopPropagation()">
+                                                    {{ jobSummaryExpanded === app.id ? 'Show Less' : 'Learn More' }}
+                                                </button>
                                             </div>
                                         </ng-container>
                                     </div>

@@ -1156,6 +1156,82 @@
   }
 }
 
+.status-dropdown {
+  width: 100%;
+  padding: 5px 26px 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background-color: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: #cbd5e1;
+    background-color: #fff;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  &[data-status="extracted"] {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    color: #4b5563;
+  }
+
+  &[data-status="applied"] {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+  }
+
+  &[data-status="screening"] {
+    background-color: #f5f3ff;
+    border-color: #ddd6fe;
+    color: #6d28d9;
+  }
+
+  &[data-status="interviewing"] {
+    background-color: #fffbeb;
+    border-color: #fde68a;
+    color: #b45309;
+  }
+
+  &[data-status="offer"] {
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+  }
+
+  &[data-status="accepted"] {
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+  }
+
+  &[data-status="rejected"] {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
+  }
+
+  &[data-status="withdrawn"] {
+    background-color: #f9fafb;
+    border-color: #e5e7eb;
+    color: #6b7280;
+  }
+}
+
 // ============================================================================
 // SALARY & DATE COLUMNS
 // ============================================================================
@@ -1692,6 +1768,58 @@
 // EXPANDED ROW - JOB SUMMARY
 // ============================================================================
 
+.job-summary-card {
+  position: relative;
+
+  .job-summary-body {
+    max-height: 180px;
+    overflow: hidden;
+    position: relative;
+    transition: max-height 0.3s ease;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(transparent, white);
+      pointer-events: none;
+    }
+  }
+
+  &.scrollable .job-summary-body {
+    max-height: 400px;
+    overflow-y: auto;
+
+    &::after {
+      display: none;
+    }
+  }
+}
+
+.learn-more-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.btn-learn-more {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 0;
+
+  &:hover {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+}
+
 .expand-job-desc {
   margin-bottom: 14px;
 
@@ -1700,8 +1828,6 @@
     line-height: 1.6;
     color: #4B5563;
     margin: 0;
-    max-height: 160px;
-    overflow-y: auto;
     white-space: pre-line;
   }
 }

@@ -261,6 +261,9 @@ export class DashboardComponent implements OnInit {
   jobDetailsCache: Map<string, Job> = new Map();
   loadingJobDetailsFor: string | null = null;
 
+  // Job summary expand/collapse
+  jobSummaryExpanded: string | null = null;
+
   // Interviews for expanded application
   expandedAppInterviews: ScheduledInterview[] = [];
   loadingAppInterviews = false;
@@ -679,6 +682,10 @@ export class DashboardComponent implements OnInit {
 
   isExpanded(appId: string): boolean {
     return this.expandedAppId === appId;
+  }
+
+  toggleJobSummary(appId: string) {
+    this.jobSummaryExpanded = this.jobSummaryExpanded === appId ? null : appId;
   }
 
   progressApplication(app: UserApplicationView) {
