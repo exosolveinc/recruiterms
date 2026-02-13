@@ -19,6 +19,11 @@ export class JobFeedDbService implements OnDestroy {
   loading$ = this.loadingSubject.asObservable();
   refreshing$ = this.refreshingSubject.asObservable();
 
+  /** Synchronous snapshot of current jobs */
+  get currentJobs(): UnifiedJob[] {
+    return this.jobsSubject.value;
+  }
+
   constructor(private supabase: SupabaseService) {}
 
   ngOnDestroy(): void {
@@ -129,26 +134,6 @@ export class JobFeedDbService implements OnDestroy {
     }
   }
 
-  /**
-   * Mark a job as seen
-   */
-  async markAsSeen(jobId: string): Promise<void> {
-    const { error } = await this.supabase.supabaseClient
-      .from('job_feed')
-      .update({ is_seen: true })
-      .eq('id', jobId);
-
-    if (error) {
-      console.error('Failed to mark job as seen:', error);
-      return;
-    }
-
-    // Update local state immediately
-    const current = this.jobsSubject.value;
-    this.jobsSubject.next(
-      current.map((j) => (j.id === jobId ? { ...j, is_seen: true, is_new: false } : j))
-    );
-  }
 
   /**
    * Re-analyze all jobs for a candidate with a different resume

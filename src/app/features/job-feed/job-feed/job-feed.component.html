@@ -158,7 +158,7 @@
 
         <!-- Body -->
         <ng-template pTemplate="body" let-job let-expanded="expanded">
-          <tr class="job-row" [class.is-new]="job.is_new" [class.high-match]="job.match_score >= 80" (click)="markUnifiedJobAsSeen(job.id)">
+          <tr class="job-row" [class.high-match]="job.match_score >= 80">
             <td class="expand-cell">
               <button type="button" [pRowToggler]="job" class="expand-btn">
                 <i class="pi" [ngClass]="expanded ? 'pi-chevron-down' : 'pi-chevron-right'"></i>

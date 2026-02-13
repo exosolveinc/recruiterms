@@ -87,15 +87,18 @@ function formatSalary(min?: number, max?: number): string {
   return "";
 }
 
-function buildSearchQueries(prefs: CandidatePreferences | null): SearchQuery[] {
-  if (!prefs) {
-    return [{ query: "software engineer", location: "" }];
-  }
-
+function buildSearchQueries(
+  prefs: CandidatePreferences | null,
+  currentTitle?: string
+): SearchQuery[] {
   const queries: SearchQuery[] = [];
-  const titles = prefs.preferred_job_titles?.length ? prefs.preferred_job_titles.slice(0, 3) : [];
-  const locations = prefs.preferred_locations?.length ? prefs.preferred_locations.slice(0, 2) : [""];
+  const titles = prefs?.preferred_job_titles?.length ? prefs.preferred_job_titles.slice(0, 3) : [];
+  const locations = prefs?.preferred_locations?.length ? prefs.preferred_locations.slice(0, 2) : [""];
 
+  // Use resume's current_title as primary fallback, then generic
+  if (titles.length === 0 && currentTitle) {
+    titles.push(currentTitle);
+  }
   if (titles.length === 0) {
     titles.push("software engineer");
   }
@@ -114,21 +117,78 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * Decode a frontend candidate_id (base64 of "name-email_or_phone_or_id")
- * back to the candidate name for DB lookups.
+ * Generate a candidate_id exactly the same way the frontend does.
+ * Frontend: btoa(`${name}-${email || phone || resume.id}`).replace(/[^a-zA-Z0-9]/g, '').slice(0, 20)
  */
-function decodeCandidateName(candidateId: string): string {
-  try {
-    const decoded = atob(candidateId);
-    // Format is "name-email" or "name-phone" or "name-resumeId"
-    const dashIndex = decoded.indexOf("-");
-    if (dashIndex > 0) {
-      return decoded.substring(0, dashIndex);
-    }
-    return decoded;
-  } catch {
-    return "";
+function generateCandidateId(
+  candidateName: string,
+  candidateEmail: string | null,
+  candidatePhone: string | null,
+  resumeId: string
+): string {
+  const name = (candidateName || "").trim().toLowerCase();
+  const email = (candidateEmail || "").trim().toLowerCase();
+  const phone = (candidatePhone || "").replace(/[\s\-\(\)\+\.]/g, "");
+  const identifier = `${name}-${email || phone || resumeId}`;
+  return btoa(identifier).replace(/[^a-zA-Z0-9]/g, "").slice(0, 20);
+}
+
+/**
+ * Find a resume that matches a candidate_id by regenerating IDs from all resumes
+ * for the given user (or all users if userId is not known).
+ * Returns the matching resume row or null.
+ */
+async function findResumeForCandidate(
+  supabase: any,
+  candidateId: string,
+  userId?: string
+): Promise<any | null> {
+  let query = supabase
+    .from("resumes")
+    .select("*");
+  if (userId) {
+    query = query.eq("user_id", userId);
   }
+  query = query.order("is_primary", { ascending: false });
+
+  const { data: resumes } = await query;
+  if (!resumes?.length) return null;
+
+  for (const r of resumes) {
+    const generatedId = generateCandidateId(
+      r.candidate_name,
+      r.candidate_email,
+      r.candidate_phone,
+      r.id
+    );
+    if (generatedId === candidateId) return r;
+  }
+  return null;
+}
+
+/**
+ * Find user_id for a candidate_id by checking all resumes.
+ */
+async function findUserIdForCandidate(
+  supabase: any,
+  candidateId: string
+): Promise<string> {
+  const { data: resumes } = await supabase
+    .from("resumes")
+    .select("id, user_id, candidate_name, candidate_email, candidate_phone");
+
+  if (!resumes?.length) return "";
+
+  for (const r of resumes) {
+    const generatedId = generateCandidateId(
+      r.candidate_name,
+      r.candidate_email,
+      r.candidate_phone,
+      r.id
+    );
+    if (generatedId === candidateId) return r.user_id;
+  }
+  return "";
 }
 
 // ─── API Fetchers ────────────────────────────────────────────────────────────
@@ -298,8 +358,10 @@ async function analyzeJobs(
 Be honest but constructive. Always respond with valid JSON only.`;
 
   let analyzed = 0;
+  const BATCH_SIZE = 5;
 
-  for (const job of pendingJobs) {
+  // Process a single job — returns true if successful
+  async function analyzeSingleJob(job: any): Promise<boolean> {
     try {
       // Mark as analyzing
       await supabase
@@ -372,7 +434,7 @@ Return ONLY valid JSON, no other text.`;
         })
         .eq("id", job.id);
 
-      analyzed++;
+      return true;
     } catch (jobError: any) {
       console.error(`Error analyzing job ${job.id}:`, jobError);
       await supabase
@@ -382,6 +444,16 @@ Return ONLY valid JSON, no other text.`;
           analysis_error: jobError.message || "Analysis failed",
         })
         .eq("id", job.id);
+      return false;
+    }
+  }
+
+  // Process in parallel batches of BATCH_SIZE
+  for (let i = 0; i < pendingJobs.length; i += BATCH_SIZE) {
+    const batch = pendingJobs.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(batch.map(analyzeSingleJob));
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value) analyzed++;
     }
   }
 
@@ -419,25 +491,27 @@ serve(async (req) => {
     let candidateRows: any[] = [];
 
     if (fetchAll) {
-      // Fetch candidates with preferences
+      const seen = new Set<string>();
+
+      // 1. Candidates with preferences (best source — has job titles & locations)
       const { data: withPrefs, error: prefsErr } = await supabase
         .from("candidate_preferences")
         .select("candidate_id, user_id, preferred_job_titles, preferred_locations, preferred_work_type, salary_expectation_min, salary_expectation_max");
 
       if (prefsErr) throw prefsErr;
-      candidateRows = withPrefs || [];
+      for (const row of withPrefs || []) {
+        if (!seen.has(row.candidate_id)) {
+          seen.add(row.candidate_id);
+          candidateRows.push(row);
+        }
+      }
 
-      // Also find candidates that exist in job_feed but have no preferences
-      // (they were added via single-candidate call previously)
-      const prefCandidateIds = new Set(candidateRows.map((r: any) => r.candidate_id));
+      // 2. Candidates in job_feed but without preferences (previously fetched)
       const { data: feedCandidates } = await supabase
         .from("job_feed")
-        .select("candidate_id, user_id")
-        .not("candidate_id", "in", `(${[...prefCandidateIds].join(",") || "''"})`);
+        .select("candidate_id, user_id");
 
       if (feedCandidates?.length) {
-        // Deduplicate by candidate_id
-        const seen = new Set(prefCandidateIds);
         for (const fc of feedCandidates) {
           if (!seen.has(fc.candidate_id)) {
             seen.add(fc.candidate_id);
@@ -453,6 +527,37 @@ serve(async (req) => {
           }
         }
       }
+
+      // 3. Candidates from resumes table (covers fresh start with no preferences/feed)
+      const { data: resumeCandidates } = await supabase
+        .from("resumes")
+        .select("id, candidate_name, candidate_email, candidate_phone, user_id");
+
+      if (resumeCandidates?.length) {
+        for (const rc of resumeCandidates) {
+          // Build candidate_id exactly the same way the frontend does
+          const candidateId = generateCandidateId(
+            rc.candidate_name,
+            rc.candidate_email,
+            rc.candidate_phone,
+            rc.id
+          );
+          if (!seen.has(candidateId)) {
+            seen.add(candidateId);
+            candidateRows.push({
+              candidate_id: candidateId,
+              user_id: rc.user_id,
+              preferred_job_titles: [],
+              preferred_locations: [],
+              preferred_work_type: [],
+              salary_expectation_min: null,
+              salary_expectation_max: null,
+            });
+          }
+        }
+      }
+
+      console.log(`fetchAll: found ${candidateRows.length} candidates (${withPrefs?.length || 0} with prefs, ${feedCandidates?.length || 0} in feed, ${resumeCandidates?.length || 0} resumes)`);
     } else {
       // Single candidate — read preferences
       const { data, error } = await supabase
@@ -481,18 +586,9 @@ serve(async (req) => {
           }
         }
 
-        // Try to find user_id from resumes (candidate_id is btoa of "name-email")
+        // Try to find user_id from resumes by regenerating candidate IDs
         if (!userId) {
-          const candidateName = decodeCandidateName(candidate_id);
-          if (candidateName) {
-            const { data: resumeData } = await supabase
-              .from("resumes")
-              .select("user_id")
-              .ilike("candidate_name", candidateName)
-              .limit(1)
-              .single();
-            userId = resumeData?.user_id || "";
-          }
+          userId = await findUserIdForCandidate(supabase, candidate_id);
         }
 
         if (!userId) {
@@ -539,7 +635,9 @@ serve(async (req) => {
           salary_expectation_max: candidate.salary_expectation_max,
         };
 
-        const queries = buildSearchQueries(prefs);
+        // Look up resume to use current_title as search fallback
+        const resume = await findResumeForCandidate(supabase, cid, uid);
+        const queries = buildSearchQueries(prefs, resume?.current_title);
         const allJobs: NormalizedJob[] = [];
         const seenKeys = new Set<string>();
 
@@ -725,18 +823,11 @@ serve(async (req) => {
           try {
             const cid2 = candidate.candidate_id;
             const uid2 = candidate.user_id;
-            const candidateName = decodeCandidateName(cid2);
-            const { data: resumes } = await supabase
-              .from("resumes")
-              .select("*")
-              .eq("user_id", uid2)
-              .ilike("candidate_name", candidateName || "%")
-              .order("is_primary", { ascending: false })
-              .limit(1);
+            const resume = await findResumeForCandidate(supabase, cid2, uid2);
 
-            if (resumes?.length) {
+            if (resume) {
               const anthropic = new Anthropic({ apiKey: anthropicApiKey });
-              await analyzeJobs(supabase, anthropic, cid2, resumes[0], 50);
+              await analyzeJobs(supabase, anthropic, cid2, resume, 50);
             }
           } catch (err) {
             console.error("Background analysis error:", err);
@@ -758,18 +849,11 @@ serve(async (req) => {
         try {
           const cid2 = candidate.candidate_id;
           const uid2 = candidate.user_id;
-          const candidateName = decodeCandidateName(cid2);
-          const { data: resumes } = await supabase
-            .from("resumes")
-            .select("*")
-            .eq("user_id", uid2)
-            .ilike("candidate_name", candidateName || "%")
-            .order("is_primary", { ascending: false })
-            .limit(1);
+          const resume = await findResumeForCandidate(supabase, cid2, uid2);
 
-          if (resumes?.length) {
+          if (resume) {
             const anthropic = new Anthropic({ apiKey: anthropicApiKey });
-            const analyzed = await analyzeJobs(supabase, anthropic, cid2, resumes[0], 50);
+            const analyzed = await analyzeJobs(supabase, anthropic, cid2, resume, 50);
             totalAnalyzed += analyzed;
           }
         } catch (err) {
