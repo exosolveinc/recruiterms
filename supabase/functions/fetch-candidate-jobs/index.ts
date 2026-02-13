@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import Anthropic from "npm:@anthropic-ai/sdk@0.24.3";
@@ -63,7 +64,9 @@ interface NormalizedJob {
 function generateDedupKey(
   title: string,
   company: string,
-  location: string
+  location: string,
+  salaryMin?: number | null,
+  salaryMax?: number | null
 ): string {
   const norm = (s: string) =>
     s
@@ -71,7 +74,8 @@ function generateDedupKey(
       .replace(/[^a-z0-9\s]/g, "")
       .replace(/\s+/g, " ")
       .trim();
-  return `${norm(title)}|${norm(company)}|${norm(location)}`;
+  const salaryPart = salaryMin || salaryMax ? `${salaryMin || 0}-${salaryMax || 0}` : "";
+  return `${norm(title)}|${norm(company)}|${norm(location)}|${salaryPart}`;
 }
 
 function formatSalary(min?: number, max?: number): string {
@@ -89,8 +93,8 @@ function buildSearchQueries(prefs: CandidatePreferences | null): SearchQuery[] {
   }
 
   const queries: SearchQuery[] = [];
-  const titles = prefs.preferred_job_titles?.slice(0, 3) || [];
-  const locations = prefs.preferred_locations?.slice(0, 2) || [""];
+  const titles = prefs.preferred_job_titles?.length ? prefs.preferred_job_titles.slice(0, 3) : [];
+  const locations = prefs.preferred_locations?.length ? prefs.preferred_locations.slice(0, 2) : [""];
 
   if (titles.length === 0) {
     titles.push("software engineer");
@@ -107,6 +111,24 @@ function buildSearchQueries(prefs: CandidatePreferences | null): SearchQuery[] {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Decode a frontend candidate_id (base64 of "name-email_or_phone_or_id")
+ * back to the candidate name for DB lookups.
+ */
+function decodeCandidateName(candidateId: string): string {
+  try {
+    const decoded = atob(candidateId);
+    // Format is "name-email" or "name-phone" or "name-resumeId"
+    const dashIndex = decoded.indexOf("-");
+    if (dashIndex > 0) {
+      return decoded.substring(0, dashIndex);
+    }
+    return decoded;
+  } catch {
+    return "";
+  }
 }
 
 // ─── API Fetchers ────────────────────────────────────────────────────────────
@@ -143,7 +165,7 @@ async function fetchAdzunaJobs(
         candidate_id: "", // filled by caller
         user_id: "", // filled by caller
         organization_id: null,
-        dedup_key: generateDedupKey(title, company, loc),
+        dedup_key: generateDedupKey(title, company, loc, job.salary_min, job.salary_max),
         source_type: "api" as const,
         source_platform: "adzuna",
         external_id: String(job.id || `adzuna-${Date.now()}-${Math.random()}`),
@@ -216,7 +238,7 @@ async function fetchRapidApiJobs(
         candidate_id: "",
         user_id: "",
         organization_id: null,
-        dedup_key: generateDedupKey(title, company, loc),
+        dedup_key: generateDedupKey(title, company, loc, job.job_min_salary, job.job_max_salary),
         source_type: "api" as const,
         source_platform: "rapidapi",
         external_id: job.job_id || `rapid-${Date.now()}-${Math.random()}`,
@@ -397,13 +419,40 @@ serve(async (req) => {
     let candidateRows: any[] = [];
 
     if (fetchAll) {
-      // Fetch all candidates that have preferences set
-      const { data, error } = await supabase
+      // Fetch candidates with preferences
+      const { data: withPrefs, error: prefsErr } = await supabase
         .from("candidate_preferences")
         .select("candidate_id, user_id, preferred_job_titles, preferred_locations, preferred_work_type, salary_expectation_min, salary_expectation_max");
 
-      if (error) throw error;
-      candidateRows = data || [];
+      if (prefsErr) throw prefsErr;
+      candidateRows = withPrefs || [];
+
+      // Also find candidates that exist in job_feed but have no preferences
+      // (they were added via single-candidate call previously)
+      const prefCandidateIds = new Set(candidateRows.map((r: any) => r.candidate_id));
+      const { data: feedCandidates } = await supabase
+        .from("job_feed")
+        .select("candidate_id, user_id")
+        .not("candidate_id", "in", `(${[...prefCandidateIds].join(",") || "''"})`);
+
+      if (feedCandidates?.length) {
+        // Deduplicate by candidate_id
+        const seen = new Set(prefCandidateIds);
+        for (const fc of feedCandidates) {
+          if (!seen.has(fc.candidate_id)) {
+            seen.add(fc.candidate_id);
+            candidateRows.push({
+              candidate_id: fc.candidate_id,
+              user_id: fc.user_id,
+              preferred_job_titles: [],
+              preferred_locations: [],
+              preferred_work_type: [],
+              salary_expectation_min: null,
+              salary_expectation_max: null,
+            });
+          }
+        }
+      }
     } else {
       // Single candidate — read preferences
       const { data, error } = await supabase
@@ -432,15 +481,18 @@ serve(async (req) => {
           }
         }
 
-        // Try to find user_id from resumes
+        // Try to find user_id from resumes (candidate_id is btoa of "name-email")
         if (!userId) {
-          const { data: resumeData } = await supabase
-            .from("resumes")
-            .select("user_id")
-            .eq("candidate_id", candidate_id)
-            .limit(1)
-            .single();
-          userId = resumeData?.user_id || "";
+          const candidateName = decodeCandidateName(candidate_id);
+          if (candidateName) {
+            const { data: resumeData } = await supabase
+              .from("resumes")
+              .select("user_id")
+              .ilike("candidate_name", candidateName)
+              .limit(1)
+              .single();
+            userId = resumeData?.user_id || "";
+          }
         }
 
         if (!userId) {
@@ -557,7 +609,7 @@ serve(async (req) => {
               const title = ej.job_title || "Untitled";
               const company = ej.client_company || ej.vendor_company || "Unknown Company";
               const loc = ej.location || "";
-              const key = generateDedupKey(title, company, loc);
+              const key = generateDedupKey(title, company, loc, ej.pay_rate_min, ej.pay_rate_max);
 
               if (!seenKeys.has(key)) {
                 seenKeys.add(key);
@@ -659,32 +711,70 @@ serve(async (req) => {
         }
       }
 
-      // ─── Analyze pending jobs ──────────────────────────────────────
-      if (anthropicApiKey) {
-        // Get the candidate's primary resume
-        const { data: resumes } = await supabase
-          .from("resumes")
-          .select("*")
-          .eq("candidate_id", cid)
-          .order("is_primary", { ascending: false })
-          .limit(1);
-
-        if (resumes?.length) {
-          const anthropic = new Anthropic({ apiKey: anthropicApiKey });
-          const analyzed = await analyzeJobs(
-            supabase,
-            anthropic,
-            cid,
-            resumes[0],
-            10
-          );
-          totalAnalyzed += analyzed;
-        }
-      }
-
       // Delay between candidates in batch mode
       if (fetchAll && candidateRows.length > 1) {
         await delay(500);
+      }
+    }
+
+    // ─── Fire off background analysis (non-blocking) ───────────────
+    if (anthropicApiKey && !analyze_only) {
+      // Launch analysis in background — don't await
+      const analysisPromise = (async () => {
+        for (const candidate of candidateRows) {
+          try {
+            const cid2 = candidate.candidate_id;
+            const uid2 = candidate.user_id;
+            const candidateName = decodeCandidateName(cid2);
+            const { data: resumes } = await supabase
+              .from("resumes")
+              .select("*")
+              .eq("user_id", uid2)
+              .ilike("candidate_name", candidateName || "%")
+              .order("is_primary", { ascending: false })
+              .limit(1);
+
+            if (resumes?.length) {
+              const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+              await analyzeJobs(supabase, anthropic, cid2, resumes[0], 50);
+            }
+          } catch (err) {
+            console.error("Background analysis error:", err);
+          }
+        }
+      })();
+
+      // Keep edge function alive until analysis finishes
+      // @ts-ignore - EdgeRuntime available in Supabase Edge Functions
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(analysisPromise);
+      }
+    }
+
+    // ─── Handle analyze_only mode (blocking) ───────────────────────
+    if (analyze_only) {
+      for (const candidate of candidateRows) {
+        try {
+          const cid2 = candidate.candidate_id;
+          const uid2 = candidate.user_id;
+          const candidateName = decodeCandidateName(cid2);
+          const { data: resumes } = await supabase
+            .from("resumes")
+            .select("*")
+            .eq("user_id", uid2)
+            .ilike("candidate_name", candidateName || "%")
+            .order("is_primary", { ascending: false })
+            .limit(1);
+
+          if (resumes?.length) {
+            const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+            const analyzed = await analyzeJobs(supabase, anthropic, cid2, resumes[0], 50);
+            totalAnalyzed += analyzed;
+          }
+        } catch (err) {
+          console.error("Analysis error:", err);
+        }
       }
     }
 

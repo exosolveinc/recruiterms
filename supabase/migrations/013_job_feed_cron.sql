@@ -1,6 +1,13 @@
 -- ============================================================================
 -- Migration 013: pg_cron schedule for job feed auto-refresh
 -- Calls the fetch-candidate-jobs edge function every 15 minutes
+--
+-- PREREQUISITE: Store your service role key in the vault first:
+--   SELECT vault.create_secret(
+--     'eyJhbG...your-service-role-key...',
+--     'service_role_key',
+--     'Supabase service role key for pg_cron edge function calls'
+--   );
 -- ============================================================================
 
 -- Enable extensions (idempotent)
@@ -22,7 +29,7 @@ SELECT cron.schedule(
     url := 'https://ibzozlezltgokzlfuksg.supabase.co/functions/v1/fetch-candidate-jobs',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('supabase.service_role_key')
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key' LIMIT 1)
     ),
     body := '{"all": true}'::jsonb
   );

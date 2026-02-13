@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS job_feed (
   candidate_id TEXT NOT NULL,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   organization_id UUID,
-  dedup_key TEXT NOT NULL,  -- lower(title)|lower(company)|lower(location)
+  dedup_key TEXT NOT NULL,  -- lower(title)|lower(company)|lower(location)|salaryRange
 
   -- Source
   source_type TEXT NOT NULL DEFAULT 'api',

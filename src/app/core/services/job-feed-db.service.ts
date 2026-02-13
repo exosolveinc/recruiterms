@@ -39,6 +39,7 @@ export class JobFeedDbService implements OnDestroy {
         .from('job_feed')
         .select('*')
         .eq('candidate_id', candidateId)
+        .order('match_score', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
