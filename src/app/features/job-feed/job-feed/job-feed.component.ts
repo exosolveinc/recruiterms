@@ -1,15 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
 import { Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Candidate, Profile, Resume, UnifiedJob } from '../../../core/models';
-import { AnalysisQueueService } from '../../../core/services/analysis-queue.service';
-import { AutoRefreshService } from '../../../core/services/auto-refresh.service';
+import { JobFeedDbService } from '../../../core/services/job-feed-db.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
-import { UnifiedFeedService } from '../../../core/services/unified-feed.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 import { SliderModule } from 'primeng/slider';
 import { TableModule, Table } from 'primeng/table';
@@ -17,7 +14,7 @@ import { TableModule, Table } from 'primeng/table';
 @Component({
   selector: 'app-job-feed',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, SidebarComponent, SliderModule, TableModule],
+  imports: [CommonModule, FormsModule, SidebarComponent, SliderModule, TableModule],
   templateUrl: './job-feed.component.html',
   styleUrl: './job-feed.component.scss'
 })
@@ -33,17 +30,9 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   sortBy: 'date' | 'match' | 'salary' = 'date';
   newJobsCount = 0;
 
-  // Auto-Refresh State
+  // Loading / Refresh state
   isRefreshing = false;
-  lastRefreshTime: Date | null = null;
-  refreshCountdown = '';
-  autoRefreshPaused = false;
-
-  // Analysis Progress
-  analysisInProgress = false;
-  analysisProgress = 0;
-  totalToAnalyze = 0;
-  analyzedCount = 0;
+  isLoading = false;
 
   // Candidates & Resumes
   candidates: Candidate[] = [];
@@ -70,78 +59,39 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   salaryRange: number[] = [0, 300000];
   salaryFilterActive = false;
 
-  // Session state key
-  private readonly SESSION_STATE_KEY = 'jobFeed_sessionState';
-
   constructor(
     private supabase: SupabaseService,
-    private autoRefreshService: AutoRefreshService,
-    private unifiedFeedService: UnifiedFeedService,
-    private analysisQueueService: AnalysisQueueService,
+    private jobFeedDbService: JobFeedDbService,
     private router: Router
   ) {}
 
   async ngOnInit() {
-    this.restoreSessionState();
+    // Subscribe to DB service observables
+    this.jobFeedDbService.jobs$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(jobs => {
+        this.unifiedJobs = this.applySourceFilter(jobs);
+        this.newJobsCount = jobs.filter(j => j.is_new).length;
+      });
 
-    // Setup unified feed subscriptions early
-    this.setupUnifiedFeedSubscriptions();
+    this.jobFeedDbService.loading$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(loading => {
+        this.isLoading = loading;
+      });
 
-    // Try to load persisted unified feed state from localStorage
-    const hasPersistedFeed = this.unifiedFeedService.loadState();
+    this.jobFeedDbService.refreshing$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(refreshing => {
+        this.isRefreshing = refreshing;
+      });
 
     await this.loadProfile();
     await this.loadCandidates();
 
-    // Start auto-refresh if candidate is already selected
+    // Load jobs for the selected candidate
     if (this.selectedCandidateId) {
-      this.autoRefreshService.startTimer();
-
-      // Restore analysis from cache for persisted jobs
-      if (hasPersistedFeed && this.selectedResume) {
-        this.restoreAnalysisFromCache();
-      }
-    }
-  }
-
-  // ============ Session State Management ============
-
-  private saveSessionState() {
-    const state = {
-      selectedCandidateId: this.selectedCandidateId,
-      selectedResumeId: this.selectedResumeId,
-      // Unified feed state
-      unifiedJobs: this.unifiedJobs,
-      sourceFilter: this.sourceFilter,
-      sortBy: this.sortBy,
-      lastRefreshTime: this.lastRefreshTime?.toISOString() || null
-    };
-    sessionStorage.setItem(this.SESSION_STATE_KEY, JSON.stringify(state));
-  }
-
-  private restoreSessionState() {
-    const savedState = sessionStorage.getItem(this.SESSION_STATE_KEY);
-    if (savedState) {
-      try {
-        const state = JSON.parse(savedState);
-        this.selectedCandidateId = state.selectedCandidateId || '';
-        this.selectedResumeId = state.selectedResumeId || '';
-
-        // Restore unified feed state
-        this.sourceFilter = state.sourceFilter || 'all';
-        this.sortBy = state.sortBy || 'date';
-        if (state.lastRefreshTime) {
-          this.lastRefreshTime = new Date(state.lastRefreshTime);
-        }
-
-        // Restore unified jobs and sync to service
-        if (state.unifiedJobs?.length > 0) {
-          this.unifiedJobs = state.unifiedJobs;
-          this.unifiedFeedService.setJobs(state.unifiedJobs);
-        }
-      } catch (e) {
-        console.error('Failed to restore session state:', e);
-      }
+      await this.jobFeedDbService.loadJobsForCandidate(this.selectedCandidateId);
     }
   }
 
@@ -158,7 +108,6 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     try {
       this.candidates = await this.supabase.getCandidates();
       if (this.candidates.length > 0) {
-        // If we already have a selected candidate from session state, just ensure resume is set
         if (this.selectedCandidateId && this.candidates.find(c => c.id === this.selectedCandidateId)) {
           const candidate = this.candidates.find(c => c.id === this.selectedCandidateId)!;
           if (!this.selectedResumeId && candidate.resumes.length > 0) {
@@ -224,13 +173,16 @@ export class JobFeedComponent implements OnInit, OnDestroy {
       this.selectedResumeId = '';
     }
 
-    // Refresh the feed and re-analyze for the new candidate
-    this.performUnifiedRefresh();
+    // Load jobs from DB for the new candidate
+    this.jobFeedDbService.loadJobsForCandidate(candidateId);
   }
 
   selectResume(resumeId: string) {
     this.selectedResumeId = resumeId;
-    this.onResumeChangeForUnifiedFeed();
+    // Re-analyze all jobs with the new resume
+    if (this.selectedCandidateId) {
+      this.jobFeedDbService.reanalyzeForResume(this.selectedCandidateId, resumeId);
+    }
   }
 
   getInitials(name: string): string {
@@ -366,122 +318,27 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     return '—';
   }
 
-  // ============ Unified Feed & Auto-Refresh Methods ============
+  // ============ Feed Actions ============
 
   ngOnDestroy() {
-    this.saveSessionState();
-    this.unifiedFeedService.saveState();
-
     this.destroy$.next();
     this.destroy$.complete();
-    this.autoRefreshService.stopTimer();
-  }
-
-  private setupUnifiedFeedSubscriptions() {
-    // Subscribe to unified feed jobs
-    this.unifiedFeedService.jobs$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(jobs => {
-        this.unifiedJobs = this.applySourceFilter(jobs);
-        this.applySorting();
-      });
-
-    // Subscribe to new jobs count
-    this.unifiedFeedService.newJobsCount$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(count => {
-        this.newJobsCount = count;
-      });
-
-    // Subscribe to auto-refresh state
-    this.autoRefreshService.state$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(state => {
-        this.isRefreshing = state.isRefreshing;
-        this.lastRefreshTime = state.lastRefreshTime;
-        this.autoRefreshPaused = state.isPaused;
-        this.refreshCountdown = this.formatCountdown(state.secondsUntilRefresh);
-      });
-
-    // Subscribe to refresh triggers
-    this.autoRefreshService.refreshTrigger$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.performUnifiedRefresh();
-      });
-
-    // Subscribe to analysis progress
-    this.analysisQueueService.progress$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(progress => {
-        this.analysisInProgress = progress.isProcessing;
-        this.analysisProgress = progress.progress;
-        this.totalToAnalyze = progress.totalJobs;
-        this.analyzedCount = progress.analyzedCount;
-      });
-  }
-
-  async performUnifiedRefresh() {
-    if (this.isRefreshing) return;
-
-    this.autoRefreshService.setRefreshing(true);
-
-    try {
-      const preferences = this.selectedCandidate?.preferences || null;
-
-      await this.unifiedFeedService.refreshFeed(preferences, {
-        maxJobsPerSource: 50,
-        syncGmail: true
-      });
-
-      if (this.selectedResume) {
-        const unanalyzedJobs = this.unifiedFeedService.getState().jobs
-          .filter(j => !j.analyzed && !j.analyzing)
-          .map(j => j.id);
-
-        if (unanalyzedJobs.length > 0) {
-          this.analysisQueueService.addToQueue(unanalyzedJobs);
-          this.analysisQueueService.processQueue(this.selectedResume);
-        }
-      }
-    } catch (error) {
-      console.error('Refresh error:', error);
-    } finally {
-      this.autoRefreshService.setRefreshing(false);
-    }
   }
 
   manualRefresh() {
-    this.performUnifiedRefresh();
-  }
-
-  toggleAutoRefresh() {
-    if (this.autoRefreshPaused) {
-      this.autoRefreshService.resume();
-    } else {
-      this.autoRefreshService.pause();
+    if (this.selectedCandidateId) {
+      this.jobFeedDbService.triggerRefresh(this.selectedCandidateId);
     }
-  }
-
-  clearAllCaches() {
-    if (!confirm('This will clear all cached job data and analysis results. You will need to refresh to get jobs again. Continue?')) {
-      return;
-    }
-
-    this.unifiedFeedService.clearState();
-    this.analysisQueueService.clearCache();
-
-    this.unifiedJobs = [];
-    this.newJobsCount = 0;
-
-    console.log('All caches cleared successfully');
-    alert('Cache cleared! Click "Refresh Now" to fetch fresh jobs.');
   }
 
   filterBySource(source: 'all' | 'api' | 'email') {
     this.sourceFilter = source;
-    this.unifiedJobs = this.applySourceFilter(this.unifiedFeedService.getState().jobs);
-    this.applySorting();
+    // Re-apply source filter from the current full job list
+    this.jobFeedDbService.jobs$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(jobs => {
+        this.unifiedJobs = this.applySourceFilter(jobs);
+      });
   }
 
   private applySourceFilter(jobs: UnifiedJob[]): UnifiedJob[] {
@@ -491,79 +348,13 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     return jobs.filter(job => job.source_type === this.sourceFilter);
   }
 
-  sortJobsBy(sortBy: 'date' | 'match' | 'salary') {
-    this.sortBy = sortBy;
-  }
-
-  private applySorting() {
-    // Handled by PrimeNG table column sorting — no-op
-  }
-
-  scrollToNewJobs() {
-    const newJobElement = document.querySelector('.job-card.is-new');
-    if (newJobElement) {
-      newJobElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    this.unifiedFeedService.markAllAsSeen();
-  }
-
   markUnifiedJobAsSeen(jobId: string) {
-    this.unifiedFeedService.markAsSeen(jobId);
-  }
-
-  private formatCountdown(seconds: number): string {
-    if (seconds <= 0) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    this.jobFeedDbService.markAsSeen(jobId);
   }
 
   openJobUrl(url: string) {
     if (url) {
       window.open(url, '_blank');
-    }
-  }
-
-  async startUnifiedFeed() {
-    if (!this.selectedCandidate) return;
-
-    this.setupUnifiedFeedSubscriptions();
-    this.autoRefreshService.startTimer();
-    await this.performUnifiedRefresh();
-  }
-
-  onResumeChangeForUnifiedFeed() {
-    if (this.selectedResume) {
-      this.analysisQueueService.clearQueue();
-
-      const jobIds = this.unifiedFeedService.getState().jobs.map(j => j.id);
-      this.analysisQueueService.addToQueue(jobIds);
-      this.analysisQueueService.processQueue(this.selectedResume);
-    }
-  }
-
-  private restoreAnalysisFromCache() {
-    if (!this.selectedResume) return;
-
-    const jobs = this.unifiedFeedService.getState().jobs;
-    const jobsToAnalyze: string[] = [];
-
-    for (const job of jobs) {
-      const cached = this.analysisQueueService.getCachedAnalysis(
-        job.id,
-        this.selectedResume.id
-      );
-
-      if (cached) {
-        this.unifiedFeedService.updateJobAnalysis(job.id, cached.result);
-      } else if (!job.analyzed && !job.analyzing) {
-        jobsToAnalyze.push(job.id);
-      }
-    }
-
-    if (jobsToAnalyze.length > 0) {
-      this.analysisQueueService.addToQueue(jobsToAnalyze);
-      this.analysisQueueService.processQueue(this.selectedResume);
     }
   }
 }

@@ -125,7 +125,7 @@ export class JobFeedService {
     const page = params.page || 1;
     const resultsPerPage = params.resultsPerPage || 20;
 
-    let url = `${this.adzunaBaseUrl}/${country}/search/${page}?app_id=${environment.adzunaAppId}&app_key=${environment.adzunaApiKey}&results_per_page=${resultsPerPage}`;
+    let url = `${this.adzunaBaseUrl}/${country}/search/${page}?app_id=${(environment as any).adzunaAppId || ''}&app_key=${(environment as any).adzunaApiKey || ''}&results_per_page=${resultsPerPage}`;
 
     if (params.query) {
       url += `&what=${encodeURIComponent(params.query)}`;
@@ -208,7 +208,7 @@ export class JobFeedService {
     const resultsPerPage = params.resultsPerPage || 20;
 
     const headers = new HttpHeaders({
-      'X-RapidAPI-Key': environment.rapidApiKey,
+      'X-RapidAPI-Key': (environment as any).rapidApiKey || '',
       'X-RapidAPI-Host': 'jsearch.p.rapidapi.com'
     });
 
@@ -309,7 +309,7 @@ export class JobFeedService {
    * Get job categories from Adzuna
    */
   async getCategories(country: string = 'us'): Promise<string[]> {
-    const url = `${this.adzunaBaseUrl}/${country}/categories?app_id=${environment.adzunaAppId}&app_key=${environment.adzunaApiKey}`;
+    const url = `${this.adzunaBaseUrl}/${country}/categories?app_id=${(environment as any).adzunaAppId || ''}&app_key=${(environment as any).adzunaApiKey || ''}`;
 
     try {
       const response: any = await firstValueFrom(this.http.get(url));
