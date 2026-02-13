@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, HostListener, Input, OnInit, OnDestroy } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { Profile } from '../../core/models';
+import { Candidate, Profile } from '../../core/models';
+import { AppStateService } from '../../core/services/app-state.service';
 import { SupabaseService } from '../../core/services/supabase.service';
 
 interface NavItem {
@@ -16,7 +18,7 @@ interface NavItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
@@ -26,6 +28,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
   profile: Profile | null = null;
   isAdmin = false;
   private profileSub?: Subscription;
+
+  // Candidate selector
+  showCandidatePopover = false;
+  candidateSearchQuery = '';
 
   allNavItems: NavItem[] = [
     { icon: 'fi-rr-apps', label: 'Admin Dashboard', route: '/admin', id: 'admin', adminOnly: true },
@@ -43,19 +49,78 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   constructor(
     private router: Router,
-    private supabase: SupabaseService
+    private supabase: SupabaseService,
+    private appState: AppStateService
   ) {}
 
-  ngOnInit() {
-    // Subscribe to cached profile observable - no API call needed
+  async ngOnInit() {
     this.profileSub = this.supabase.profile$.subscribe(profile => {
       this.profile = profile;
       this.isAdmin = profile?.role === 'admin';
     });
+
+    // Load candidates if not already loaded
+    if (!this.appState.candidatesLoaded()) {
+      try {
+        const candidates = await this.supabase.getCandidates();
+        this.appState.setCandidates(candidates);
+      } catch (err) {
+        console.error('Failed to load candidates in sidebar:', err);
+      }
+    }
   }
 
   ngOnDestroy() {
     this.profileSub?.unsubscribe();
+  }
+
+  get candidates(): Candidate[] {
+    return this.appState.candidates();
+  }
+
+  get selectedCandidateId(): string {
+    return this.appState.selectedCandidateId();
+  }
+
+  get selectedCandidate(): Candidate | null {
+    return this.appState.selectedCandidate();
+  }
+
+  get filteredCandidates(): Candidate[] {
+    const all = this.candidates;
+    if (!this.candidateSearchQuery.trim()) return all;
+    const query = this.candidateSearchQuery.toLowerCase();
+    return all.filter(c =>
+      c.name.toLowerCase().includes(query) ||
+      (c.current_title && c.current_title.toLowerCase().includes(query))
+    );
+  }
+
+  toggleCandidateSelector(event: Event) {
+    event.stopPropagation();
+    this.showCandidatePopover = !this.showCandidatePopover;
+    if (this.showCandidatePopover) {
+      this.candidateSearchQuery = '';
+    }
+  }
+
+  selectCandidate(candidateId: string) {
+    this.appState.selectCandidate(candidateId);
+    this.showCandidatePopover = false;
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.showCandidatePopover = false;
+  }
+
+  getInitials(name: string): string {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
   }
 
   navigate(route: string) {

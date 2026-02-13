@@ -74,16 +74,6 @@
                     {{ candidateGmailConnected() ? 'Sync' : 'Gmail' }}
                 </button>
 
-                <!-- Candidate Selection -->
-                <button class="btn-bar-action candidate-select" (click)="openCandidateDrawer()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                    Candidate Selection
-                </button>
             </div>
         </div>
 
@@ -818,66 +808,6 @@
         </div>
     </div>
 
-    <!-- Candidate Selection Drawer -->
-    <div class="drawer-overlay" *ngIf="showCandidateDrawer" (click)="closeCandidateDrawer()"></div>
-    <div class="candidate-drawer" [class.open]="showCandidateDrawer">
-        <div class="drawer-header">
-            <h3>Select Candidate</h3>
-            <button class="close-btn" (click)="closeCandidateDrawer()">×</button>
-        </div>
-        <div class="drawer-body">
-            <div class="drawer-search">
-                <input type="text" placeholder="Search candidates..." />
-            </div>
-            <div class="candidates-list">
-                <div
-                    class="candidate-item"
-                    *ngFor="let candidate of candidates()"
-                    [class.active]="selectedCandidateId() === candidate.id"
-                    (click)="selectCandidateAndClose(candidate.id)"
-                >
-                    <div class="candidate-avatar">
-                        {{ getInitials(candidate.name || 'C') }}
-                    </div>
-                    <div class="candidate-info">
-                        <div class="candidate-name">{{ candidate.name }}</div>
-                        <div class="candidate-title">
-                            {{ candidate.current_title || 'No title' }}
-                            <span *ngIf="candidate.years_of_experience"> · {{ candidate.years_of_experience }} yrs</span>
-                        </div>
-                        <div class="candidate-resumes" *ngIf="candidate.resume_count">
-                            {{ candidate.resume_count }} resume{{ candidate.resume_count > 1 ? 's' : '' }}
-                        </div>
-                    </div>
-                    <div class="candidate-check" *ngIf="selectedCandidateId() === candidate.id">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
-                        </svg>
-                    </div>
-                </div>
-                <div class="drawer-empty" *ngIf="candidates().length === 0">
-                    <p>No candidates yet</p>
-                    <label class="btn-upload-drawer">
-                        <span>Upload Resume</span>
-                        <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event)" hidden />
-                    </label>
-                </div>
-            </div>
-            <div class="drawer-upload" *ngIf="candidates().length > 0">
-                <label class="upload-area" [class.uploading]="uploadingResume">
-                    <span *ngIf="!uploadingResume">+ Upload New Resume</span>
-                    <span *ngIf="uploadingResume" class="loading-text">
-                        <span class="spinner-small"></span>
-                        Uploading...
-                    </span>
-                    <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event)" hidden />
-                </label>
-            </div>
-        </div>
-        <div class="drawer-footer">
-            <button class="btn-secondary" (click)="goToCandidates()">Manage All Candidates</button>
-        </div>
-    </div>
 
     <!-- Interview Scheduling Modal -->
     <app-interview-modal

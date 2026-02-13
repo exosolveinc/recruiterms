@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
-import { Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, effect, HostListener, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -48,12 +48,20 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   private analysisSessionId: string | null = null;
   private realtimeChannel: any = null;
 
-  // Candidates & Resumes
-  candidates: Candidate[] = [];
-  selectedCandidateId = '';
-  selectedResumeId = '';
-  showCandidateDrawer = false;
-  candidateSearchQuery = '';
+  // Candidates & Resumes (from AppState)
+  private appState = inject(AppStateService);
+
+  get selectedCandidateId(): string { return this.appState.selectedCandidateId(); }
+  get selectedResumeId(): string { return this.appState.selectedResumeId(); }
+  get selectedCandidate(): Candidate | null { return this.appState.selectedCandidate(); }
+  get selectedResume(): Resume | null {
+    const candidate = this.selectedCandidate;
+    if (!candidate) return null;
+    return candidate.resumes.find(r => r.id === this.selectedResumeId) || null;
+  }
+  get candidateResumes(): Resume[] {
+    return this.selectedCandidate?.resumes || [];
+  }
 
   // Search params
   searchQuery = '';
@@ -159,12 +167,19 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   salaryRange: number[] = [0, 300000];
   salaryFilterActive = false;
 
+  // Effect to react to candidate changes from sidebar
+  private candidateEffect = effect(() => {
+    const candidateId = this.appState.selectedCandidateId();
+    if (candidateId) {
+      this.onCandidateChanged(candidateId);
+    }
+  });
+
   constructor(
     private supabase: SupabaseService,
     private jobFeedService: JobFeedService,
     private vendorEmailService: VendorEmailService,
     private analysisQueueService: AnalysisQueueService,
-    private appState: AppStateService,
     private router: Router
   ) {}
 
@@ -180,9 +195,8 @@ export class JobSearchComponent implements OnInit, OnDestroy {
       });
 
     await this.loadProfile();
-    await this.loadCandidates();
 
-    // After loadCandidates sets selectedResumeId, load jobs from DB
+    // Load jobs from DB if candidate already selected
     if (this.selectedResumeId) {
       await this.loadJobsFromDB();
     }
@@ -252,61 +266,7 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     this.profile = profile;
   }
 
-  async loadCandidates() {
-    try {
-      if (this.appState.candidatesLoaded()) {
-        this.candidates = this.appState.candidates();
-      } else {
-        this.candidates = await this.supabase.getCandidates();
-        this.appState.setCandidates(this.candidates);
-      }
-      if (this.candidates.length > 0 && !this.selectedCandidateId) {
-        this.selectCandidate(this.candidates[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load candidates:', err);
-    }
-  }
-
-  get selectedCandidate(): Candidate | null {
-    return this.candidates.find(c => c.id === this.selectedCandidateId) || null;
-  }
-
-  get selectedResume(): Resume | null {
-    const candidate = this.selectedCandidate;
-    if (!candidate) return null;
-    return candidate.resumes.find(r => r.id === this.selectedResumeId) || null;
-  }
-
-  get candidateResumes(): Resume[] {
-    return this.selectedCandidate?.resumes || [];
-  }
-
-  get filteredCandidates(): Candidate[] {
-    if (!this.candidateSearchQuery.trim()) {
-      return this.candidates;
-    }
-    const query = this.candidateSearchQuery.toLowerCase();
-    return this.candidates.filter(c =>
-      c.name.toLowerCase().includes(query) ||
-      (c.current_title && c.current_title.toLowerCase().includes(query))
-    );
-  }
-
-  openCandidateDrawer() {
-    this.showCandidateDrawer = true;
-    this.candidateSearchQuery = '';
-  }
-
-  closeCandidateDrawer() {
-    this.showCandidateDrawer = false;
-  }
-
-  selectCandidateFromDrawer(candidateId: string) {
-    this.selectCandidate(candidateId);
-  }
-
-  selectCandidate(candidateId: string) {
+  private onCandidateChanged(candidateId: string) {
     // Invalidate cached analysis for the old resume before switching
     if (this.selectedResumeId) {
       this.analysisQueueService.invalidateForResume(this.selectedResumeId);
@@ -314,15 +274,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
 
     // Cleanup realtime channel from previous candidate
     this.cleanupRealtimeChannel();
-
-    this.selectedCandidateId = candidateId;
-    const candidate = this.candidates.find(c => c.id === candidateId);
-    if (candidate && candidate.resumes.length > 0) {
-      const primary = candidate.resumes.find(r => r.is_primary);
-      this.selectedResumeId = primary?.id || candidate.resumes[0].id;
-    } else {
-      this.selectedResumeId = '';
-    }
 
     // Clear current state and load from DB
     this.jobs = [];
@@ -337,6 +288,7 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     }
 
     // Auto-fill search fields from preferences if enabled
+    const candidate = this.selectedCandidate;
     if (this.usePreferences && candidate) {
       this.fillSearchFromPreferences(candidate);
     }
@@ -489,7 +441,7 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   }
 
   selectResume(resumeId: string) {
-    this.selectedResumeId = resumeId;
+    this.appState.selectResume(resumeId);
     this.jobs.forEach(job => {
       job.match_score = undefined;
       job.matching_skills = undefined;
@@ -1018,15 +970,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     return 'match-low';
   }
 
-  getInitials(name: string): string {
-    if (!name) return '?';
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-  }
-
   getResumeLabel(resume: Resume): string {
     if (resume.label) return resume.label;
     if (resume.file_name) {
@@ -1063,10 +1006,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     if (job.salary_min) return `$${job.salary_min.toLocaleString()}+`;
     if (job.salary_max) return `Up to $${job.salary_max.toLocaleString()}`;
     return '—';
-  }
-
-  goToCandidates() {
-    this.router.navigate(['/candidates']);
   }
 
   // ============ Vendor Jobs Methods ============
