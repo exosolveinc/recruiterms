@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, effect, HostListener, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -36,14 +36,28 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   isRefreshing = false;
   isLoading = false;
 
-  // Candidates & Resumes
+  // Candidates & Resumes (from AppState)
   private appState = inject(AppStateService);
-  candidates: Candidate[] = [];
 
   get selectedCandidateId(): string { return this.appState.selectedCandidateId(); }
   get selectedResumeId(): string { return this.appState.selectedResumeId(); }
-  showCandidateDrawer = false;
-  candidateSearchQuery = '';
+  get selectedCandidate(): Candidate | null { return this.appState.selectedCandidate(); }
+  get selectedResume(): Resume | null {
+    const candidate = this.selectedCandidate;
+    if (!candidate) return null;
+    return candidate.resumes.find(r => r.id === this.selectedResumeId) || null;
+  }
+  get candidateResumes(): Resume[] {
+    return this.selectedCandidate?.resumes || [];
+  }
+
+  // Effect to react to candidate changes from sidebar
+  private candidateEffect = effect(() => {
+    const candidateId = this.appState.selectedCandidateId();
+    if (candidateId) {
+      this.jobFeedDbService.loadJobsForCandidate(candidateId);
+    }
+  });
 
   // PrimeNG Table State
   @ViewChild('unifiedTable') unifiedTable!: Table;
@@ -95,12 +109,6 @@ export class JobFeedComponent implements OnInit, OnDestroy {
       });
 
     await this.loadProfile();
-    await this.loadCandidates();
-
-    // Load jobs for the selected candidate
-    if (this.selectedCandidateId) {
-      await this.jobFeedDbService.loadJobsForCandidate(this.selectedCandidateId);
-    }
   }
 
   async loadProfile() {
@@ -110,94 +118,6 @@ export class JobFeedComponent implements OnInit, OnDestroy {
       return;
     }
     this.profile = profile;
-  }
-
-  async loadCandidates() {
-    try {
-      this.candidates = await this.supabase.getCandidates();
-      // Populate AppState so selectCandidate can auto-pick resumes
-      this.appState.setCandidates(this.candidates);
-
-      if (this.candidates.length > 0) {
-        // If appState already has a valid candidate selected, keep it
-        if (this.selectedCandidateId && this.candidates.find(c => c.id === this.selectedCandidateId)) {
-          const candidate = this.candidates.find(c => c.id === this.selectedCandidateId)!;
-          if (!this.selectedResumeId && candidate.resumes.length > 0) {
-            const primary = candidate.resumes.find(r => r.is_primary);
-            this.appState.selectResume(primary?.id || candidate.resumes[0].id);
-          }
-        } else {
-          // No valid selection — pick first candidate
-          this.selectCandidate(this.candidates[0].id);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load candidates:', err);
-    }
-  }
-
-  get selectedCandidate(): Candidate | null {
-    return this.candidates.find(c => c.id === this.selectedCandidateId) || null;
-  }
-
-  get selectedResume(): Resume | null {
-    const candidate = this.selectedCandidate;
-    if (!candidate) return null;
-    return candidate.resumes.find(r => r.id === this.selectedResumeId) || null;
-  }
-
-  get candidateResumes(): Resume[] {
-    return this.selectedCandidate?.resumes || [];
-  }
-
-  get filteredCandidates(): Candidate[] {
-    if (!this.candidateSearchQuery.trim()) {
-      return this.candidates;
-    }
-    const query = this.candidateSearchQuery.toLowerCase();
-    return this.candidates.filter(c =>
-      c.name.toLowerCase().includes(query) ||
-      (c.current_title && c.current_title.toLowerCase().includes(query))
-    );
-  }
-
-  openCandidateDrawer() {
-    this.showCandidateDrawer = true;
-    this.candidateSearchQuery = '';
-  }
-
-  closeCandidateDrawer() {
-    this.showCandidateDrawer = false;
-  }
-
-  selectCandidateFromDrawer(candidateId: string) {
-    this.selectCandidate(candidateId);
-  }
-
-  selectCandidate(candidateId: string) {
-    if (this.selectedCandidateId === candidateId) return;
-
-    this.appState.selectCandidate(candidateId);
-
-    // Load jobs from DB for the new candidate
-    this.jobFeedDbService.loadJobsForCandidate(candidateId);
-  }
-
-  selectResume(resumeId: string) {
-    this.appState.selectResume(resumeId);
-    // Re-analyze all jobs with the new resume
-    if (this.selectedCandidateId) {
-      this.jobFeedDbService.reanalyzeForResume(this.selectedCandidateId, resumeId);
-    }
-  }
-
-  getInitials(name: string): string {
-    if (!name) return '?';
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
   }
 
   getResumeLabel(resume: Resume): string {
@@ -219,10 +139,6 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  }
-
-  goToCandidates() {
-    this.router.navigate(['/candidates']);
   }
 
   // ============ PrimeNG Table Methods ============
@@ -392,6 +308,13 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   openJobUrl(url: string) {
     if (url) {
       window.open(url, '_blank');
+    }
+  }
+
+  selectResume(resumeId: string) {
+    this.appState.selectResume(resumeId);
+    if (this.selectedCandidateId) {
+      this.jobFeedDbService.reanalyzeForResume(this.selectedCandidateId, resumeId);
     }
   }
 }

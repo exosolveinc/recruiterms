@@ -14,6 +14,58 @@
     </div>
   </div>
   <div class="sidebar-bottom">
+    <!-- Candidate Selector -->
+    <div class="candidate-selector-wrapper" (click)="$event.stopPropagation()">
+      <button
+        class="nav-item candidate-btn"
+        [class.has-candidate]="selectedCandidate"
+        (click)="toggleCandidateSelector($event)"
+      >
+        <div class="candidate-avatar-mini" *ngIf="selectedCandidate">
+          {{ getInitials(selectedCandidate.name) }}
+        </div>
+        <i class="fi fi-rr-user" *ngIf="!selectedCandidate"></i>
+        <span class="tooltip">{{ selectedCandidate?.name || 'Select Candidate' }}</span>
+      </button>
+
+      <!-- Popover -->
+      <div class="candidate-popover" *ngIf="showCandidatePopover" (click)="$event.stopPropagation()">
+        <div class="popover-header">
+          <span class="popover-title">Candidates</span>
+        </div>
+        <div class="popover-search">
+          <input
+            type="text"
+            [(ngModel)]="candidateSearchQuery"
+            placeholder="Search..."
+            (click)="$event.stopPropagation()"
+          />
+        </div>
+        <div class="popover-list">
+          <div
+            class="popover-item"
+            *ngFor="let candidate of filteredCandidates"
+            [class.active]="selectedCandidateId === candidate.id"
+            (click)="selectCandidate(candidate.id)"
+          >
+            <div class="popover-avatar">
+              {{ getInitials(candidate.name || 'C') }}
+            </div>
+            <div class="popover-info">
+              <span class="popover-name">{{ candidate.name }}</span>
+              <span class="popover-title-text">{{ candidate.current_title || 'No title' }}</span>
+            </div>
+            <svg class="popover-check" *ngIf="selectedCandidateId === candidate.id" width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="popover-empty" *ngIf="filteredCandidates.length === 0">
+            <span>No candidates found</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <button class="nav-item logout" (click)="logout()">
       <i class="fi fi-rr-sign-out-alt"></i>
       <span class="tooltip">Sign Out</span>

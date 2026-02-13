@@ -143,4 +143,183 @@
   flex-direction: column;
   align-items: center;
   padding-bottom: 8px;
+  gap: 4px;
+}
+
+// ============================================================================
+// CANDIDATE SELECTOR
+// ============================================================================
+
+.candidate-selector-wrapper {
+  position: relative;
+}
+
+.candidate-btn {
+  &.has-candidate {
+    .candidate-avatar-mini {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #111;
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -0.3px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    &:hover .candidate-avatar-mini {
+      transform: scale(1.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+}
+
+// Popover flyout
+.candidate-popover {
+  position: absolute;
+  left: 56px;
+  bottom: 0;
+  width: 280px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  z-index: 1001;
+  overflow: hidden;
+  animation: popoverIn 0.15s ease;
+}
+
+@keyframes popoverIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.popover-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #f3f4f6;
+
+  .popover-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.popover-search {
+  padding: 8px 12px;
+
+  input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fafafa;
+    color: #111;
+    outline: none;
+    transition: border-color 0.15s;
+
+    &:focus {
+      border-color: #111;
+      background: white;
+    }
+
+    &::placeholder {
+      color: #999;
+    }
+  }
+}
+
+.popover-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+}
+
+.popover-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  &.active {
+    background: #f0f9ff;
+
+    .popover-avatar {
+      background: #3b82f6;
+    }
+
+    .popover-check {
+      color: #3b82f6;
+    }
+  }
+}
+
+.popover-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #111;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.popover-info {
+  flex: 1;
+  min-width: 0;
+
+  .popover-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #111;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .popover-title-text {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+}
+
+.popover-check {
+  flex-shrink: 0;
+}
+
+.popover-empty {
+  padding: 20px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #999;
 }

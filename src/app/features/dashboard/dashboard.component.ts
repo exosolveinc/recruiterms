@@ -214,8 +214,6 @@ export class DashboardComponent implements OnInit {
   expandedAppId: string | null = null;
   expandedRows: { [key: string]: boolean } = {};
 
-  // Candidate Selection Drawer
-  showCandidateDrawer = false;
 
   // Reanalysis state
   reanalyzingAppId: string | null = null;
@@ -811,19 +809,6 @@ export class DashboardComponent implements OnInit {
     this.router.navigate(['/resumes']);
   }
 
-  // Candidate Drawer
-  openCandidateDrawer() {
-    this.showCandidateDrawer = true;
-  }
-
-  closeCandidateDrawer() {
-    this.showCandidateDrawer = false;
-  }
-
-  selectCandidateAndClose(candidateId: string) {
-    this.selectCandidate(candidateId);
-    this.closeCandidateDrawer();
-  }
 
   goToCandidates() {
     this.router.navigate(['/candidates']);
