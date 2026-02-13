@@ -26,6 +26,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   // Unified Feed
   unifiedJobs: UnifiedJob[] = [];
+  filteredUnifiedJobs: UnifiedJob[] = [];
   sourceFilter: 'all' | 'api' | 'email' = 'all';
   sortBy: 'date' | 'match' | 'salary' = 'date';
   newJobsCount = 0;
@@ -72,6 +73,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
       .subscribe(jobs => {
         this.unifiedJobs = this.applySourceFilter(jobs);
         this.newJobsCount = jobs.filter(j => j.is_new).length;
+        this.updateFilteredJobs();
       });
 
     this.jobFeedDbService.loading$
@@ -281,9 +283,12 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   }
 
   // Salary filter
-  get filteredUnifiedJobs(): UnifiedJob[] {
-    if (!this.salaryFilterActive) return this.unifiedJobs;
-    return this.unifiedJobs.filter(job => {
+  private updateFilteredJobs(): void {
+    if (!this.salaryFilterActive) {
+      this.filteredUnifiedJobs = this.unifiedJobs;
+      return;
+    }
+    this.filteredUnifiedJobs = this.unifiedJobs.filter(job => {
       const salary = job.salary_max ?? job.salary_min;
       if (salary === null || salary === undefined) return this.salaryRange[0] === 0;
       return salary >= this.salaryRange[0] && salary <= this.salaryRange[1];
@@ -296,11 +301,13 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   onSalaryFilterChange() {
     this.salaryFilterActive = true;
+    this.updateFilteredJobs();
   }
 
   clearSalaryFilter() {
     this.salaryRange = [0, 300000];
     this.salaryFilterActive = false;
+    this.updateFilteredJobs();
   }
 
   formatSalaryK(value: number): string {
@@ -333,12 +340,9 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   filterBySource(source: 'all' | 'api' | 'email') {
     this.sourceFilter = source;
-    // Re-apply source filter from the current full job list
-    this.jobFeedDbService.jobs$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(jobs => {
-        this.unifiedJobs = this.applySourceFilter(jobs);
-      });
+    // Re-apply source filter from the current snapshot
+    this.unifiedJobs = this.applySourceFilter(this.jobFeedDbService.currentJobs);
+    this.updateFilteredJobs();
   }
 
   private applySourceFilter(jobs: UnifiedJob[]): UnifiedJob[] {
@@ -348,8 +352,8 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     return jobs.filter(job => job.source_type === this.sourceFilter);
   }
 
-  markUnifiedJobAsSeen(jobId: string) {
-    this.jobFeedDbService.markAsSeen(jobId);
+  markUnifiedJobAsSeen(_jobId: string) {
+    // No-op: removed to prevent Realtime UPDATE events from collapsing expanded rows
   }
 
   openJobUrl(url: string) {
