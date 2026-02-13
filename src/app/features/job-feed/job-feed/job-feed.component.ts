@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, HostListener, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Candidate, Profile, Resume, UnifiedJob } from '../../../core/models';
+import { AppStateService } from '../../../core/services/app-state.service';
 import { JobFeedDbService } from '../../../core/services/job-feed-db.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
@@ -36,9 +37,11 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   isLoading = false;
 
   // Candidates & Resumes
+  private appState = inject(AppStateService);
   candidates: Candidate[] = [];
-  selectedCandidateId = '';
-  selectedResumeId = '';
+
+  get selectedCandidateId(): string { return this.appState.selectedCandidateId(); }
+  get selectedResumeId(): string { return this.appState.selectedResumeId(); }
   showCandidateDrawer = false;
   candidateSearchQuery = '';
 
@@ -59,6 +62,9 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   // Salary column filter
   salaryRange: number[] = [0, 300000];
   salaryFilterActive = false;
+
+  // Skills expand state (tracks which jobs have skills expanded)
+  skillsExpandedFor = new Set<string>();
 
   constructor(
     private supabase: SupabaseService,
@@ -109,14 +115,19 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   async loadCandidates() {
     try {
       this.candidates = await this.supabase.getCandidates();
+      // Populate AppState so selectCandidate can auto-pick resumes
+      this.appState.setCandidates(this.candidates);
+
       if (this.candidates.length > 0) {
+        // If appState already has a valid candidate selected, keep it
         if (this.selectedCandidateId && this.candidates.find(c => c.id === this.selectedCandidateId)) {
           const candidate = this.candidates.find(c => c.id === this.selectedCandidateId)!;
           if (!this.selectedResumeId && candidate.resumes.length > 0) {
             const primary = candidate.resumes.find(r => r.is_primary);
-            this.selectedResumeId = primary?.id || candidate.resumes[0].id;
+            this.appState.selectResume(primary?.id || candidate.resumes[0].id);
           }
         } else {
+          // No valid selection — pick first candidate
           this.selectCandidate(this.candidates[0].id);
         }
       }
@@ -166,21 +177,14 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   selectCandidate(candidateId: string) {
     if (this.selectedCandidateId === candidateId) return;
 
-    this.selectedCandidateId = candidateId;
-    const candidate = this.candidates.find(c => c.id === candidateId);
-    if (candidate && candidate.resumes.length > 0) {
-      const primary = candidate.resumes.find(r => r.is_primary);
-      this.selectedResumeId = primary?.id || candidate.resumes[0].id;
-    } else {
-      this.selectedResumeId = '';
-    }
+    this.appState.selectCandidate(candidateId);
 
     // Load jobs from DB for the new candidate
     this.jobFeedDbService.loadJobsForCandidate(candidateId);
   }
 
   selectResume(resumeId: string) {
-    this.selectedResumeId = resumeId;
+    this.appState.selectResume(resumeId);
     // Re-analyze all jobs with the new resume
     if (this.selectedCandidateId) {
       this.jobFeedDbService.reanalyzeForResume(this.selectedCandidateId, resumeId);
@@ -352,8 +356,37 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     return jobs.filter(job => job.source_type === this.sourceFilter);
   }
 
-  markUnifiedJobAsSeen(_jobId: string) {
-    // No-op: removed to prevent Realtime UPDATE events from collapsing expanded rows
+  getTotalSkillCount(job: UnifiedJob): number {
+    return (job.matching_skills?.length || 0) + (job.missing_skills?.length || 0);
+  }
+
+  isSkillsExpanded(jobId: string): boolean {
+    return this.skillsExpandedFor.has(jobId);
+  }
+
+  toggleSkillsExpanded(jobId: string) {
+    if (this.skillsExpandedFor.has(jobId)) {
+      this.skillsExpandedFor.delete(jobId);
+    } else {
+      this.skillsExpandedFor.add(jobId);
+    }
+  }
+
+  getVisibleSkills(job: UnifiedJob, type: 'matching' | 'missing'): string[] {
+    const matching = job.matching_skills || [];
+    const missing = job.missing_skills || [];
+    const total = matching.length + missing.length;
+
+    if (total <= 8 || this.skillsExpandedFor.has(job.id)) {
+      return type === 'matching' ? matching : missing;
+    }
+
+    // Show first 8 combined, split between matching and missing
+    if (type === 'matching') {
+      return matching.slice(0, 8);
+    }
+    const remainingSlots = 8 - matching.length;
+    return remainingSlots > 0 ? missing.slice(0, remainingSlots) : [];
   }
 
   openJobUrl(url: string) {

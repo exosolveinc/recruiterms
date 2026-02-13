@@ -232,6 +232,8 @@ export class JobFeedDbService implements OnDestroy {
       match_score: row.match_score != null ? Number(row.match_score) : undefined,
       matching_skills: row.matching_skills || undefined,
       missing_skills: row.missing_skills || undefined,
+      recommendations: row.recommendations || undefined,
+      overall_assessment: row.overall_assessment || undefined,
       analyzed: isAnalyzed,
       analyzing: isAnalyzing,
       analysis_timestamp: row.analyzed_at || undefined,

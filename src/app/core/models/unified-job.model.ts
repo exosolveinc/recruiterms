@@ -46,6 +46,8 @@ export interface UnifiedJob {
   match_score?: number;
   matching_skills?: string[];
   missing_skills?: string[];
+  recommendations?: string[];
+  overall_assessment?: string;
   analyzed: boolean;
   analyzing: boolean;
   analysis_timestamp?: string;

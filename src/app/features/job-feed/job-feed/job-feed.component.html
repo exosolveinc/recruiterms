@@ -196,8 +196,14 @@
 
                     <div class="expand-label" *ngIf="job.matching_skills?.length || job.missing_skills?.length">Skills</div>
                     <div class="expand-skills" *ngIf="job.matching_skills?.length || job.missing_skills?.length">
-                      <span class="skill-tag-lg" *ngFor="let skill of job.matching_skills">{{ skill }}</span>
-                      <span class="skill-tag-lg missing" *ngFor="let skill of job.missing_skills">{{ skill }}</span>
+                      <span class="skill-tag-lg" *ngFor="let skill of getVisibleSkills(job, 'matching')">{{ skill }}</span>
+                      <span class="skill-tag-lg missing" *ngFor="let skill of getVisibleSkills(job, 'missing')">{{ skill }}</span>
+                      <button class="show-more-skills" *ngIf="getTotalSkillCount(job) > 8 && !isSkillsExpanded(job.id)" (click)="toggleSkillsExpanded(job.id)">
+                        +{{ getTotalSkillCount(job) - 8 }} more
+                      </button>
+                      <button class="show-more-skills" *ngIf="isSkillsExpanded(job.id)" (click)="toggleSkillsExpanded(job.id)">
+                        Show less
+                      </button>
                     </div>
 
                     <div class="expand-meta-row">
@@ -237,6 +243,36 @@
                     </button>
                   </div>
                 </div>
+
+                <!-- AI Insights (always visible when data exists) -->
+                <div class="ai-insights-panel" *ngIf="job.analyzed && (job.recommendations?.length || job.overall_assessment)">
+                  <div class="ai-insights-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93L12 22"/>
+                      <path d="M8 6a4 4 0 0 1 .67-2.22"/>
+                      <path d="M16 6a4 4 0 0 0-.67-2.22"/>
+                      <path d="M12 2C9.79 2 8 3.79 8 6"/>
+                      <path d="M12 2c2.21 0 4 1.79 4 4"/>
+                      <path d="M5.2 10.2c-.93.93-1.2 2.3-.7 3.5L7 18"/>
+                      <path d="M18.8 10.2c.93.93 1.2 2.3.7 3.5L17 18"/>
+                      <path d="M7 18h10"/>
+                    </svg>
+                    <span>AI Analysis</span>
+                  </div>
+                  <div class="ai-insights-body">
+                    <div class="ai-assessment" *ngIf="job.overall_assessment">
+                      <div class="ai-section-label">Overall Assessment</div>
+                      <p>{{ job.overall_assessment }}</p>
+                    </div>
+                    <div class="ai-recommendations" *ngIf="job.recommendations?.length">
+                      <div class="ai-section-label">Recommendations</div>
+                      <ul>
+                        <li *ngFor="let rec of job.recommendations">{{ rec }}</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </td>
           </tr>

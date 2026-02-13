@@ -54,10 +54,10 @@ export class AppStateService {
   readonly applicationsLoading = this._applicationsLoading.asReadonly();
 
   // ============================================================================
-  // SELECTED STATE
+  // SELECTED STATE (persisted across page refreshes)
   // ============================================================================
-  private _selectedCandidateId = signal<string>('');
-  private _selectedResumeId = signal<string>('');
+  private _selectedCandidateId = signal<string>(localStorage.getItem('appState_selectedCandidateId') || '');
+  private _selectedResumeId = signal<string>(localStorage.getItem('appState_selectedResumeId') || '');
 
   readonly selectedCandidateId = this._selectedCandidateId.asReadonly();
   readonly selectedResumeId = this._selectedResumeId.asReadonly();
@@ -275,19 +275,24 @@ export class AppStateService {
 
   selectCandidate(candidateId: string) {
     this._selectedCandidateId.set(candidateId);
+    localStorage.setItem('appState_selectedCandidateId', candidateId);
 
     // Auto-select primary resume or first resume for this candidate
     const candidate = this._candidates().find(c => c.id === candidateId);
     if (candidate && candidate.resumes.length > 0) {
       const primary = candidate.resumes.find(r => r.is_primary);
-      this._selectedResumeId.set(primary?.id || candidate.resumes[0].id);
+      const resumeId = primary?.id || candidate.resumes[0].id;
+      this._selectedResumeId.set(resumeId);
+      localStorage.setItem('appState_selectedResumeId', resumeId);
     } else {
       this._selectedResumeId.set('');
+      localStorage.removeItem('appState_selectedResumeId');
     }
   }
 
   selectResume(resumeId: string) {
     this._selectedResumeId.set(resumeId);
+    localStorage.setItem('appState_selectedResumeId', resumeId);
   }
 
   // ============================================================================
@@ -401,6 +406,8 @@ export class AppStateService {
     this._applicationsLoading.set(false);
     this._selectedCandidateId.set('');
     this._selectedResumeId.set('');
+    localStorage.removeItem('appState_selectedCandidateId');
+    localStorage.removeItem('appState_selectedResumeId');
     // Clear email state
     this.clearCandidateEmailState();
   }

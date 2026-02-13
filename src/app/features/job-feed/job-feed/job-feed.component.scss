@@ -1518,6 +1518,74 @@
       color: #111;
     }
   }
+
+}
+
+// AI Insights Panel
+.ai-insights-panel {
+  margin-top: 16px;
+  border: 1px solid #ddd6fe;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #faf8ff 0%, #f3eeff 100%);
+  overflow: hidden;
+
+  .ai-insights-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #ede4ff 0%, #ddd0ff 100%);
+    border-bottom: 1px solid #ddd6fe;
+    color: #6d28d9;
+    font-size: 13px;
+    font-weight: 600;
+
+    svg {
+      flex-shrink: 0;
+    }
+  }
+
+  .ai-insights-body {
+    padding: 16px;
+
+    .ai-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #7c3aed;
+      margin-bottom: 8px;
+    }
+
+    .ai-assessment {
+      margin-bottom: 16px;
+
+      p {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #374151;
+      }
+    }
+
+    .ai-recommendations {
+      ul {
+        margin: 0;
+        padding-left: 18px;
+
+        li {
+          font-size: 13px;
+          line-height: 1.6;
+          color: #374151;
+          margin-bottom: 6px;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+    }
+  }
 }
 
 .skill-tag-lg {
@@ -1535,6 +1603,26 @@
     background: #fef9c3;
     color: #854d0e;
     border-color: #fde68a;
+  }
+}
+
+.show-more-skills {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 4px;
+  border: 1px dashed #c7c7c7;
+  background: transparent;
+  color: #7c3aed;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: #a78bfa;
+    background: #f5f0ff;
   }
 }
 
