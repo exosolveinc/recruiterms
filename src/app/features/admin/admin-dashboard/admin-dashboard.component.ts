@@ -1,10 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Job, Profile, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
+
+// PrimeNG imports
+import { TableModule, Table } from 'primeng/table';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { TagModule } from 'primeng/tag';
 
 interface AdminApplication {
   id: string;
@@ -30,11 +35,20 @@ interface AdminApplication {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    SidebarComponent,
+    TableModule,
+    MultiSelectModule,
+    TagModule
+  ],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
 })
 export class AdminDashboardComponent implements OnInit {
+  @ViewChild('dt') dt!: Table;
+
   profile: Profile | null = null;
   loading = true;
 
@@ -49,21 +63,28 @@ export class AdminDashboardComponent implements OnInit {
   // Data
   applications: AdminApplication[] = [];
 
-  // Filters
+  // Search
   searchTerm = '';
-  recruiterFilter = 'all';
-  statusFilter = 'all';
-  platformFilter = 'all';
+
+  // PrimeNG sort state
+  sortField = '';
+  sortOrder = 0;
+
+  // Filter options for multi-selects
+  recruiterOptions: { label: string; value: string }[] = [];
+  statusOptions: { label: string; value: string }[] = [];
+  platformOptions: { label: string; value: string }[] = [];
+
+  // Selected filter values
+  selectedRecruiters: string[] = [];
+  selectedStatuses: string[] = [];
+  selectedPlatforms: string[] = [];
 
   // Job Detail Modal
   showJobModal = false;
   selectedJob: Job | null = null;
   selectedResume: Resume | null = null;
   loadingJobDetails = false;
-
-  // Unique values for filters
-  platforms: string[] = [];
-  recruiters: { user_id: string; name: string }[] = [];
 
   constructor(
     private supabase: SupabaseService,
@@ -94,7 +115,7 @@ export class AdminDashboardComponent implements OnInit {
     try {
       await this.loadApplications();
       this.calculateStats();
-      this.extractFilterOptions();
+      this.buildFilterOptions();
     } catch (err) {
       console.error('Failed to load admin data:', err);
     }
@@ -120,56 +141,108 @@ export class AdminDashboardComponent implements OnInit {
       : 0;
   }
 
-  extractFilterOptions() {
-    this.platforms = [...new Set(
-      this.applications
-        .map(a => a.platform)
-        .filter((p): p is string => !!p)
-    )];
-
+  buildFilterOptions() {
+    // Recruiters
     const seen = new Set<string>();
-    this.recruiters = [];
+    this.recruiterOptions = [];
     for (const app of this.applications) {
       if (!seen.has(app.user_id)) {
         seen.add(app.user_id);
-        this.recruiters.push({
-          user_id: app.user_id,
-          name: app.recruiter_name || app.recruiter_email
+        this.recruiterOptions.push({
+          label: app.recruiter_name || app.recruiter_email,
+          value: app.user_id
         });
       }
     }
+
+    // Statuses
+    const statuses = [...new Set(this.applications.map(a => a.status).filter(Boolean))];
+    this.statusOptions = statuses.map(s => ({
+      label: s.charAt(0).toUpperCase() + s.slice(1),
+      value: s
+    }));
+
+    // Platforms
+    const platforms = [...new Set(
+      this.applications.map(a => a.platform).filter((p): p is string => !!p)
+    )];
+    this.platformOptions = platforms.map(p => ({ label: p, value: p }));
   }
 
-  get filteredApplications(): AdminApplication[] {
-    return this.applications.filter(app => {
-      const matchesSearch = !this.searchTerm ||
-        app.company_name?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        app.job_title?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        app.recruiter_name?.toLowerCase().includes(this.searchTerm.toLowerCase());
+  // ============================================================================
+  // TABLE INTERACTION
+  // ============================================================================
 
-      const matchesRecruiter = this.recruiterFilter === 'all' ||
-        app.user_id === this.recruiterFilter;
-
-      const matchesStatus = this.statusFilter === 'all' ||
-        app.status === this.statusFilter;
-
-      const matchesPlatform = this.platformFilter === 'all' ||
-        app.platform === this.platformFilter;
-
-      return matchesSearch && matchesRecruiter && matchesStatus && matchesPlatform;
-    });
+  onGlobalFilter(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.dt.filterGlobal(value, 'contains');
   }
 
-  // View Job Details
+  onSort(event: Event, field: string) {
+    if (this.sortField === field) {
+      this.sortOrder = this.sortOrder === 1 ? -1 : 0;
+    } else {
+      this.sortField = field;
+      this.sortOrder = 1;
+    }
+
+    if (this.sortOrder !== 0) {
+      this.dt.sortField = this.sortField;
+      this.dt.sortOrder = this.sortOrder;
+      this.dt.sortSingle();
+    } else {
+      this.sortField = '';
+      this.dt.reset();
+      // Re-apply active filters after reset
+      if (this.searchTerm) this.dt.filterGlobal(this.searchTerm, 'contains');
+      if (this.selectedRecruiters.length) this.dt.filter(this.selectedRecruiters, 'user_id', 'in');
+      if (this.selectedStatuses.length) this.dt.filter(this.selectedStatuses, 'status', 'in');
+      if (this.selectedPlatforms.length) this.dt.filter(this.selectedPlatforms, 'platform', 'in');
+    }
+  }
+
+  getSortIcon(field: string): string {
+    if (this.sortField !== field || this.sortOrder === 0) return 'pi-sort-alt';
+    return this.sortOrder === 1 ? 'pi-sort-amount-up-alt' : 'pi-sort-amount-down';
+  }
+
+  onRecruiterFilterChange() {
+    this.dt.filter(this.selectedRecruiters.length ? this.selectedRecruiters : null, 'user_id', 'in');
+  }
+
+  onStatusFilterChange() {
+    this.dt.filter(this.selectedStatuses.length ? this.selectedStatuses : null, 'status', 'in');
+  }
+
+  onPlatformFilterChange() {
+    this.dt.filter(this.selectedPlatforms.length ? this.selectedPlatforms : null, 'platform', 'in');
+  }
+
+  clearFilters() {
+    this.dt.clear();
+    this.searchTerm = '';
+    this.selectedRecruiters = [];
+    this.selectedStatuses = [];
+    this.selectedPlatforms = [];
+    this.sortField = '';
+    this.sortOrder = 0;
+  }
+
+  get hasActiveFilters(): boolean {
+    return !!(this.searchTerm || this.selectedRecruiters.length || this.selectedStatuses.length || this.selectedPlatforms.length);
+  }
+
+  // ============================================================================
+  // JOB DETAIL MODAL
+  // ============================================================================
+
   async viewJobDetails(app: AdminApplication) {
     this.loadingJobDetails = true;
     this.showJobModal = true;
 
     try {
-      // Load full job details
       this.selectedJob = await this.supabase.getJob(app.job_id);
 
-      // Load resume if exists
       if (app.resume_id) {
         this.selectedResume = await this.supabase.getResume(app.resume_id);
       } else {
@@ -188,7 +261,10 @@ export class AdminDashboardComponent implements OnInit {
     this.selectedResume = null;
   }
 
-  // Format helpers
+  // ============================================================================
+  // FORMAT HELPERS
+  // ============================================================================
+
   formatDate(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
@@ -203,6 +279,19 @@ export class AdminDashboardComponent implements OnInit {
     if (min && max) return `${format(min)} - ${format(max)}`;
     if (min) return `${format(min)}+`;
     return `Up to ${format(max!)}`;
+  }
+
+  getStatusSeverity(status: string): 'success' | 'info' | 'warning' | 'danger' | 'secondary' | 'contrast' | undefined {
+    const map: Record<string, 'success' | 'info' | 'warning' | 'danger' | 'secondary' | 'contrast'> = {
+      'applied': 'info',
+      'screening': 'warning',
+      'interviewing': 'contrast',
+      'offer': 'success',
+      'accepted': 'success',
+      'rejected': 'danger',
+      'withdrawn': 'secondary'
+    };
+    return map[status] || 'info';
   }
 
   getStatusClass(status: string): string {
@@ -225,12 +314,8 @@ export class AdminDashboardComponent implements OnInit {
     return 'match-low';
   }
 
-  getSkills(skills: any[] | null): string[] {
-    if (!skills) return [];
-    return skills.slice(0, 3).map(s => typeof s === 'string' ? s : s.skill);
-  }
-
   getInitials(name: string): string {
+    if (!name) return '?';
     return name
       .split(' ')
       .map(n => n[0])
@@ -247,5 +332,4 @@ export class AdminDashboardComponent implements OnInit {
   goToUserDashboard() {
     this.router.navigate(['/dashboard']);
   }
-
 }

@@ -212,92 +212,518 @@
 }
 
 // ============================================================================
-// FILTERS
+// TABLE HEADER (Caption)
 // ============================================================================
 
-.filters {
+.table-header {
     display: flex;
-    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
     flex-wrap: wrap;
+    gap: 16px;
 }
 
-.search-input {
-    padding: 10px 16px;
-    width: 280px;
-    background: #fafafa;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #111;
+.table-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 
-    &::placeholder {
-        color: #888;
+    h2 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #111;
+        margin: 0;
     }
 
-    &:focus {
-        outline: none;
-        border-color: #6366f1;
+    .app-count {
+        font-size: 13px;
+        color: #666;
+        background: #f5f5f5;
+        padding: 4px 10px;
+        border-radius: 6px;
     }
 }
 
-.filter-select {
+.table-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .search-box {
+        position: relative;
+
+        i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 14px;
+        }
+
+        input {
+            padding: 10px 16px 10px 38px;
+            width: 260px;
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #111;
+
+            &:focus {
+                outline: none;
+                border-color: #111;
+                box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+            }
+
+            &::placeholder {
+                color: #999;
+            }
+        }
+    }
+}
+
+.clear-filters-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 10px 16px;
-    background: #fafafa;
+    background: white;
     border: 1px solid #eee;
     border-radius: 8px;
-    font-size: 14px;
-    color: #111;
+    color: #666;
+    font-size: 13px;
     cursor: pointer;
-    min-width: 140px;
+    transition: all 0.15s;
 
-    &:focus {
-        outline: none;
-        border-color: #6366f1;
+    i {
+        font-size: 14px;
     }
 
-    option {
-        background: white;
+    &:hover {
+        background: #f5f5f5;
+        border-color: #ddd;
     }
 }
 
 // ============================================================================
-// TABLE
+// HEADER CELL & SORTING
 // ============================================================================
 
-.table-container {
-    overflow-x: auto;
-    border-radius: 8px;
+.header-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
+.sortable-col {
+    cursor: pointer;
+    user-select: none;
 
-    th,
-    td {
-        padding: 14px 12px;
-        text-align: left;
-        border-bottom: 1px solid #eee;
+    &:hover {
+        background: #f5f5f5 !important;
+    }
+}
+
+.sort-icon {
+    font-size: 10px;
+    color: #999;
+    transition: color 0.15s;
+
+    &.pi-sort-amount-up-alt,
+    &.pi-sort-amount-down {
+        color: #111;
+    }
+}
+
+.sortable-col:hover .sort-icon {
+    color: #666;
+}
+
+// ============================================================================
+// FILTER WRAPPER (Column filters)
+// ============================================================================
+
+.filter-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 2px;
+
+    > i.pi-filter {
+        font-size: 10px;
+        color: #999;
+        cursor: pointer;
+        padding: 3px;
+        border-radius: 3px;
+        transition: all 0.15s;
+
+        &:hover {
+            color: #666;
+            background: #f0f0f0;
+        }
+
+        &.active {
+            color: #2563eb;
+        }
     }
 
-    th {
+    .filter-count {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        min-width: 14px;
+        height: 14px;
+        padding: 0 3px;
+        background: #2563eb;
+        color: white;
+        font-size: 9px;
+        font-weight: 600;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+
+    p-multiSelect {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 24px;
+        height: 24px;
+
+        ::ng-deep {
+            .p-multiselect {
+                width: 24px !important;
+                height: 24px !important;
+                border: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
+
+                .p-multiselect-label-container {
+                    display: none;
+                }
+
+                .p-multiselect-trigger {
+                    width: 24px;
+                    height: 24px;
+                    opacity: 0;
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// APP ROW
+// ============================================================================
+
+.app-row {
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover {
+        background: #f8fafc;
+    }
+}
+
+// ============================================================================
+// PRIMENG TABLE OVERRIDES
+// ============================================================================
+
+::ng-deep .admin-table.p-datatable {
+    .p-datatable-header {
+        background: transparent;
+        border: none;
+        padding: 0 0 16px 0;
+    }
+
+    .p-datatable-table {
+        table-layout: fixed !important;
+        width: 100%;
+    }
+
+    .p-datatable-thead > tr > th {
+        background: #fafafa;
+        color: #666;
         font-size: 11px;
         font-weight: 600;
-        color: #888;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        background: #fafafa;
+        padding: 14px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    tbody tr {
+    .p-datatable-tbody > tr {
         transition: background 0.15s;
 
         &:hover {
-            background: rgba(99, 102, 241, 0.1);
+            background: #f8fafc !important;
         }
 
-        &.clickable-row {
-            cursor: pointer;
+        > td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    .p-datatable-paginator-bottom {
+        border: none;
+        background: transparent;
+        padding: 16px 0 0 0;
+    }
+
+    .p-sortable-column {
+        &:hover {
+            background: #f5f5f5 !important;
+        }
+
+        &.p-highlight {
+            background: #f0f0f0 !important;
+            color: #111 !important;
+        }
+    }
+
+    .p-sortable-column-icon {
+        color: #999;
+        margin-left: 4px;
+    }
+}
+
+// ============================================================================
+// PRIMENG PAGINATION
+// ============================================================================
+
+::ng-deep .p-paginator {
+    padding: 12px 0;
+    gap: 4px;
+
+    .p-paginator-first,
+    .p-paginator-prev,
+    .p-paginator-next,
+    .p-paginator-last {
+        min-width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        color: #666;
+        transition: all 0.15s;
+
+        &:hover:not(.p-disabled) {
+            background: #f5f5f5;
+            border-color: #cbd5e1;
+            color: #111;
+        }
+
+        &.p-disabled {
+            opacity: 0.5;
+        }
+    }
+
+    .p-paginator-pages {
+        .p-paginator-page {
+            min-width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s;
+
+            &:hover:not(.p-highlight) {
+                background: #f5f5f5;
+                border-color: #e2e8f0;
+            }
+
+            &.p-highlight {
+                background: #111;
+                color: white;
+                border-color: #111;
+            }
+        }
+    }
+
+    .p-paginator-current {
+        font-size: 13px;
+        color: #666;
+        padding: 0 12px;
+    }
+
+    .p-paginator-rpp-options {
+        margin-left: 8px;
+
+        .p-select {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+            min-width: 70px;
+            height: 32px;
+
+            &:hover {
+                border-color: #cbd5e1;
+            }
+
+            &.p-focus {
+                border-color: #111;
+                box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+            }
+
+            .p-select-label {
+                font-size: 13px;
+                color: #111;
+                padding: 6px 10px;
+            }
+
+            .p-select-dropdown {
+                width: 28px;
+                color: #666;
+            }
+        }
+    }
+}
+
+// Pagination dropdown panel
+::ng-deep .p-select-overlay {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+
+    .p-select-items {
+        padding: 4px;
+
+        .p-select-item {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #333;
+            transition: all 0.15s;
+
+            &:hover:not(.p-highlight) {
+                background: #f5f5f5;
+            }
+
+            &.p-highlight {
+                background: #111;
+                color: white;
+            }
+        }
+    }
+}
+
+// ============================================================================
+// PRIMENG MULTISELECT OVERLAY
+// ============================================================================
+
+::ng-deep .p-multiselect-overlay {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    min-width: 220px;
+    margin-top: 6px;
+
+    .p-multiselect-items-wrapper {
+        padding: 4px;
+        max-height: 280px;
+
+        .p-multiselect-items {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+
+            .p-multiselect-item {
+                padding: 8px 12px;
+                margin: 0;
+                border-radius: 6px;
+                font-size: 13px;
+                color: #333;
+                transition: all 0.15s;
+                gap: 10px;
+                display: flex;
+                align-items: center;
+
+                &:hover:not(.p-highlight) {
+                    background: #f5f5f5;
+                }
+
+                &.p-highlight {
+                    background: #f0f4ff;
+                    color: #111;
+                }
+
+                .p-checkbox {
+                    .p-checkbox-box {
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 4px;
+                        border: 1.5px solid #d1d5db;
+                        transition: all 0.15s;
+
+                        &.p-highlight {
+                            background: #111;
+                            border-color: #111;
+
+                            .p-checkbox-icon {
+                                color: white;
+                                font-size: 10px;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    .p-multiselect-empty-message {
+        padding: 16px;
+        text-align: center;
+        color: #999;
+        font-size: 13px;
+    }
+}
+
+// ============================================================================
+// EMPTY TABLE MESSAGE
+// ============================================================================
+
+.empty-table-message {
+    text-align: center;
+    padding: 48px !important;
+    color: #666;
+
+    i {
+        font-size: 32px;
+        margin-bottom: 12px;
+        display: block;
+        color: #999;
+    }
+
+    p {
+        margin: 0 0 16px;
+        font-size: 14px;
+    }
+
+    .btn-text {
+        background: transparent;
+        border: none;
+        color: #2563eb;
+        font-size: 14px;
+        cursor: pointer;
+        text-decoration: underline;
+
+        &:hover {
+            color: #1d4ed8;
         }
     }
 }

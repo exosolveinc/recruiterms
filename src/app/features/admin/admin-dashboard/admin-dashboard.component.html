@@ -53,119 +53,187 @@
       </div>
     </div>
 
-    <!-- Applications Section -->
+    <!-- Applications Table -->
     <div class="section applications-section">
-      <div class="section-header">
-        <h2>📋 All Applications ({{ filteredApplications.length }})</h2>
-        
-        <div class="filters">
-          <input 
-            type="text" 
-            [(ngModel)]="searchTerm" 
-            placeholder="Search jobs, companies, recruiters..."
-            class="search-input"
-          />
-          
-          <select [(ngModel)]="recruiterFilter" class="filter-select">
-            <option value="all">All Recruiters</option>
-            <option *ngFor="let r of recruiters" [value]="r.user_id">
-              {{ r.name }}
-            </option>
-          </select>
-          
-          <select [(ngModel)]="statusFilter" class="filter-select">
-            <option value="all">All Status</option>
-            <option value="applied">Applied</option>
-            <option value="screening">Screening</option>
-            <option value="interviewing">Interviewing</option>
-            <option value="offer">Offer</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-            <option value="withdrawn">Withdrawn</option>
-          </select>
-          
-          <select [(ngModel)]="platformFilter" class="filter-select">
-            <option value="all">All Platforms</option>
-            <option *ngFor="let p of platforms" [value]="p">{{ p }}</option>
-          </select>
-        </div>
-      </div>
+      <p-table
+        #dt
+        *ngIf="applications.length > 0"
+        [value]="applications"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 15, 25, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} applications"
+        [globalFilterFields]="['company_name', 'job_title', 'recruiter_name', 'recruiter_email', 'location', 'platform', 'status']"
+        dataKey="id"
+        [rowHover]="true"
+        styleClass="p-datatable-sm admin-table"
+        [tableStyle]="{ 'table-layout': 'fixed', 'width': '100%' }"
+      >
+        <!-- Caption / Search Bar -->
+        <ng-template pTemplate="caption">
+          <div class="table-header">
+            <div class="table-header-left">
+              <h2>All Applications</h2>
+              <span class="app-count">{{ applications.length }} total</span>
+            </div>
+            <div class="table-header-right">
+              <div class="search-box">
+                <i class="pi pi-search"></i>
+                <input
+                  type="text"
+                  [(ngModel)]="searchTerm"
+                  (input)="onGlobalFilter($event)"
+                  placeholder="Search applications..."
+                />
+              </div>
+              <button
+                class="clear-filters-btn"
+                (click)="clearFilters()"
+                *ngIf="hasActiveFilters"
+              >
+                <i class="pi pi-filter-slash"></i>
+                Clear
+              </button>
+            </div>
+          </div>
+        </ng-template>
 
-      <div class="table-container" *ngIf="filteredApplications.length > 0">
-        <table>
-          <thead>
-            <tr>
-              <th>DATE</th>
-              <th>RECRUITER</th>
-              <th>COMPANY</th>
-              <th>POSITION</th>
-              <th>LOCATION</th>
-              <th>SALARY</th>
-              <th>MATCH</th>
-              <th>STATUS</th>
-              <th>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let app of filteredApplications" (click)="viewJobDetails(app)" class="clickable-row">
-              <td class="date-cell">{{ formatDate(app.applied_at) }}</td>
-              
-              <td class="recruiter-cell">
-                <div class="recruiter-mini">
-                  <span class="recruiter-mini-avatar">{{ getInitials(app.recruiter_name || app.recruiter_email) }}</span>
-                  <div class="recruiter-mini-info">
-                    <span class="recruiter-mini-name">{{ app.recruiter_name || 'No Name' }}</span>
-                    <span class="recruiter-mini-email">{{ app.recruiter_email }}</span>
-                  </div>
+        <!-- Table Header -->
+        <ng-template pTemplate="header">
+          <tr>
+            <th (click)="onSort($event, 'applied_at')" class="sortable-col" style="width: 110px">
+              <div class="header-cell">
+                <span>Date</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('applied_at')"></i>
+              </div>
+            </th>
+            <th (click)="onSort($event, 'recruiter_name')" class="sortable-col" style="width: 200px">
+              <div class="header-cell">
+                <span>Recruiter</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('recruiter_name')"></i>
+                <div class="filter-wrapper" (click)="$event.stopPropagation()">
+                  <i class="pi pi-filter" [class.active]="selectedRecruiters.length > 0"></i>
+                  <span class="filter-count" *ngIf="selectedRecruiters.length > 0">{{ selectedRecruiters.length }}</span>
+                  <p-multiSelect
+                    [options]="recruiterOptions"
+                    [(ngModel)]="selectedRecruiters"
+                    (onChange)="onRecruiterFilterChange()"
+                    [showHeader]="false"
+                    [showToggleAll]="false"
+                    placeholder="Filter"
+                    styleClass="filter-multiselect"
+                    appendTo="body"
+                  ></p-multiSelect>
                 </div>
-              </td>
-              
-              <td class="company-cell">
-                <span class="company-name">{{ app.company_name || '—' }}</span>
-                <span class="platform-tag" *ngIf="app.platform">{{ app.platform }}</span>
-              </td>
-              
-              <td class="position-cell">
-                <span class="job-title">{{ app.job_title || '—' }}</span>
-                <span class="experience-level" *ngIf="app.experience_level">({{ app.experience_level }})</span>
-              </td>
-              
-              <td class="location-cell">
-                <span>{{ app.location || '—' }}</span>
-                <span class="work-type-badge" *ngIf="app.work_type" [class]="app.work_type.toLowerCase()">
-                  {{ app.work_type }}
-                </span>
-              </td>
-              
-              <td class="salary-cell">
-                <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
-              </td>
-              
-              <td class="match-cell">
-                <span class="match-score" *ngIf="app.match_score" [class]="getMatchClass(app.match_score)">
-                  {{ app.match_score }}%
-                </span>
-                <span *ngIf="!app.match_score" class="no-data">—</span>
-              </td>
-              
-              <td class="status-cell">
-                <span class="status-badge" [class]="getStatusClass(app.status)">
-                  {{ app.status | titlecase }}
-                </span>
-              </td>
-              
-              <td class="actions-cell">
-                <button class="btn-view" (click)="viewJobDetails(app); $event.stopPropagation()">
-                  👁️ View
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </div>
+            </th>
+            <th (click)="onSort($event, 'company_name')" class="sortable-col" style="width: 130px">
+              <div class="header-cell">
+                <span>Company</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('company_name')"></i>
+              </div>
+            </th>
+            <th (click)="onSort($event, 'job_title')" class="sortable-col" style="min-width: 180px">
+              <div class="header-cell">
+                <span>Position</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('job_title')"></i>
+              </div>
+            </th>
+            <th style="width: 140px">Location</th>
+            <th style="width: 110px">Salary</th>
+            <th (click)="onSort($event, 'match_score')" class="sortable-col" style="width: 90px">
+              <div class="header-cell">
+                <span>Match</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('match_score')"></i>
+              </div>
+            </th>
+            <th style="width: 120px">
+              <div class="header-cell">
+                <span>Status</span>
+                <div class="filter-wrapper" (click)="$event.stopPropagation()">
+                  <i class="pi pi-filter" [class.active]="selectedStatuses.length > 0"></i>
+                  <span class="filter-count" *ngIf="selectedStatuses.length > 0">{{ selectedStatuses.length }}</span>
+                  <p-multiSelect
+                    [options]="statusOptions"
+                    [(ngModel)]="selectedStatuses"
+                    (onChange)="onStatusFilterChange()"
+                    [showHeader]="false"
+                    [showToggleAll]="false"
+                    placeholder="Filter"
+                    styleClass="filter-multiselect"
+                    appendTo="body"
+                  ></p-multiSelect>
+                </div>
+              </div>
+            </th>
+            <th style="width: 120px; text-align: center">Actions</th>
+          </tr>
+        </ng-template>
 
-      <div class="empty-state" *ngIf="filteredApplications.length === 0">
-        <p>No applications match your filters.</p>
+        <!-- Table Body -->
+        <ng-template pTemplate="body" let-app>
+          <tr class="app-row" (click)="viewJobDetails(app)">
+            <td class="date-cell">{{ formatDate(app.applied_at) }}</td>
+            <td class="recruiter-cell">
+              <div class="recruiter-mini">
+                <span class="recruiter-mini-avatar">{{ getInitials(app.recruiter_name || app.recruiter_email) }}</span>
+                <div class="recruiter-mini-info">
+                  <span class="recruiter-mini-name">{{ app.recruiter_name || 'No Name' }}</span>
+                  <span class="recruiter-mini-email">{{ app.recruiter_email }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="company-cell">
+              <span class="company-name">{{ app.company_name || '—' }}</span>
+              <span class="platform-tag" *ngIf="app.platform">{{ app.platform }}</span>
+            </td>
+            <td class="position-cell">
+              <span class="job-title">{{ app.job_title || '—' }}</span>
+              <span class="experience-level" *ngIf="app.experience_level">({{ app.experience_level }})</span>
+            </td>
+            <td class="location-cell">
+              <span>{{ app.location || '—' }}</span>
+              <span class="work-type-badge" *ngIf="app.work_type" [class]="app.work_type.toLowerCase()">
+                {{ app.work_type }}
+              </span>
+            </td>
+            <td class="salary-cell">
+              <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
+            </td>
+            <td class="match-cell">
+              <span class="match-score" *ngIf="app.match_score" [class]="getMatchClass(app.match_score)">
+                {{ app.match_score }}%
+              </span>
+              <span *ngIf="!app.match_score" class="no-data">—</span>
+            </td>
+            <td class="status-cell">
+              <span class="status-badge" [class]="getStatusClass(app.status)">
+                {{ app.status | titlecase }}
+              </span>
+            </td>
+            <td class="actions-cell">
+              <button class="btn-view" (click)="viewJobDetails(app); $event.stopPropagation()">
+                <i class="pi pi-eye"></i>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
+
+        <!-- Empty Message -->
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="9" class="empty-table-message">
+              <i class="pi pi-search"></i>
+              <p>No applications match your filters.</p>
+              <button class="btn-text" (click)="clearFilters()">Clear Filters</button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+
+      <div class="empty-state" *ngIf="applications.length === 0">
+        <p>No applications in your organization yet.</p>
       </div>
     </div>
   </main>
@@ -174,8 +242,8 @@
   <div class="modal-overlay" *ngIf="showJobModal" (click)="closeJobModal()">
     <div class="modal job-modal job-modal-large" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>📋 Job Details</h3>
-        <button class="close-btn" (click)="closeJobModal()">✕</button>
+        <h3>Job Details</h3>
+        <button class="close-btn" (click)="closeJobModal()">&#x2715;</button>
       </div>
 
       <div class="modal-body" *ngIf="!loadingJobDetails && selectedJob">
@@ -187,7 +255,7 @@
             <span class="platform-badge" *ngIf="selectedJob.platform">{{ selectedJob.platform }}</span>
           </div>
           <div class="job-meta">
-            <span *ngIf="selectedJob.location">📍 {{ selectedJob.location }}</span>
+            <span *ngIf="selectedJob.location">{{ selectedJob.location }}</span>
             <span *ngIf="selectedJob.work_type" class="work-badge">{{ selectedJob.work_type }}</span>
             <span *ngIf="selectedJob.employment_type">{{ selectedJob.employment_type }}</span>
             <span *ngIf="selectedJob.experience_level" class="exp-badge">{{ selectedJob.experience_level }}</span>
@@ -266,11 +334,11 @@
             <div class="detail-section" *ngIf="selectedJob.required_education || selectedJob.required_certifications?.length">
               <h4>Education & Certifications</h4>
               <p *ngIf="selectedJob.required_education" class="education-text">
-                🎓 {{ selectedJob.required_education }}
+                {{ selectedJob.required_education }}
               </p>
               <div class="certifications" *ngIf="selectedJob.required_certifications?.length">
                 <span class="cert-tag" *ngFor="let cert of selectedJob.required_certifications">
-                  📜 {{ cert }}
+                  {{ cert }}
                 </span>
               </div>
             </div>
@@ -293,7 +361,7 @@
               <h4>Resume Used</h4>
               <div class="resume-preview">
                 <div class="resume-info">
-                  <span class="resume-name">📄 {{ selectedResume.candidate_name || selectedResume.file_name }}</span>
+                  <span class="resume-name">{{ selectedResume.candidate_name || selectedResume.file_name }}</span>
                   <span class="resume-title" *ngIf="selectedResume.current_title">{{ selectedResume.current_title }}</span>
                 </div>
                 <div class="resume-skills" *ngIf="selectedResume.skills?.length">
@@ -316,7 +384,7 @@
                   <strong>Size:</strong> {{ selectedJob.company_size }}
                 </p>
                 <a *ngIf="selectedJob.company_website" [href]="selectedJob.company_website" target="_blank" class="company-link">
-                  🌐 {{ selectedJob.company_website }}
+                  {{ selectedJob.company_website }}
                 </a>
               </div>
             </div>
@@ -359,13 +427,13 @@
                    [href]="selectedJob.source_url"
                    target="_blank"
                    class="source-link">
-                  🔗 View Original Posting
+                  View Original Posting
                 </a>
                 <a *ngIf="selectedJob.application_url"
                    [href]="selectedJob.application_url"
                    target="_blank"
                    class="apply-link">
-                  📝 Apply Here
+                  Apply Here
                 </a>
                 <span *ngIf="!selectedJob.source_url || selectedJob.source_url.startsWith('manual')" class="manual-entry">
                   Manually entered
