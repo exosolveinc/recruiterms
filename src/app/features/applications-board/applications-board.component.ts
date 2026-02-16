@@ -772,12 +772,19 @@ export class ApplicationsBoardComponent implements OnInit {
     };
   }
 
-  getGroupStats(apps: ApplicationWithInterview[]): { extracted: number; applied: number; interviewing: number; offer: number } {
+  getGroupStats(apps: ApplicationWithInterview[]): {
+    extracted: number;
+    applied: number;
+    interviewing: number;
+    offer: number;
+    screening: number
+  } {
     return {
       extracted: apps.filter(a => a.status === 'extracted').length,
       applied: apps.filter(a => a.status === 'applied').length,
       interviewing: apps.filter(a => a.status === 'interviewing').length,
       offer: apps.filter(a => a.status === 'offer' || a.status === 'accepted').length,
+      screening: apps.filter(a => a.status === 'screening').length,
     };
   }
 

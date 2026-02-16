@@ -364,6 +364,9 @@
                 @if (getGroupStats(group.applications).offer > 0) {
                   <span class="stat offer">{{ getGroupStats(group.applications).offer }} Offer</span>
                 }
+                @if (getGroupStats(group.applications).screening > 0) {
+                  <span class="stat screening">{{ getGroupStats(group.applications).screening }} Screening</span>
+                }
               </div>
             </button>
           </div>
