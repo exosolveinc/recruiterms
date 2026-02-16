@@ -39,8 +39,7 @@
 
 // Content
 .settings-content {
-  max-width: 960px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 // Header
@@ -133,7 +132,7 @@
 
 .profile-grid {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: minmax(280px, 340px) 1fr;
   gap: 20px;
 }
 
@@ -538,7 +537,7 @@
 // ============================================================================
 
 .notifications-card {
-  max-width: 640px;
+  max-width: 720px;
 }
 
 .notif-list {
