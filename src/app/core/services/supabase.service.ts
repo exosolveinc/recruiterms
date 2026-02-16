@@ -1710,6 +1710,31 @@ export class SupabaseService {
     return data as NotificationPreferences;
   }
 
+  // ============================================================================
+  // APPLICATION BOARD INSIGHTS (cron-generated, read-only)
+  // ============================================================================
+
+  async getTodayBoardInsight(): Promise<string | null> {
+    const user = this._user.value;
+    if (!user) return null;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data, error } = await this.supabase
+      .from('application_board_insights')
+      .select('content')
+      .eq('user_id', user.id)
+      .eq('insight_date', today)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Failed to fetch board insight:', error);
+      return null;
+    }
+
+    return data?.content || null;
+  }
+
   async getUserRecentActivity(limit = 5): Promise<ActivityLog[]> {
     const user = this._user.value;
     if (!user) return [];
