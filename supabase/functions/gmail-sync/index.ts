@@ -135,7 +135,9 @@ async function refreshTokenIfNeeded(
   });
 
   if (!tokenResponse.ok) {
-    throw new Error("Failed to refresh token");
+    const errorBody = await tokenResponse.text();
+    console.error("Token refresh failed:", tokenResponse.status, errorBody);
+    throw new Error(`Failed to refresh token: ${errorBody}`);
   }
 
   const tokens = await tokenResponse.json();

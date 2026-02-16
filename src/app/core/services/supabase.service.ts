@@ -1477,13 +1477,14 @@ export class SupabaseService {
     }
 
     // User doesn't exist yet - create an invitation
+    const dbRole = role === 'user' ? 'recruiter' : role;
     const { error } = await this.supabase
       .from('organization_invites')
       .insert({
         organization_id: profile.organization_id,
         email: email.toLowerCase(),
         full_name: fullName,
-        role: role,
+        role: dbRole,
         invited_by: profile.id,
         status: 'pending'
       });
