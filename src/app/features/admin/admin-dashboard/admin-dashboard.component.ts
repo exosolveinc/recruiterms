@@ -6,18 +6,6 @@ import { Job, Profile, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
-interface RecruiterStats {
-  user_id: string;
-  full_name: string;
-  email: string;
-  avatar_url: string | null;
-  role: string;
-  total_applications: number;
-  interviews: number;
-  offers: number;
-  last_active_at: string | null;
-}
-
 interface AdminApplication {
   id: string;
   user_id: string;
@@ -39,12 +27,6 @@ interface AdminApplication {
   applied_at: string;
 }
 
-interface NewUserForm {
-  email: string;
-  fullName: string;
-  role: 'user' | 'admin';
-}
-
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
@@ -58,7 +40,6 @@ export class AdminDashboardComponent implements OnInit {
 
   // Stats
   stats = {
-    totalRecruiters: 0,
     totalApplications: 0,
     totalInterviews: 0,
     totalOffers: 0,
@@ -66,7 +47,6 @@ export class AdminDashboardComponent implements OnInit {
   };
 
   // Data
-  recruiters: RecruiterStats[] = [];
   applications: AdminApplication[] = [];
 
   // Filters
@@ -83,24 +63,7 @@ export class AdminDashboardComponent implements OnInit {
 
   // Unique values for filters
   platforms: string[] = [];
-
-  // Add User Modal
-  showAddUserModal = false;
-  addingUser = false;
-  addUserError = '';
-  addUserSuccess = '';
-  newUser: NewUserForm = {
-    email: '',
-    fullName: '',
-    role: 'user'
-  };
-
-  // Edit User Modal
-  showEditUserModal = false;
-  editingUser = false;
-  selectedRecruiter: RecruiterStats | null = null;
-  editUserError = '';
-
+  recruiters: { user_id: string; name: string }[] = [];
 
   constructor(
     private supabase: SupabaseService,
@@ -129,20 +92,12 @@ export class AdminDashboardComponent implements OnInit {
 
   async loadData() {
     try {
-      await Promise.all([
-        this.loadRecruiters(),
-        this.loadApplications()
-      ]);
+      await this.loadApplications();
       this.calculateStats();
       this.extractFilterOptions();
     } catch (err) {
       console.error('Failed to load admin data:', err);
     }
-  }
-
-  async loadRecruiters() {
-    const data = await this.supabase.getAdminRecruiterStats();
-    this.recruiters = data;
   }
 
   async loadApplications() {
@@ -151,7 +106,6 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   calculateStats() {
-    this.stats.totalRecruiters = this.recruiters.length;
     this.stats.totalApplications = this.applications.length;
     this.stats.totalInterviews = this.applications.filter(a =>
       ['screening', 'interviewing', 'offer', 'accepted'].includes(a.status)
@@ -172,6 +126,18 @@ export class AdminDashboardComponent implements OnInit {
         .map(a => a.platform)
         .filter((p): p is string => !!p)
     )];
+
+    const seen = new Set<string>();
+    this.recruiters = [];
+    for (const app of this.applications) {
+      if (!seen.has(app.user_id)) {
+        seen.add(app.user_id);
+        this.recruiters.push({
+          user_id: app.user_id,
+          name: app.recruiter_name || app.recruiter_email
+        });
+      }
+    }
   }
 
   get filteredApplications(): AdminApplication[] {
@@ -282,114 +248,4 @@ export class AdminDashboardComponent implements OnInit {
     this.router.navigate(['/dashboard']);
   }
 
-  openAddUserModal() {
-    this.showAddUserModal = true;
-    this.addUserError = '';
-    this.addUserSuccess = '';
-    this.newUser = {
-      email: '',
-      fullName: '',
-      role: 'user'
-    };
-  }
-
-  closeAddUserModal() {
-    this.showAddUserModal = false;
-    this.addUserError = '';
-    this.addUserSuccess = '';
-  }
-
-  async addUser() {
-    if (!this.newUser.email || !this.newUser.fullName) {
-      this.addUserError = 'Please fill in all fields';
-      return;
-    }
-
-    this.addingUser = true;
-    this.addUserError = '';
-    this.addUserSuccess = '';
-
-    try {
-      await this.supabase.inviteUserToOrganization(
-        this.newUser.email,
-        this.newUser.fullName,
-        this.newUser.role
-      );
-
-      // Updated message - no email is sent automatically
-      this.addUserSuccess = `✓ Invitation created for ${this.newUser.email}!\n\nPlease tell them to sign up with this email address.`;
-
-      // Refresh recruiters list after 3 seconds
-      setTimeout(async () => {
-        await this.loadRecruiters();
-        this.calculateStats();
-        this.closeAddUserModal();
-      }, 3000);
-
-    } catch (err: any) {
-      console.error('Add user error:', err);
-      this.addUserError = err.message || 'Failed to add user';
-    } finally {
-      this.addingUser = false;
-    }
-  }
-
-  // ============================================================================
-  // EDIT USER ROLE
-  // ============================================================================
-
-  openEditUserModal(recruiter: RecruiterStats) {
-    this.selectedRecruiter = { ...recruiter };
-    this.showEditUserModal = true;
-    this.editUserError = '';
-  }
-
-  closeEditUserModal() {
-    this.showEditUserModal = false;
-    this.selectedRecruiter = null;
-    this.editUserError = '';
-  }
-
-  async updateUserRole() {
-    if (!this.selectedRecruiter) return;
-
-    this.editingUser = true;
-    this.editUserError = '';
-
-    try {
-      await this.supabase.updateUserRole(
-        this.selectedRecruiter.user_id,
-        this.selectedRecruiter.role as 'admin' | 'recruiter'
-      );
-
-      // Refresh list
-      await this.loadRecruiters();
-      this.closeEditUserModal();
-
-    } catch (err: any) {
-      console.error('Update role error:', err);
-      this.editUserError = err.message || 'Failed to update role';
-    } finally {
-      this.editingUser = false;
-    }
-  }
-
-  async removeUser(recruiter: RecruiterStats) {
-    if (recruiter.user_id === this.profile?.id) {
-      alert("You cannot remove yourself!");
-      return;
-    }
-
-    const confirmMsg = `Remove ${recruiter.full_name || recruiter.email} from the organization?\n\nThis will revoke their access but won't delete their account.`;
-
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      await this.supabase.removeUserFromOrganization(recruiter.user_id);
-      await this.loadRecruiters();
-      this.calculateStats();
-    } catch (err: any) {
-      alert('Failed to remove user: ' + err.message);
-    }
-  }
 }
