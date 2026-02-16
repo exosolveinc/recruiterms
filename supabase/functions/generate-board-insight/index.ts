@@ -230,12 +230,131 @@ AVERAGE MATCH SCORE: ${avgMatchScore > 0 ? avgMatchScore + "%" : "Not available"
       }
     }
 
+    // ── Phase 2: Job Feed Insights (per candidate) ──
+
+    let feedGenerated = 0;
+
+    // Get all unique user+candidate combos from job_feed
+    const { data: feedEntries } = await supabase
+      .from("job_feed")
+      .select("user_id, candidate_id")
+      .not("candidate_id", "is", null);
+
+    const candidatePairs = new Map<string, { userId: string; candidateId: string }>();
+    for (const entry of feedEntries || []) {
+      const key = `${entry.user_id}|${entry.candidate_id}`;
+      if (!candidatePairs.has(key)) {
+        candidatePairs.set(key, { userId: entry.user_id, candidateId: entry.candidate_id });
+      }
+    }
+
+    for (const { userId, candidateId } of candidatePairs.values()) {
+      try {
+        // Skip if exists for today
+        const { data: existingFeed } = await supabase
+          .from("job_feed_insights")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("candidate_id", candidateId)
+          .eq("insight_date", today)
+          .maybeSingle();
+
+        if (existingFeed) continue;
+
+        // Get job feed stats for this candidate
+        const { data: feedJobs } = await supabase
+          .from("job_feed")
+          .select("match_score, matching_skills, missing_skills, company, title, source_platform, status, discovered_at")
+          .eq("user_id", userId)
+          .eq("candidate_id", candidateId);
+
+        const allFeedJobs = feedJobs || [];
+        if (allFeedJobs.length === 0) continue;
+
+        const totalJobs = allFeedJobs.length;
+        const analyzedJobs = allFeedJobs.filter((j: any) => j.match_score !== null);
+        const avgFeedMatch = analyzedJobs.length > 0
+          ? Math.round(analyzedJobs.reduce((sum: number, j: any) => sum + (j.match_score || 0), 0) / analyzedJobs.length)
+          : 0;
+        const highMatchJobs = analyzedJobs.filter((j: any) => j.match_score >= 80).length;
+        const newJobs = allFeedJobs.filter((j: any) => j.status === "new").length;
+
+        // Top companies
+        const feedCompanyCounts = new Map<string, number>();
+        for (const j of allFeedJobs) {
+          if (j.company) feedCompanyCounts.set(j.company, (feedCompanyCounts.get(j.company) || 0) + 1);
+        }
+        const feedTopCompanies = [...feedCompanyCounts.entries()]
+          .sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c]) => c);
+
+        // Skill gaps from feed
+        const feedMissingCounts = new Map<string, number>();
+        const feedMatchingCounts = new Map<string, number>();
+        for (const j of allFeedJobs) {
+          if (j.missing_skills && Array.isArray(j.missing_skills)) {
+            for (const s of j.missing_skills) feedMissingCounts.set(s, (feedMissingCounts.get(s) || 0) + 1);
+          }
+          if (j.matching_skills && Array.isArray(j.matching_skills)) {
+            for (const s of j.matching_skills) feedMatchingCounts.set(s, (feedMatchingCounts.get(s) || 0) + 1);
+          }
+        }
+        const feedTopMissing = [...feedMissingCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s);
+        const feedTopMatching = [...feedMatchingCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s]) => s);
+
+        // Sources
+        const sourceCounts = new Map<string, number>();
+        for (const j of allFeedJobs) {
+          if (j.source_platform) sourceCounts.set(j.source_platform, (sourceCounts.get(j.source_platform) || 0) + 1);
+        }
+        const topSources = [...sourceCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([s, c]) => `${s}(${c})`);
+
+        const feedSystemPrompt = `You are a job market advisor. Write exactly 2-3 SHORT sentences (under 40 words total). Analyze this candidate's job feed — highlight the most critical pattern (skill gap, strong matches, or market trend), reference one or two numbers, then suggest one specific action. No markdown, no bullets. Be direct.`;
+
+        const feedUserPrompt = `JOB FEED SUMMARY:
+Total jobs: ${totalJobs} | New unseen: ${newJobs} | High match (80%+): ${highMatchJobs}
+Average match score: ${avgFeedMatch > 0 ? avgFeedMatch + "%" : "N/A"}
+Sources: ${topSources.length > 0 ? topSources.join(", ") : "N/A"}
+Top companies hiring: ${feedTopCompanies.length > 0 ? feedTopCompanies.join(", ") : "N/A"}
+Strongest skills: ${feedTopMatching.length > 0 ? feedTopMatching.join(", ") : "N/A"}
+Skill gaps (frequently missing): ${feedTopMissing.length > 0 ? feedTopMissing.join(", ") : "N/A"}`;
+
+        const feedResponse = await anthropic.messages.create({
+          model: "claude-3-haiku-20240307",
+          max_tokens: 120,
+          system: feedSystemPrompt,
+          messages: [{ role: "user", content: feedUserPrompt }],
+        });
+
+        const feedContent = feedResponse.content[0];
+        if (feedContent.type !== "text") continue;
+
+        await supabase
+          .from("job_feed_insights")
+          .upsert(
+            {
+              user_id: userId,
+              candidate_id: candidateId,
+              content: feedContent.text,
+              insight_date: today,
+              generated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,candidate_id,insight_date" }
+          );
+
+        feedGenerated++;
+      } catch (feedError: any) {
+        console.error(`Error generating feed insight for candidate ${candidateId}:`, feedError.message);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        generated,
-        skipped,
+        board_generated: generated,
+        board_skipped: skipped,
+        feed_generated: feedGenerated,
         total_users: uniqueUserIds.length,
+        total_candidates: candidatePairs.size,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

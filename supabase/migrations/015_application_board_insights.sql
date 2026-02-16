@@ -48,6 +48,51 @@ CREATE TRIGGER update_application_board_insights_timestamp
   EXECUTE FUNCTION update_application_board_insights_updated_at();
 
 -- ============================================================================
+-- Job Feed AI Insights (daily cron-generated, per candidate)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS job_feed_insights (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  candidate_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  insight_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  generated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- One insight per user per candidate per day
+  UNIQUE(user_id, candidate_id, insight_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_feed_insights_user ON job_feed_insights(user_id);
+CREATE INDEX IF NOT EXISTS idx_feed_insights_candidate ON job_feed_insights(candidate_id);
+
+ALTER TABLE job_feed_insights ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own feed insights"
+  ON job_feed_insights FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Service role can manage all feed insights"
+  ON job_feed_insights FOR ALL
+  USING (auth.jwt() ->> 'role' = 'service_role');
+
+CREATE OR REPLACE FUNCTION update_job_feed_insights_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_job_feed_insights_timestamp ON job_feed_insights;
+CREATE TRIGGER update_job_feed_insights_timestamp
+  BEFORE UPDATE ON job_feed_insights
+  FOR EACH ROW
+  EXECUTE FUNCTION update_job_feed_insights_updated_at();
+
+-- ============================================================================
 -- pg_cron: Schedule daily insight generation at 6:00 AM UTC
 -- ============================================================================
 
