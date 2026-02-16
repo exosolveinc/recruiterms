@@ -48,6 +48,11 @@ export class ApplicationsBoardComponent implements OnInit {
   interviews = signal<ScheduledInterview[]>([]);
   resumes = signal<Resume[]>([]);
 
+  // AI Insight (cron-generated, read-only)
+  boardInsight = signal<string | null>(null);
+  insightLoading = signal(false);
+  insightDismissed = signal(false);
+
   // View mode: 'kanban' or 'table'
   viewMode = signal<'table' | 'kanban'>('kanban');
 
@@ -191,7 +196,25 @@ export class ApplicationsBoardComponent implements OnInit {
       this.showError('Failed to load applications');
     } finally {
       this.loading.set(false);
+      // Non-blocking: load today's AI insight
+      this.loadBoardInsight();
     }
+  }
+
+  async loadBoardInsight(): Promise<void> {
+    this.insightLoading.set(true);
+    try {
+      const content = await this.supabase.getTodayBoardInsight();
+      this.boardInsight.set(content);
+    } catch {
+      // Silently fail - insight is non-critical
+    } finally {
+      this.insightLoading.set(false);
+    }
+  }
+
+  dismissInsight(): void {
+    this.insightDismissed.set(true);
   }
 
   async loadInterviews(): Promise<void> {
@@ -749,12 +772,19 @@ export class ApplicationsBoardComponent implements OnInit {
     };
   }
 
-  getGroupStats(apps: ApplicationWithInterview[]): { extracted: number; applied: number; interviewing: number; offer: number } {
+  getGroupStats(apps: ApplicationWithInterview[]): {
+    extracted: number;
+    applied: number;
+    interviewing: number;
+    offer: number;
+    screening: number
+  } {
     return {
       extracted: apps.filter(a => a.status === 'extracted').length,
       applied: apps.filter(a => a.status === 'applied').length,
       interviewing: apps.filter(a => a.status === 'interviewing').length,
       offer: apps.filter(a => a.status === 'offer' || a.status === 'accepted').length,
+      screening: apps.filter(a => a.status === 'screening').length,
     };
   }
 

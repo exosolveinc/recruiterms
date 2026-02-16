@@ -241,6 +241,9 @@
               dataKey="id"
               [rowHover]="true"
               [expandedRowKeys]="expandedRows"
+              [sortField]="tableSortField"
+              [sortOrder]="tableSortOrder"
+              (onPage)="onPageChange($event)"
               styleClass="p-datatable-sm jobs-table"
               [tableStyle]="{ 'table-layout': 'fixed', 'width': '100%' }"
             >

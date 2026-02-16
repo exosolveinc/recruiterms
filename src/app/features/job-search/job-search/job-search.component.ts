@@ -90,7 +90,7 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   currentPage = 1;
   totalJobs = 0;
   totalPages = 0;
-  resultsPerPage = 20;
+  resultsPerPage = 100;
 
   // Selected job for preview
   selectedJob: JobWithMatch | null = null;
@@ -154,8 +154,8 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   // PrimeNG Table State
   @ViewChild('searchTable') searchTable!: Table;
   expandedRows: { [key: string]: boolean } = {};
-  tableSortField = '';
-  tableSortOrder = 0;
+  tableSortField = 'match_score';
+  tableSortOrder = -1;
   tableSearchTerm = '';
 
   // Source column filter
@@ -613,21 +613,32 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     }
   }
 
+  private getCurrentPageJobs(): JobWithMatch[] {
+    const rows = this.searchTable?.rows || 10;
+    const first = this.searchTable?.first || 0;
+    return this.filteredJobs.slice(first, first + rows);
+  }
+
+  onPageChange(event: any) {
+    // Analyze jobs on the new page after pagination
+    if (this.selectedResumeId && this.jobs.length > 0) {
+      setTimeout(() => this.startBackgroundAnalysis(), 0);
+    }
+  }
+
   async startBackgroundAnalysis() {
     if (!this.selectedResume || this.jobs.length === 0) return;
 
-    // Unsubscribe from previous session
-    this.cleanupRealtimeChannel();
-
-    const sessionId = crypto.randomUUID();
-    this.analysisSessionId = sessionId;
+    // Only analyze jobs visible on the current page
+    const pageJobs = this.getCurrentPageJobs();
+    if (pageJobs.length === 0) return;
 
     // Restore any completed results from DB before determining what needs analysis
     try {
       const dbResults = await this.supabase.getSearchResultsByResume(this.selectedResumeId);
       const resultsMap = new Map(dbResults.map(r => [r.external_job_id, r]));
 
-      for (const job of this.jobs) {
+      for (const job of pageJobs) {
         if (!job.analyzed && !job.analyzing) {
           const result = resultsMap.get(job.id);
           if (result) {
@@ -642,8 +653,14 @@ export class JobSearchComponent implements OnInit, OnDestroy {
       console.error('Failed to check DB for existing analysis:', e);
     }
 
-    const unanalyzed = this.jobs.filter(j => !j.analyzed && !j.analyzing);
+    const unanalyzed = pageJobs.filter(j => !j.analyzed && !j.analyzing);
     if (unanalyzed.length === 0) return;
+
+    // Unsubscribe from previous session
+    this.cleanupRealtimeChannel();
+
+    const sessionId = crypto.randomUUID();
+    this.analysisSessionId = sessionId;
 
     this.analysisInProgress = true;
     this.totalToAnalyze = unanalyzed.length;

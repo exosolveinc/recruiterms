@@ -65,6 +65,26 @@
     </div>
   </div>
 
+  <!-- AI Daily Insight Banner -->
+  @if (!insightDismissed() && (insightLoading() || boardInsight())) {
+    <div class="insight-banner">
+      <div class="insight-icon"><i class="fi fi-rr-bulb"></i></div>
+      @if (insightLoading()) {
+        <div class="insight-content"><div class="insight-skeleton"></div></div>
+      } @else {
+        <div class="insight-content">
+          <span class="insight-label">AI Daily Insight</span>
+          <p class="insight-text">{{ boardInsight() }}</p>
+        </div>
+      }
+      <div class="insight-actions">
+        <button class="insight-btn" (click)="dismissInsight()">
+          <i class="fi fi-rr-cross-small"></i>
+        </button>
+      </div>
+    </div>
+  }
+
   <!-- Loading State -->
   @if (loading()) {
     <div class="loading-container">
@@ -343,6 +363,9 @@
                 }
                 @if (getGroupStats(group.applications).offer > 0) {
                   <span class="stat offer">{{ getGroupStats(group.applications).offer }} Offer</span>
+                }
+                @if (getGroupStats(group.applications).screening > 0) {
+                  <span class="stat screening">{{ getGroupStats(group.applications).screening }} Screening</span>
                 }
               </div>
             </button>

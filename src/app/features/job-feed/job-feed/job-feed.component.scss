@@ -25,11 +25,114 @@
   }
 }
 
+// AI Insight Banner
+.insight-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #3b82f6;
+  border-radius: 12px;
+
+  .insight-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #dbeafe;
+    border-radius: 8px;
+    color: #2563eb;
+    font-size: 16px;
+  }
+
+  .insight-content {
+    flex: 1;
+    min-width: 0;
+
+    .insight-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #2563eb;
+      margin-bottom: 4px;
+    }
+
+    .insight-text {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #1e3a5f;
+    }
+
+    .insight-skeleton {
+      height: 16px;
+      width: 80%;
+      background: linear-gradient(90deg, #dbeafe 25%, #bfdbfe 50%, #dbeafe 75%);
+      background-size: 200% 100%;
+      border-radius: 4px;
+      animation: shimmer 1.5s infinite;
+    }
+  }
+
+  .insight-actions {
+    flex-shrink: 0;
+
+    .insight-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      transition: all 0.15s;
+
+      &:hover {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+    }
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 // Main Content
 .main-content {
   max-width: 1400px;
   margin: 0 auto;
   padding: 32px;
+}
+
+// Header
+.header {
+  margin-bottom: 24px;
+
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 4px 0;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+  }
 }
 
 // ============================================================================

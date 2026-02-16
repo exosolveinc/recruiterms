@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, effect, HostListener, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -56,6 +56,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     const candidateId = this.appState.selectedCandidateId();
     if (candidateId) {
       this.jobFeedDbService.loadJobsForCandidate(candidateId);
+      this.loadFeedInsight(candidateId);
     }
   });
 
@@ -79,6 +80,11 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   // Skills expand state (tracks which jobs have skills expanded)
   skillsExpandedFor = new Set<string>();
+
+  // AI Insight (cron-generated, read-only)
+  feedInsight = signal<string | null>(null);
+  insightLoading = signal(false);
+  insightDismissed = signal(false);
 
   constructor(
     private supabase: SupabaseService,
@@ -316,5 +322,22 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     if (this.selectedCandidateId) {
       this.jobFeedDbService.reanalyzeForResume(this.selectedCandidateId, resumeId);
     }
+  }
+
+  async loadFeedInsight(candidateId: string): Promise<void> {
+    this.insightLoading.set(true);
+    this.insightDismissed.set(false);
+    try {
+      const content = await this.supabase.getTodayJobFeedInsight(candidateId);
+      this.feedInsight.set(content);
+    } catch {
+      // Silently fail
+    } finally {
+      this.insightLoading.set(false);
+    }
+  }
+
+  dismissInsight(): void {
+    this.insightDismissed.set(true);
   }
 }
