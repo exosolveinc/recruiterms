@@ -24,13 +24,6 @@
     <!-- Stats Row -->
     <div class="stats-row">
       <div class="stat-card">
-        <div class="stat-icon blue">👥</div>
-        <div class="stat-info">
-          <span class="stat-value">{{ stats.totalRecruiters }}</span>
-          <span class="stat-label">Recruiters</span>
-        </div>
-      </div>
-      <div class="stat-card">
         <div class="stat-icon purple">📋</div>
         <div class="stat-info">
           <span class="stat-value">{{ stats.totalApplications }}</span>
@@ -60,345 +53,197 @@
       </div>
     </div>
 
-    <!-- Recruiters Section -->
-    <div class="section recruiters-section">
-      <div class="section-header">
-        <h2>👥 Team Members ({{ recruiters.length }})</h2>
-        <button class="btn-add-user" (click)="openAddUserModal()">
-          ➕ Add User
-        </button>
-      </div>
-      
-      <div class="recruiters-grid" *ngIf="recruiters.length > 0">
-        <div class="recruiter-card" *ngFor="let recruiter of recruiters">
-          <div class="recruiter-header">
-            <div class="recruiter-avatar">
-              <img *ngIf="recruiter.avatar_url" [src]="recruiter.avatar_url" alt="">
-              <span *ngIf="!recruiter.avatar_url">{{ getInitials(recruiter.full_name || recruiter.email) }}</span>
-            </div>
-            <span class="role-badge" [class.admin]="recruiter.role === 'admin'">
-              {{ recruiter.role || 'Recruiter' }}
-            </span>
-          </div>
-          
-          <div class="recruiter-info">
-            <span class="recruiter-name">{{ recruiter.full_name || 'No Name' }}</span>
-            <span class="recruiter-email">{{ recruiter.email }}</span>
-          </div>
-          
-          <div class="recruiter-stats">
-            <div class="mini-stat">
-              <span class="mini-value">{{ recruiter.total_applications }}</span>
-              <span class="mini-label">Apps</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-value">{{ recruiter.interviews }}</span>
-              <span class="mini-label">Interviews</span>
-            </div>
-            <div class="mini-stat">
-              <span class="mini-value">{{ recruiter.offers }}</span>
-              <span class="mini-label">Offers</span>
-            </div>
-          </div>
-          
-          <div class="recruiter-actions">
-            <button 
-              class="btn-filter-recruiter"
-              (click)="recruiterFilter = recruiter.user_id"
-              [class.active]="recruiterFilter === recruiter.user_id"
-            >
-              View Apps
-            </button>
-            <button 
-              class="btn-edit" 
-              (click)="openEditUserModal(recruiter)"
-              title="Edit role"
-            >
-              ✏️
-            </button>
-            <button 
-              class="btn-remove" 
-              (click)="removeUser(recruiter)"
-              title="Remove from organization"
-              *ngIf="recruiter.user_id !== profile?.id"
-            >
-              🗑️
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="empty-state" *ngIf="recruiters.length === 0">
-        <p>No team members in your organization yet.</p>
-        <button class="btn-add-first" (click)="openAddUserModal()">
-          ➕ Add Your First Team Member
-        </button>
-      </div>
-    </div>
-
-    <!-- Applications Section -->
+    <!-- Applications Table -->
     <div class="section applications-section">
-      <div class="section-header">
-        <h2>📋 All Applications ({{ filteredApplications.length }})</h2>
-        
-        <div class="filters">
-          <input 
-            type="text" 
-            [(ngModel)]="searchTerm" 
-            placeholder="Search jobs, companies, recruiters..."
-            class="search-input"
-          />
-          
-          <select [(ngModel)]="recruiterFilter" class="filter-select">
-            <option value="all">All Recruiters</option>
-            <option *ngFor="let r of recruiters" [value]="r.user_id">
-              {{ r.full_name || r.email }}
-            </option>
-          </select>
-          
-          <select [(ngModel)]="statusFilter" class="filter-select">
-            <option value="all">All Status</option>
-            <option value="applied">Applied</option>
-            <option value="screening">Screening</option>
-            <option value="interviewing">Interviewing</option>
-            <option value="offer">Offer</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-            <option value="withdrawn">Withdrawn</option>
-          </select>
-          
-          <select [(ngModel)]="platformFilter" class="filter-select">
-            <option value="all">All Platforms</option>
-            <option *ngFor="let p of platforms" [value]="p">{{ p }}</option>
-          </select>
-        </div>
-      </div>
+      <p-table
+        #dt
+        *ngIf="applications.length > 0"
+        [value]="applications"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 15, 25, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} applications"
+        [globalFilterFields]="['company_name', 'job_title', 'recruiter_name', 'recruiter_email', 'location', 'platform', 'status']"
+        dataKey="id"
+        [rowHover]="true"
+        styleClass="p-datatable-sm admin-table"
+        [tableStyle]="{ 'table-layout': 'fixed', 'width': '100%' }"
+      >
+        <!-- Caption / Search Bar -->
+        <ng-template pTemplate="caption">
+          <div class="table-header">
+            <div class="table-header-left">
+              <h2>All Applications</h2>
+              <span class="app-count">{{ applications.length }} total</span>
+            </div>
+            <div class="table-header-right">
+              <div class="search-box">
+                <i class="pi pi-search"></i>
+                <input
+                  type="text"
+                  [(ngModel)]="searchTerm"
+                  (input)="onGlobalFilter($event)"
+                  placeholder="Search applications..."
+                />
+              </div>
+              <button
+                class="clear-filters-btn"
+                (click)="clearFilters()"
+                *ngIf="hasActiveFilters"
+              >
+                <i class="pi pi-filter-slash"></i>
+                Clear
+              </button>
+            </div>
+          </div>
+        </ng-template>
 
-      <div class="table-container" *ngIf="filteredApplications.length > 0">
-        <table>
-          <thead>
-            <tr>
-              <th>DATE</th>
-              <th>RECRUITER</th>
-              <th>COMPANY</th>
-              <th>POSITION</th>
-              <th>LOCATION</th>
-              <th>SALARY</th>
-              <th>MATCH</th>
-              <th>STATUS</th>
-              <th>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let app of filteredApplications" (click)="viewJobDetails(app)" class="clickable-row">
-              <td class="date-cell">{{ formatDate(app.applied_at) }}</td>
-              
-              <td class="recruiter-cell">
-                <div class="recruiter-mini">
-                  <span class="recruiter-mini-avatar">{{ getInitials(app.recruiter_name || app.recruiter_email) }}</span>
-                  <div class="recruiter-mini-info">
-                    <span class="recruiter-mini-name">{{ app.recruiter_name || 'No Name' }}</span>
-                    <span class="recruiter-mini-email">{{ app.recruiter_email }}</span>
-                  </div>
+        <!-- Table Header -->
+        <ng-template pTemplate="header">
+          <tr>
+            <th (click)="onSort($event, 'applied_at')" class="sortable-col" style="width: 110px">
+              <div class="header-cell">
+                <span>Date</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('applied_at')"></i>
+              </div>
+            </th>
+            <th (click)="onSort($event, 'recruiter_name')" class="sortable-col" style="width: 200px">
+              <div class="header-cell">
+                <span>Recruiter</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('recruiter_name')"></i>
+                <div class="filter-wrapper" (click)="$event.stopPropagation()">
+                  <i class="pi pi-filter" [class.active]="selectedRecruiters.length > 0"></i>
+                  <span class="filter-count" *ngIf="selectedRecruiters.length > 0">{{ selectedRecruiters.length }}</span>
+                  <p-multiSelect
+                    [options]="recruiterOptions"
+                    [(ngModel)]="selectedRecruiters"
+                    (onChange)="onRecruiterFilterChange()"
+                    [showHeader]="false"
+                    [showToggleAll]="false"
+                    placeholder="Filter"
+                    styleClass="filter-multiselect"
+                    appendTo="body"
+                  ></p-multiSelect>
                 </div>
-              </td>
-              
-              <td class="company-cell">
-                <span class="company-name">{{ app.company_name || '—' }}</span>
-                <span class="platform-tag" *ngIf="app.platform">{{ app.platform }}</span>
-              </td>
-              
-              <td class="position-cell">
-                <span class="job-title">{{ app.job_title || '—' }}</span>
-                <span class="experience-level" *ngIf="app.experience_level">({{ app.experience_level }})</span>
-              </td>
-              
-              <td class="location-cell">
-                <span>{{ app.location || '—' }}</span>
-                <span class="work-type-badge" *ngIf="app.work_type" [class]="app.work_type.toLowerCase()">
-                  {{ app.work_type }}
-                </span>
-              </td>
-              
-              <td class="salary-cell">
-                <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
-              </td>
-              
-              <td class="match-cell">
-                <span class="match-score" *ngIf="app.match_score" [class]="getMatchClass(app.match_score)">
-                  {{ app.match_score }}%
-                </span>
-                <span *ngIf="!app.match_score" class="no-data">—</span>
-              </td>
-              
-              <td class="status-cell">
-                <span class="status-badge" [class]="getStatusClass(app.status)">
-                  {{ app.status | titlecase }}
-                </span>
-              </td>
-              
-              <td class="actions-cell">
-                <button class="btn-view" (click)="viewJobDetails(app); $event.stopPropagation()">
-                  👁️ View
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </div>
+            </th>
+            <th (click)="onSort($event, 'company_name')" class="sortable-col" style="width: 130px">
+              <div class="header-cell">
+                <span>Company</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('company_name')"></i>
+              </div>
+            </th>
+            <th (click)="onSort($event, 'job_title')" class="sortable-col" style="min-width: 180px">
+              <div class="header-cell">
+                <span>Position</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('job_title')"></i>
+              </div>
+            </th>
+            <th style="width: 140px">Location</th>
+            <th style="width: 110px">Salary</th>
+            <th (click)="onSort($event, 'match_score')" class="sortable-col" style="width: 90px">
+              <div class="header-cell">
+                <span>Match</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('match_score')"></i>
+              </div>
+            </th>
+            <th style="width: 120px">
+              <div class="header-cell">
+                <span>Status</span>
+                <div class="filter-wrapper" (click)="$event.stopPropagation()">
+                  <i class="pi pi-filter" [class.active]="selectedStatuses.length > 0"></i>
+                  <span class="filter-count" *ngIf="selectedStatuses.length > 0">{{ selectedStatuses.length }}</span>
+                  <p-multiSelect
+                    [options]="statusOptions"
+                    [(ngModel)]="selectedStatuses"
+                    (onChange)="onStatusFilterChange()"
+                    [showHeader]="false"
+                    [showToggleAll]="false"
+                    placeholder="Filter"
+                    styleClass="filter-multiselect"
+                    appendTo="body"
+                  ></p-multiSelect>
+                </div>
+              </div>
+            </th>
+            <th style="width: 120px; text-align: center">Actions</th>
+          </tr>
+        </ng-template>
 
-      <div class="empty-state" *ngIf="filteredApplications.length === 0">
-        <p>No applications match your filters.</p>
+        <!-- Table Body -->
+        <ng-template pTemplate="body" let-app>
+          <tr class="app-row" (click)="viewJobDetails(app)">
+            <td class="date-cell">{{ formatDate(app.applied_at) }}</td>
+            <td class="recruiter-cell">
+              <div class="recruiter-mini">
+                <span class="recruiter-mini-avatar">{{ getInitials(app.recruiter_name || app.recruiter_email) }}</span>
+                <div class="recruiter-mini-info">
+                  <span class="recruiter-mini-name">{{ app.recruiter_name || 'No Name' }}</span>
+                  <span class="recruiter-mini-email">{{ app.recruiter_email }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="company-cell">
+              <span class="company-name">{{ app.company_name || '—' }}</span>
+              <span class="platform-tag" *ngIf="app.platform">{{ app.platform }}</span>
+            </td>
+            <td class="position-cell">
+              <span class="job-title">{{ app.job_title || '—' }}</span>
+              <span class="experience-level" *ngIf="app.experience_level">({{ app.experience_level }})</span>
+            </td>
+            <td class="location-cell">
+              <span>{{ app.location || '—' }}</span>
+              <span class="work-type-badge" *ngIf="app.work_type" [class]="app.work_type.toLowerCase()">
+                {{ app.work_type }}
+              </span>
+            </td>
+            <td class="salary-cell">
+              <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
+            </td>
+            <td class="match-cell">
+              <span class="match-score" *ngIf="app.match_score" [class]="getMatchClass(app.match_score)">
+                {{ app.match_score }}%
+              </span>
+              <span *ngIf="!app.match_score" class="no-data">—</span>
+            </td>
+            <td class="status-cell">
+              <span class="status-badge" [class]="getStatusClass(app.status)">
+                {{ app.status | titlecase }}
+              </span>
+            </td>
+            <td class="actions-cell">
+              <button class="btn-view" (click)="viewJobDetails(app); $event.stopPropagation()">
+                <i class="pi pi-eye"></i>
+              </button>
+            </td>
+          </tr>
+        </ng-template>
+
+        <!-- Empty Message -->
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="9" class="empty-table-message">
+              <i class="pi pi-search"></i>
+              <p>No applications match your filters.</p>
+              <button class="btn-text" (click)="clearFilters()">Clear Filters</button>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+
+      <div class="empty-state" *ngIf="applications.length === 0">
+        <p>No applications in your organization yet.</p>
       </div>
     </div>
   </main>
 
-  <!-- Add User Modal -->
-  <div class="modal-overlay" *ngIf="showAddUserModal" (click)="closeAddUserModal()">
-    <div class="modal add-user-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>➕ Add New User</h3>
-        <button class="close-btn" (click)="closeAddUserModal()">✕</button>
-      </div>
-      
-      <div class="modal-body">
-        <p class="modal-description">
-          Add a new team member to your organization. They will be able to access the system after signing up.
-        </p>
-
-        <div class="form-group">
-          <label>Full Name</label>
-          <input 
-            type="text" 
-            [(ngModel)]="newUser.fullName"
-            placeholder="John Doe"
-            [disabled]="addingUser"
-          />
-        </div>
-
-        <div class="form-group">
-          <label>Email Address</label>
-          <input 
-            type="email" 
-            [(ngModel)]="newUser.email"
-            placeholder="john@company.com"
-            [disabled]="addingUser"
-          />
-        </div>
-
-        <div class="form-group">
-          <label>Role</label>
-          <div class="role-selector">
-            <button 
-              type="button"
-              class="role-option"
-              [class.selected]="newUser.role === 'user'"
-              (click)="newUser.role = 'user'"
-              [disabled]="addingUser"
-            >
-              <span class="role-icon">👤</span>
-              <span class="role-title">Recruiter</span>
-              <span class="role-desc">Can manage their own applications</span>
-            </button>
-            <button 
-              type="button"
-              class="role-option"
-              [class.selected]="newUser.role === 'admin'"
-              (click)="newUser.role = 'admin'"
-              [disabled]="addingUser"
-            >
-              <span class="role-icon">👔</span>
-              <span class="role-title">Admin</span>
-              <span class="role-desc">Full access to all data & settings</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="error-message" *ngIf="addUserError">
-          {{ addUserError }}
-        </div>
-
-        <div class="success-message" *ngIf="addUserSuccess">
-          {{ addUserSuccess }}
-        </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button class="btn-secondary" (click)="closeAddUserModal()" [disabled]="addingUser">
-          Cancel
-        </button>
-        <button 
-          class="btn-primary" 
-          (click)="addUser()" 
-          [disabled]="addingUser || !newUser.email || !newUser.fullName"
-        >
-          <span *ngIf="!addingUser">Add User</span>
-          <span *ngIf="addingUser" class="loading-text">
-            <span class="spinner-small"></span>
-            Adding...
-          </span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Edit User Modal -->
-  <div class="modal-overlay" *ngIf="showEditUserModal" (click)="closeEditUserModal()">
-    <div class="modal edit-user-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>✏️ Edit User Role</h3>
-        <button class="close-btn" (click)="closeEditUserModal()">✕</button>
-      </div>
-      
-      <div class="modal-body" *ngIf="selectedRecruiter">
-        <div class="user-preview">
-          <div class="user-avatar">
-            {{ getInitials(selectedRecruiter.full_name || selectedRecruiter.email) }}
-          </div>
-          <div class="user-info-preview">
-            <span class="user-name">{{ selectedRecruiter.full_name || 'No Name' }}</span>
-            <span class="user-email">{{ selectedRecruiter.email }}</span>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Role</label>
-          <select [(ngModel)]="selectedRecruiter.role" [disabled]="editingUser">
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        <div class="warning-message" *ngIf="selectedRecruiter.user_id === profile?.id">
-          ⚠️ You are editing your own account. Be careful not to remove your admin access!
-        </div>
-
-        <div class="error-message" *ngIf="editUserError">
-          {{ editUserError }}
-        </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button class="btn-secondary" (click)="closeEditUserModal()" [disabled]="editingUser">
-          Cancel
-        </button>
-        <button class="btn-primary" (click)="updateUserRole()" [disabled]="editingUser">
-          <span *ngIf="!editingUser">Save Changes</span>
-          <span *ngIf="editingUser" class="loading-text">
-            <span class="spinner-small"></span>
-            Saving...
-          </span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Job Detail Modal (existing) -->
+  <!-- Job Detail Modal -->
   <div class="modal-overlay" *ngIf="showJobModal" (click)="closeJobModal()">
     <div class="modal job-modal job-modal-large" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>📋 Job Details</h3>
-        <button class="close-btn" (click)="closeJobModal()">✕</button>
+        <h3>Job Details</h3>
+        <button class="close-btn" (click)="closeJobModal()">&#x2715;</button>
       </div>
 
       <div class="modal-body" *ngIf="!loadingJobDetails && selectedJob">
@@ -410,7 +255,7 @@
             <span class="platform-badge" *ngIf="selectedJob.platform">{{ selectedJob.platform }}</span>
           </div>
           <div class="job-meta">
-            <span *ngIf="selectedJob.location">📍 {{ selectedJob.location }}</span>
+            <span *ngIf="selectedJob.location">{{ selectedJob.location }}</span>
             <span *ngIf="selectedJob.work_type" class="work-badge">{{ selectedJob.work_type }}</span>
             <span *ngIf="selectedJob.employment_type">{{ selectedJob.employment_type }}</span>
             <span *ngIf="selectedJob.experience_level" class="exp-badge">{{ selectedJob.experience_level }}</span>
@@ -489,11 +334,11 @@
             <div class="detail-section" *ngIf="selectedJob.required_education || selectedJob.required_certifications?.length">
               <h4>Education & Certifications</h4>
               <p *ngIf="selectedJob.required_education" class="education-text">
-                🎓 {{ selectedJob.required_education }}
+                {{ selectedJob.required_education }}
               </p>
               <div class="certifications" *ngIf="selectedJob.required_certifications?.length">
                 <span class="cert-tag" *ngFor="let cert of selectedJob.required_certifications">
-                  📜 {{ cert }}
+                  {{ cert }}
                 </span>
               </div>
             </div>
@@ -516,7 +361,7 @@
               <h4>Resume Used</h4>
               <div class="resume-preview">
                 <div class="resume-info">
-                  <span class="resume-name">📄 {{ selectedResume.candidate_name || selectedResume.file_name }}</span>
+                  <span class="resume-name">{{ selectedResume.candidate_name || selectedResume.file_name }}</span>
                   <span class="resume-title" *ngIf="selectedResume.current_title">{{ selectedResume.current_title }}</span>
                 </div>
                 <div class="resume-skills" *ngIf="selectedResume.skills?.length">
@@ -539,7 +384,7 @@
                   <strong>Size:</strong> {{ selectedJob.company_size }}
                 </p>
                 <a *ngIf="selectedJob.company_website" [href]="selectedJob.company_website" target="_blank" class="company-link">
-                  🌐 {{ selectedJob.company_website }}
+                  {{ selectedJob.company_website }}
                 </a>
               </div>
             </div>
@@ -582,13 +427,13 @@
                    [href]="selectedJob.source_url"
                    target="_blank"
                    class="source-link">
-                  🔗 View Original Posting
+                  View Original Posting
                 </a>
                 <a *ngIf="selectedJob.application_url"
                    [href]="selectedJob.application_url"
                    target="_blank"
                    class="apply-link">
-                  📝 Apply Here
+                  Apply Here
                 </a>
                 <span *ngIf="!selectedJob.source_url || selectedJob.source_url.startsWith('manual')" class="manual-entry">
                   Manually entered

@@ -41,6 +41,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { icon: 'fi-rr-search', label: 'Job Search', route: '/job-search', id: 'job-search' },
     { icon: 'fi-rr-briefcase', label: 'Job Feed', route: '/job-feed', id: 'job-feed' },
     { icon: 'fi-rr-calendar-clock', label: 'Interview Management', route: '/interviews', id: 'interviews' },
+    { icon: 'fi-rr-settings', label: 'Profile & Settings', route: '/profile', id: 'profile' },
   ];
 
   get navItems(): NavItem[] {

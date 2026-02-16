@@ -400,5 +400,18 @@ export interface UserApplicationView {
   notes: string | null;
 }
 
+// Notification Preferences
+export interface NotificationPreferences {
+  id: string;
+  user_id: string;
+  organization_id: string | null;
+  email_new_applications: boolean;
+  interview_reminders: boolean;
+  weekly_summary: boolean;
+  offer_alerts: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // Re-export unified job models
 export * from './unified-job.model';

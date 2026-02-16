@@ -3,6 +3,7 @@ import { createClient, Session, SupabaseClient, User } from '@supabase/supabase-
 import { BehaviorSubject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  ActivityLog,
   AdminEmployeeStats,
   AdminOrgDashboard,
   Candidate,
@@ -10,6 +11,7 @@ import {
   CandidatePreferences,
   Job,
   JobApplication,
+  NotificationPreferences,
   Organization,
   Profile,
   Resume,
@@ -1392,7 +1394,8 @@ export class SupabaseService {
       email,
       avatar_url,
       role,
-      last_active_at
+      last_active_at,
+      created_at
     `)
       .eq('organization_id', profile.organization_id);
 
@@ -1412,8 +1415,9 @@ export class SupabaseService {
           full_name: recruiter.full_name,
           email: recruiter.email,
           avatar_url: recruiter.avatar_url,
-          role: recruiter.role || 'recruiter',  // Include role
+          role: recruiter.role || 'recruiter',
           last_active_at: recruiter.last_active_at,
+          created_at: recruiter.created_at,
           total_applications: applications.length,
           interviews: applications.filter(a =>
             ['screening', 'interviewing', 'offer', 'accepted'].includes(a.status)
@@ -1640,5 +1644,86 @@ export class SupabaseService {
 
     // Reload profile
     await this.loadProfile(user.id);
+  }
+
+  // ============================================================================
+  // NOTIFICATION PREFERENCES
+  // ============================================================================
+
+  async getNotificationPreferences(): Promise<NotificationPreferences | null> {
+    const user = this._user.value;
+    if (!user) return null;
+
+    const { data, error } = await this.supabase
+      .from('notification_preferences')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Failed to load notification preferences:', error);
+      return null;
+    }
+
+    if (data) return data as NotificationPreferences;
+
+    // No row exists — insert defaults
+    const profile = this._profile.value;
+    const { data: inserted, error: insertError } = await this.supabase
+      .from('notification_preferences')
+      .insert({
+        user_id: user.id,
+        organization_id: profile?.organization_id || null,
+        email_new_applications: true,
+        interview_reminders: true,
+        weekly_summary: false,
+        offer_alerts: true
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Failed to create notification preferences:', insertError);
+      return null;
+    }
+    return inserted as NotificationPreferences;
+  }
+
+  async updateNotificationPreferences(
+    updates: Partial<NotificationPreferences>
+  ): Promise<NotificationPreferences | null> {
+    const user = this._user.value;
+    if (!user) return null;
+
+    const { data, error } = await this.supabase
+      .from('notification_preferences')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Failed to update notification preferences:', error);
+      return null;
+    }
+    return data as NotificationPreferences;
+  }
+
+  async getUserRecentActivity(limit = 5): Promise<ActivityLog[]> {
+    const user = this._user.value;
+    if (!user) return [];
+
+    const { data, error } = await this.supabase
+      .from('activity_log')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Failed to load recent activity:', error);
+      return [];
+    }
+    return (data || []) as ActivityLog[];
   }
 }
