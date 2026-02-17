@@ -1757,6 +1757,28 @@ export class SupabaseService {
     return data?.content || null;
   }
 
+  async getTodayCalendarInsight(candidateId: string): Promise<string | null> {
+    const user = this._user.value;
+    if (!user) return null;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data, error } = await this.supabase
+      .from('interview_calendar_insights')
+      .select('content')
+      .eq('user_id', user.id)
+      .eq('candidate_id', candidateId)
+      .eq('insight_date', today)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Failed to fetch calendar insight:', error);
+      return null;
+    }
+
+    return data?.content || null;
+  }
+
   async getUserRecentActivity(limit = 5): Promise<ActivityLog[]> {
     const user = this._user.value;
     if (!user) return [];

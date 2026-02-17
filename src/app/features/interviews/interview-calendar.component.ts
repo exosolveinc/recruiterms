@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, ViewEncapsulation, inject, effect, HostBinding } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, ViewEncapsulation, inject, effect, signal, HostBinding } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
@@ -98,6 +98,11 @@ export class InterviewCalendarComponent implements OnInit {
   selectedSlot: SuggestedSlot | null = null;
   aiDuration = 60;
 
+  // AI Daily Insight (cron-generated, read-only)
+  calendarInsight = signal<string | null>(null);
+  calendarInsightLoading = signal(false);
+  calendarInsightDismissed = signal(false);
+
   // Confirmation dialog state
   showConfirmDialog = false;
   pendingSlot: SuggestedSlot | null = null;
@@ -164,6 +169,12 @@ export class InterviewCalendarComponent implements OnInit {
     const candidateId = this.selectedCandidateId();
     // Refilter events when candidate changes
     this.filterEventsByCandidate();
+    // Load calendar insight for selected candidate
+    if (candidateId) {
+      this.loadCalendarInsight(candidateId);
+    } else {
+      this.calendarInsight.set(null);
+    }
     this.cdr.markForCheck();
   });
 
@@ -228,6 +239,24 @@ export class InterviewCalendarComponent implements OnInit {
       this.loading = false;
       this.cdr.markForCheck();
     }
+  }
+
+  async loadCalendarInsight(candidateId: string): Promise<void> {
+    this.calendarInsightLoading.set(true);
+    this.calendarInsightDismissed.set(false);
+    try {
+      const content = await this.supabase.getTodayCalendarInsight(candidateId);
+      this.calendarInsight.set(content);
+    } catch {
+      // Silently fail - insight is non-critical
+    } finally {
+      this.calendarInsightLoading.set(false);
+      this.cdr.markForCheck();
+    }
+  }
+
+  dismissCalendarInsight(): void {
+    this.calendarInsightDismissed.set(true);
   }
 
   private filterEventsByCandidate() {

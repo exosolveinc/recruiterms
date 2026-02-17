@@ -347,12 +347,154 @@ Skill gaps (frequently missing): ${feedTopMissing.length > 0 ? feedTopMissing.jo
       }
     }
 
+    // ── Phase 3: Interview Calendar Insights (per candidate) ──
+
+    let calendarGenerated = 0;
+
+    const { data: interviewApps } = await supabase
+      .from("scheduled_interviews")
+      .select("application_id");
+
+    const interviewAppIds = [...new Set((interviewApps || []).map((i: any) => i.application_id).filter(Boolean))];
+
+    if (interviewAppIds.length > 0) {
+      const { data: appsForInterviews } = await supabase
+        .from("job_applications")
+        .select("id, user_id, resume_id, company_name, job_title")
+        .in("id", interviewAppIds);
+
+      const resumeIdsForCal = [...new Set((appsForInterviews || []).map((a: any) => a.resume_id).filter(Boolean))];
+      const resumeCandidateMap = new Map<string, string>();
+
+      if (resumeIdsForCal.length > 0) {
+        const { data: resumes } = await supabase
+          .from("resumes")
+          .select("id, candidate_id")
+          .in("id", resumeIdsForCal);
+
+        for (const r of resumes || []) {
+          if (r.candidate_id) resumeCandidateMap.set(r.id, r.candidate_id);
+        }
+      }
+
+      const calendarPairs = new Map<string, { userId: string; candidateId: string }>();
+      for (const app of appsForInterviews || []) {
+        const cId = app.resume_id ? resumeCandidateMap.get(app.resume_id) : null;
+        if (cId) {
+          const key = `${app.user_id}|${cId}`;
+          if (!calendarPairs.has(key)) {
+            calendarPairs.set(key, { userId: app.user_id, candidateId: cId });
+          }
+        }
+      }
+
+      for (const { userId: calUserId, candidateId: calCandidateId } of calendarPairs.values()) {
+        try {
+          const { data: existingCal } = await supabase
+            .from("interview_calendar_insights")
+            .select("id")
+            .eq("user_id", calUserId)
+            .eq("candidate_id", calCandidateId)
+            .eq("insight_date", today)
+            .maybeSingle();
+
+          if (existingCal) continue;
+
+          const { data: candResumes } = await supabase
+            .from("resumes")
+            .select("id")
+            .eq("candidate_id", calCandidateId);
+
+          const candResumeIds = (candResumes || []).map((r: any) => r.id);
+          if (candResumeIds.length === 0) continue;
+
+          const { data: candApps } = await supabase
+            .from("job_applications")
+            .select("id, company_name")
+            .eq("user_id", calUserId)
+            .in("resume_id", candResumeIds);
+
+          const candAppIds = (candApps || []).map((a: any) => a.id);
+          if (candAppIds.length === 0) continue;
+
+          const { data: interviews } = await supabase
+            .from("scheduled_interviews")
+            .select("id, status, interview_type, scheduled_at, duration_minutes")
+            .in("application_id", candAppIds);
+
+          const allInterviews = interviews || [];
+          if (allInterviews.length === 0) continue;
+
+          const now = new Date();
+          const upcoming = allInterviews.filter((i: any) => new Date(i.scheduled_at) > now && i.status !== "cancelled");
+          const pending = allInterviews.filter((i: any) => i.status === "pending");
+          const scheduled2 = allInterviews.filter((i: any) => i.status === "scheduled");
+          const completed2 = allInterviews.filter((i: any) => i.status === "completed");
+          const cancelled2 = allInterviews.filter((i: any) => i.status === "cancelled");
+
+          const typeCounts = new Map<string, number>();
+          for (const i of allInterviews) {
+            typeCounts.set(i.interview_type, (typeCounts.get(i.interview_type) || 0) + 1);
+          }
+          const topTypes = [...typeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t, c]) => `${t}(${c})`);
+
+          const interviewCompanies = new Set<string>();
+          for (const app of candApps || []) {
+            if (app.company_name) interviewCompanies.add(app.company_name);
+          }
+
+          const nextInterview = upcoming.sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
+          const nextInterviewStr = nextInterview ? new Date(nextInterview.scheduled_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "None";
+
+          const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const thisWeek = upcoming.filter((i: any) => new Date(i.scheduled_at) <= weekFromNow).length;
+
+          const calSystemPrompt = `You are an interview scheduling advisor. Write exactly 2-3 SHORT sentences (under 40 words total). Analyze the interview pipeline — highlight the most critical pattern (preparation needed, scheduling gaps, upcoming deadlines), reference one or two numbers, then suggest one specific action. No markdown, no bullets. Be direct.`;
+
+          const calUserPrompt = `INTERVIEW PIPELINE:
+Total: ${allInterviews.length} | Upcoming: ${upcoming.length} | Pending approval: ${pending.length} | Scheduled: ${scheduled2.length} | Completed: ${completed2.length} | Cancelled: ${cancelled2.length}
+This week: ${thisWeek} interviews
+Next interview: ${nextInterviewStr}
+Types: ${topTypes.length > 0 ? topTypes.join(", ") : "N/A"}
+Companies: ${[...interviewCompanies].slice(0, 5).join(", ") || "N/A"}`;
+
+          const calResponse = await anthropic.messages.create({
+            model: "claude-3-haiku-20240307",
+            max_tokens: 120,
+            system: calSystemPrompt,
+            messages: [{ role: "user", content: calUserPrompt }],
+          });
+
+          const calContent = calResponse.content[0];
+          if (calContent.type !== "text") continue;
+
+          await supabase
+            .from("interview_calendar_insights")
+            .upsert(
+              {
+                user_id: calUserId,
+                candidate_id: calCandidateId,
+                content: calContent.text,
+                insight_date: today,
+                generated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id,candidate_id,insight_date" }
+            );
+
+          calendarGenerated++;
+        } catch (calError: any) {
+          console.error(`Error generating calendar insight for candidate ${calCandidateId}:`, calError.message);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         board_generated: generated,
         board_skipped: skipped,
         feed_generated: feedGenerated,
+        calendar_generated: calendarGenerated,
         total_users: uniqueUserIds.length,
         total_candidates: candidatePairs.size,
       }),

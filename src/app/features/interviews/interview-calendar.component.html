@@ -25,6 +25,26 @@
           </div>
         </div>
 
+        <!-- AI Daily Insight Banner -->
+        @if (!calendarInsightDismissed() && (calendarInsightLoading() || calendarInsight())) {
+          <div class="insight-banner">
+            <div class="insight-icon"><i class="fi fi-rr-bulb"></i></div>
+            @if (calendarInsightLoading()) {
+              <div class="insight-content"><div class="insight-skeleton"></div></div>
+            } @else {
+              <div class="insight-content">
+                <span class="insight-label">AI Daily Insight</span>
+                <p class="insight-text">{{ calendarInsight() }}</p>
+              </div>
+            }
+            <div class="insight-actions">
+              <button class="insight-btn" (click)="dismissCalendarInsight()">
+                <i class="fi fi-rr-cross-small"></i>
+              </button>
+            </div>
+          </div>
+        }
+
         <!-- Loading State -->
         <div class="loading-state" *ngIf="loading">
           <div class="spinner"></div>
