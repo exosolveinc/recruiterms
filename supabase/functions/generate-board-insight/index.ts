@@ -8,6 +8,189 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Generate candidate ID using same logic as frontend
+function computeCandidateId(name: string, email: string, phone: string, resumeId: string): string {
+  const n = (name || "").trim().toLowerCase();
+  const e = (email || "").trim().toLowerCase();
+  const p = (phone || "").replace(/[\s\-\(\)\+\.]/g, "");
+  const identifier = `${n}-${e || p || resumeId}`;
+  return btoa(identifier).replace(/[^a-zA-Z0-9]/g, "").slice(0, 20);
+}
+
+// Deduplicate resumes into candidates (same logic as frontend)
+function buildResumeCandidateMap(resumes: any[]): Map<string, string> {
+  const resumeToCandidate = new Map<string, string>();
+  const candidateMap = new Map<string, { name: string; email: string; phone: string; id: string }>();
+
+  for (const r of resumes) {
+    const name = (r.candidate_name || "").trim().toLowerCase();
+    const email = (r.candidate_email || "").trim().toLowerCase();
+    const phone = (r.candidate_phone || "").replace(/[\s\-\(\)\+\.]/g, "");
+    if (!name) continue;
+
+    // Find existing candidate by name + (email OR phone)
+    let matchedCandidateId: string | null = null;
+    for (const [cId, c] of candidateMap.entries()) {
+      if (c.name === name) {
+        if ((email && c.email && email === c.email) || (phone && c.phone && phone === c.phone)) {
+          matchedCandidateId = cId;
+          break;
+        }
+      }
+    }
+
+    if (matchedCandidateId) {
+      resumeToCandidate.set(r.id, matchedCandidateId);
+    } else {
+      const cId = computeCandidateId(name, email, phone, r.id);
+      candidateMap.set(cId, { name, email, phone, id: r.id });
+      resumeToCandidate.set(r.id, cId);
+    }
+  }
+
+  return resumeToCandidate;
+}
+
+// On-demand: generate a single calendar insight for one user+candidate
+async function generateSingleCalendarInsight(
+  supabase: any,
+  userId: string,
+  candidateId: string,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
+  const today = new Date().toISOString().split("T")[0];
+
+  // Check if already exists
+  const { data: existing } = await supabase
+    .from("interview_calendar_insights")
+    .select("id, content")
+    .eq("user_id", userId)
+    .eq("candidate_id", candidateId)
+    .eq("insight_date", today)
+    .maybeSingle();
+
+  if (existing) {
+    return new Response(JSON.stringify({ success: true, content: existing.content, cached: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Get all resumes for this user to find which ones belong to this candidate
+  const { data: allResumes } = await supabase
+    .from("resumes")
+    .select("id, candidate_name, candidate_email, candidate_phone")
+    .eq("user_id", userId);
+
+  const resumeMap = buildResumeCandidateMap(allResumes || []);
+  const candResumeIds: string[] = [];
+  for (const [rId, cId] of resumeMap.entries()) {
+    if (cId === candidateId) candResumeIds.push(rId);
+  }
+
+  if (candResumeIds.length === 0) {
+    return new Response(JSON.stringify({ success: false, error: "No resumes found for candidate" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Get applications for this candidate
+  const { data: candApps } = await supabase
+    .from("job_applications")
+    .select("id, job_id")
+    .eq("user_id", userId)
+    .in("resume_id", candResumeIds);
+
+  const candAppIds = (candApps || []).map((a: any) => a.id);
+  if (candAppIds.length === 0) {
+    return new Response(JSON.stringify({ success: false, error: "No applications found" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Get interviews
+  const { data: interviews } = await supabase
+    .from("scheduled_interviews")
+    .select("id, status, interview_type, scheduled_at, duration_minutes")
+    .in("application_id", candAppIds);
+
+  const allInterviews = interviews || [];
+  if (allInterviews.length === 0) {
+    return new Response(JSON.stringify({ success: false, error: "No interviews found" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Get company names
+  const candJobIds = [...new Set((candApps || []).map((a: any) => a.job_id).filter(Boolean))];
+  const interviewCompanies = new Set<string>();
+  if (candJobIds.length > 0) {
+    const { data: candJobs } = await supabase.from("jobs").select("company_name").in("id", candJobIds);
+    for (const j of candJobs || []) {
+      if (j.company_name) interviewCompanies.add(j.company_name);
+    }
+  }
+
+  const now = new Date();
+  const upcoming = allInterviews.filter((i: any) => new Date(i.scheduled_at) > now && i.status !== "cancelled");
+  const pending = allInterviews.filter((i: any) => i.status === "pending");
+  const scheduled = allInterviews.filter((i: any) => i.status === "scheduled");
+  const completed = allInterviews.filter((i: any) => i.status === "completed");
+  const cancelled = allInterviews.filter((i: any) => i.status === "cancelled");
+
+  const typeCounts = new Map<string, number>();
+  for (const i of allInterviews) {
+    typeCounts.set(i.interview_type, (typeCounts.get(i.interview_type) || 0) + 1);
+  }
+  const topTypes = [...typeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t, c]) => `${t}(${c})`);
+
+  const nextInterview = upcoming.sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
+  const nextInterviewStr = nextInterview
+    ? new Date(nextInterview.scheduled_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+    : "None";
+
+  const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const thisWeek = upcoming.filter((i: any) => new Date(i.scheduled_at) <= weekFromNow).length;
+
+  const systemPrompt = `You are an interview scheduling advisor. Write exactly 2-3 SHORT sentences (under 40 words total). Analyze the interview pipeline — highlight the most critical pattern (preparation needed, scheduling gaps, upcoming deadlines), reference one or two numbers, then suggest one specific action. No markdown, no bullets. Be direct.`;
+
+  const userPrompt = `INTERVIEW PIPELINE:
+Total: ${allInterviews.length} | Upcoming: ${upcoming.length} | Pending approval: ${pending.length} | Scheduled: ${scheduled.length} | Completed: ${completed.length} | Cancelled: ${cancelled.length}
+This week: ${thisWeek} interviews
+Next interview: ${nextInterviewStr}
+Types: ${topTypes.length > 0 ? topTypes.join(", ") : "N/A"}
+Companies: ${[...interviewCompanies].slice(0, 5).join(", ") || "N/A"}`;
+
+  const response = await anthropic.messages.create({
+    model: "claude-3-haiku-20240307",
+    max_tokens: 120,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const content = response.content[0];
+  if (content.type !== "text") {
+    return new Response(JSON.stringify({ success: false, error: "AI returned non-text" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  await supabase.from("interview_calendar_insights").upsert(
+    {
+      user_id: userId,
+      candidate_id: candidateId,
+      content: content.text,
+      insight_date: today,
+      generated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,candidate_id,insight_date" }
+  );
+
+  return new Response(JSON.stringify({ success: true, content: content.text, cached: false }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -17,6 +200,14 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check for on-demand single-user calendar insight request
+    let body: any = {};
+    try { body = await req.json(); } catch { body = {}; }
+
+    if (body.phase === "calendar" && body.userId && body.candidateId) {
+      return await generateSingleCalendarInsight(supabase, body.userId, body.candidateId, corsHeaders);
+    }
 
     // Get all active users (those with at least one application)
     const { data: users, error: usersError } = await supabase
@@ -360,21 +551,19 @@ Skill gaps (frequently missing): ${feedTopMissing.length > 0 ? feedTopMissing.jo
     if (interviewAppIds.length > 0) {
       const { data: appsForInterviews } = await supabase
         .from("job_applications")
-        .select("id, user_id, resume_id, company_name, job_title")
+        .select("id, user_id, resume_id, job_id")
         .in("id", interviewAppIds);
 
       const resumeIdsForCal = [...new Set((appsForInterviews || []).map((a: any) => a.resume_id).filter(Boolean))];
-      const resumeCandidateMap = new Map<string, string>();
+      let resumeCandidateMap = new Map<string, string>();
 
       if (resumeIdsForCal.length > 0) {
         const { data: resumes } = await supabase
           .from("resumes")
-          .select("id, candidate_id")
+          .select("id, candidate_name, candidate_email, candidate_phone")
           .in("id", resumeIdsForCal);
 
-        for (const r of resumes || []) {
-          if (r.candidate_id) resumeCandidateMap.set(r.id, r.candidate_id);
-        }
+        resumeCandidateMap = buildResumeCandidateMap(resumes || []);
       }
 
       const calendarPairs = new Map<string, { userId: string; candidateId: string }>();
@@ -400,17 +589,16 @@ Skill gaps (frequently missing): ${feedTopMissing.length > 0 ? feedTopMissing.jo
 
           if (existingCal) continue;
 
-          const { data: candResumes } = await supabase
-            .from("resumes")
-            .select("id")
-            .eq("candidate_id", calCandidateId);
-
-          const candResumeIds = (candResumes || []).map((r: any) => r.id);
+          // Find all resume IDs that map to this candidateId
+          const candResumeIds: string[] = [];
+          for (const [rId, cId] of resumeCandidateMap.entries()) {
+            if (cId === calCandidateId) candResumeIds.push(rId);
+          }
           if (candResumeIds.length === 0) continue;
 
           const { data: candApps } = await supabase
             .from("job_applications")
-            .select("id, company_name")
+            .select("id, job_id")
             .eq("user_id", calUserId)
             .in("resume_id", candResumeIds);
 
@@ -425,6 +613,19 @@ Skill gaps (frequently missing): ${feedTopMissing.length > 0 ? feedTopMissing.jo
           const allInterviews = interviews || [];
           if (allInterviews.length === 0) continue;
 
+          // Get company names from jobs table
+          const candJobIds = [...new Set((candApps || []).map((a: any) => a.job_id).filter(Boolean))];
+          const interviewCompanies = new Set<string>();
+          if (candJobIds.length > 0) {
+            const { data: candJobs } = await supabase
+              .from("jobs")
+              .select("company_name")
+              .in("id", candJobIds);
+            for (const j of candJobs || []) {
+              if (j.company_name) interviewCompanies.add(j.company_name);
+            }
+          }
+
           const now = new Date();
           const upcoming = allInterviews.filter((i: any) => new Date(i.scheduled_at) > now && i.status !== "cancelled");
           const pending = allInterviews.filter((i: any) => i.status === "pending");
@@ -437,11 +638,6 @@ Skill gaps (frequently missing): ${feedTopMissing.length > 0 ? feedTopMissing.jo
             typeCounts.set(i.interview_type, (typeCounts.get(i.interview_type) || 0) + 1);
           }
           const topTypes = [...typeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t, c]) => `${t}(${c})`);
-
-          const interviewCompanies = new Set<string>();
-          for (const app of candApps || []) {
-            if (app.company_name) interviewCompanies.add(app.company_name);
-          }
 
           const nextInterview = upcoming.sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
           const nextInterviewStr = nextInterview ? new Date(nextInterview.scheduled_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "None";

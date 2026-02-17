@@ -1779,6 +1779,22 @@ export class SupabaseService {
     return data?.content || null;
   }
 
+  async generateCalendarInsight(candidateId: string): Promise<string | null> {
+    const user = this._user.value;
+    if (!user) return null;
+
+    const { data, error } = await this.supabase.functions.invoke('generate-board-insight', {
+      body: { phase: 'calendar', userId: user.id, candidateId }
+    });
+
+    if (error) {
+      console.warn('Failed to generate calendar insight:', error);
+      return null;
+    }
+
+    return data?.content || null;
+  }
+
   async getUserRecentActivity(limit = 5): Promise<ActivityLog[]> {
     const user = this._user.value;
     if (!user) return [];

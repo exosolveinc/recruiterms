@@ -245,7 +245,12 @@ export class InterviewCalendarComponent implements OnInit {
     this.calendarInsightLoading.set(true);
     this.calendarInsightDismissed.set(false);
     try {
-      const content = await this.supabase.getTodayCalendarInsight(candidateId);
+      // Try cached insight first
+      let content = await this.supabase.getTodayCalendarInsight(candidateId);
+      if (!content) {
+        // Generate on-demand if no cached insight
+        content = await this.supabase.generateCalendarInsight(candidateId);
+      }
       this.calendarInsight.set(content);
     } catch {
       // Silently fail - insight is non-critical
