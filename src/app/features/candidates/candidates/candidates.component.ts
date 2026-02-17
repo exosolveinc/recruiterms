@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, computed, ViewChild } from '@angular/core';
+import { Component, OnInit, Input, inject, computed, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Candidate, CandidateDocument, CandidatePreferences, Resume } from '../../../core/models';
@@ -28,6 +28,7 @@ import { TagModule } from 'primeng/tag';
 })
 export class CandidatesComponent implements OnInit {
   @ViewChild('dt') dt!: Table;
+  @Input() embedded = false;
 
   private appState = inject(AppStateService);
 

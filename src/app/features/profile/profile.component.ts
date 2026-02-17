@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { ActivityLog, NotificationPreferences, Profile, UserDashboard } from '../../core/models';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
+import { CandidatesComponent } from '../candidates/candidates/candidates.component';
 
 interface RecruiterStats {
   user_id: string;
@@ -28,12 +29,12 @@ interface NewUserForm {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, CandidatesComponent],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss']
 })
 export class ProfileComponent implements OnInit {
-  activeTab: 'profile' | 'team' | 'notifications' = 'profile';
+  activeTab: 'profile' | 'team' | 'candidates' | 'notifications' = 'profile';
 
   profile: Profile | null = null;
   loading = true;
@@ -119,7 +120,7 @@ export class ProfileComponent implements OnInit {
   // TABS
   // ============================================================================
 
-  setTab(tab: 'profile' | 'team' | 'notifications') {
+  setTab(tab: 'profile' | 'team' | 'candidates' | 'notifications') {
     this.activeTab = tab;
   }
 

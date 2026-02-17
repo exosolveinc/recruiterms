@@ -6,6 +6,17 @@
   min-height: 100vh;
   background: #fafafa;
   margin-left: 64px;
+
+  &.embedded {
+    min-height: auto;
+    margin-left: 0;
+    background: transparent;
+
+    .main-content {
+      padding: 0;
+      max-width: none;
+    }
+  }
 }
 
 // ============================================================================
