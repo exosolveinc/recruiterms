@@ -989,47 +989,31 @@
 
 // Search Section
 .search-section {
-  text-align: center;
   margin-bottom: 40px;
-
-  > h1 {
-    font-size: 32px;
-    font-weight: 700;
-    color: #111;
-    margin: 0 0 8px;
-  }
-
-  > .subtitle {
-    color: #666;
-    font-size: 16px;
-    margin: 0 0 32px;
-  }
 }
 
 // Search Header with Gmail Integration
 .search-header {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  margin-bottom: 6px;
+  justify-content: space-between;
+  margin-bottom: 20px;
   gap: 16px;
+  flex-wrap: wrap;
 
   .search-header-text {
-    text-align: center;
-    width: 100%;
     margin-top: 4px;
 
     h1 {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 700;
-      color: #000;
+      color: #111;
       margin: 0 0 4px;
-      letter-spacing: -0.02em;
     }
 
     .subtitle {
-      color: #888;
-      font-size: 14px;
+      color: #666;
+      font-size: 13px;
       margin: 0;
     }
   }
@@ -1039,29 +1023,25 @@
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
-    justify-content: center;
   }
 }
 
 // View Toggle Switch
 .view-toggle-switch {
   display: flex;
-  background: #f3f4f6;
-  border-radius: 10px;
-  padding: 4px;
-  gap: 4px;
+  gap: 10px;
 
   .toggle-option {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 18px;
-    background: transparent;
-    border: none;
-    border-radius: 8px;
+    padding: 10px 22px;
+    background: white;
+    border: 1px solid #e0e2e7;
+    border-radius: 50px;
     font-size: 14px;
     font-weight: 500;
-    color: #6b7280;
+    color: #4b5563;
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
@@ -1071,9 +1051,9 @@
       transition: opacity 0.2s;
     }
 
-    &:hover {
-      color: #374151;
-      background: rgba(255, 255, 255, 0.5);
+    &:hover:not(.active) {
+      border-color: #c0c4cc;
+      color: #1f2937;
 
       svg {
         opacity: 0.9;
@@ -1081,9 +1061,9 @@
     }
 
     &.active {
-      background: white;
-      color: #111;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      background: #1e293b;
+      border-color: #1e293b;
+      color: white;
 
       svg {
         opacity: 1;
@@ -1097,7 +1077,7 @@
       min-width: 20px;
       height: 20px;
       padding: 0 6px;
-      background: #3b82f6;
+      background: rgba(255, 255, 255, 0.2);
       color: white;
       font-size: 11px;
       font-weight: 600;
@@ -1112,27 +1092,45 @@
 
   .gmail-integration-bar-inline {
     background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    overflow: hidden;
+    border: 1px solid #eee;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto 20px;
 
     .gmail-status {
-      padding: 16px 20px;
+      padding: 0;
     }
 
-    .gmail-connect,
+    .gmail-connect {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+
+      .gmail-connect-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+    }
+
     .gmail-connected {
       display: flex;
-      align-items: center;
-      gap: 16px;
+      flex-direction: column;
+      gap: 20px;
+
+      .gmail-connected-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
     }
 
     .gmail-icon {
       width: 48px;
       height: 48px;
-      background: #f3f4f6;
-      border-radius: 12px;
+      background: #fafafa;
+      border-radius: 50px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1140,7 +1138,7 @@
       position: relative;
 
       &.connected {
-        background: #dcfce7;
+        background: #f0fdf4;
       }
 
       .connected-check {
@@ -1190,11 +1188,11 @@
         height: 24px;
         padding: 0;
         background: transparent;
-        border: 1px solid #fca5a5;
-        border-radius: 4px;
+        border: 1px solid #e0e2e7;
+        border-radius: 50px;
         color: #dc2626;
         cursor: pointer;
-        transition: all 0.15s;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1206,11 +1204,7 @@
 
         &:hover {
           background: #fef2f2;
-          border-color: #f87171;
-        }
-
-        &:active {
-          transform: scale(0.95);
+          border-color: #fca5a5;
         }
       }
 
@@ -1230,18 +1224,18 @@
 
           .btn-refresh-status-inline {
             margin-left: 8px;
-            padding: 2px 8px;
-            background: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            color: #6b7280;
+            padding: 4px 14px;
+            background: white;
+            border: 1px solid #e0e2e7;
+            border-radius: 50px;
+            color: #4b5563;
             font-size: 11px;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.2s ease;
 
             &:hover {
-              background: #e5e7eb;
-              border-color: #9ca3af;
+              border-color: #c0c4cc;
+              color: #1f2937;
             }
           }
         }
@@ -1253,98 +1247,30 @@
       }
     }
 
-    .gmail-actions {
+    .btn-gmail-sync {
+      width: 100%;
+      padding: 14px;
+      background: #111;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: center;
+      gap: 10px;
+      min-height: 48px;
+      transition: background 0.15s;
 
-      .btn-gmail-disconnect {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 16px;
-        background: transparent;
-        border: 1px solid #fca5a5;
-        border-radius: 6px;
-        color: #dc2626;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        svg {
-          flex-shrink: 0;
-          width: 14px;
-          height: 14px;
-        }
-
-        &:hover {
-          background: #fef2f2;
-          border-color: #f87171;
-        }
-
-        &:active {
-          transform: scale(0.98);
-        }
+      &:hover:not(:disabled) {
+        background: #333;
       }
 
-      .btn-gmail-sync {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 16px;
-        background: #3b82f6;
-        border: none;
-        border-radius: 6px;
-        color: white;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        svg {
-          flex-shrink: 0;
-        }
-
-        &:hover {
-          background: #2563eb;
-        }
-
-        &:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-      }
-
-      .btn-gmail-sync-all {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 12px;
-        background: #10b981;
-        border: none;
-        border-radius: 6px;
-        color: white;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-
-        svg {
-          flex-shrink: 0;
-        }
-
-        &:hover {
-          background: #059669;
-        }
-
-        &:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
     }
 
@@ -1369,18 +1295,19 @@
         }
 
         .btn-add-gmail-small {
-          padding: 4px 10px;
-          background: #3b82f6;
-          border: none;
-          border-radius: 4px;
+          padding: 6px 16px;
+          background: #1e293b;
+          border: 1px solid #1e293b;
+          border-radius: 50px;
           color: white;
           font-size: 12px;
           font-weight: 500;
           cursor: pointer;
-          transition: all 0.15s;
+          transition: all 0.2s ease;
 
           &:hover {
-            background: #2563eb;
+            background: #334155;
+            border-color: #334155;
           }
 
           &:disabled {
@@ -1416,20 +1343,20 @@
           }
 
           .btn-disconnect-compact {
-            padding: 2px 6px;
-            background: transparent;
-            border: 1px solid #fca5a5;
-            border-radius: 4px;
+            padding: 4px 12px;
+            background: white;
+            border: 1px solid #e0e2e7;
+            border-radius: 50px;
             color: #dc2626;
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 500;
             line-height: 1;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.2s ease;
 
             &:hover {
               background: #fef2f2;
-              border-color: #f87171;
+              border-color: #fca5a5;
             }
           }
         }
@@ -1441,18 +1368,19 @@
       align-items: center;
 
       .btn-add-vendor {
-        padding: 8px 14px;
-        background: #f3f4f6;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        color: #374151;
-        font-size: 13px;
+        padding: 10px 22px;
+        background: white;
+        border: 1px solid #e0e2e7;
+        border-radius: 50px;
+        color: #4b5563;
+        font-size: 14px;
         font-weight: 500;
         cursor: pointer;
-        transition: all 0.15s;
+        transition: all 0.2s ease;
 
         &:hover {
-          background: #e5e7eb;
+          border-color: #c0c4cc;
+          color: #1f2937;
         }
       }
 
@@ -1460,16 +1388,15 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 18px;
-        margin-left: 8px;
-        background: #000;
-        border: none;
-        border-radius: 8px;
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
+        padding: 10px 22px;
+        background: white;
+        border: 1px solid #e0e2e7;
+        border-radius: 50px;
+        color: #4b5563;
+        font-size: 14px;
+        font-weight: 500;
         cursor: pointer;
-        transition: all 0.15s;
+        transition: all 0.2s ease;
         white-space: nowrap;
 
         svg {
@@ -1477,7 +1404,8 @@
         }
 
         &:hover {
-          background: #222;
+          border-color: #c0c4cc;
+          color: #1f2937;
         }
 
         &:disabled {
@@ -1488,28 +1416,29 @@
     }
 
     .btn-gmail-connect {
-      padding: 10px 20px;
-      background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+      width: 100%;
+      padding: 14px;
+      background: #111;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       color: white;
-      font-size: 14px;
-      font-weight: 500;
+      font-size: 15px;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: center;
+      gap: 10px;
+      min-height: 48px;
+      transition: background 0.15s;
 
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+      &:hover:not(:disabled) {
+        background: #333;
       }
 
       &:disabled {
-        opacity: 0.7;
+        opacity: 0.6;
         cursor: not-allowed;
-        transform: none;
       }
 
       .loading-text {
@@ -1520,24 +1449,27 @@
     }
 
     .gmail-sync-result {
-      padding: 0 20px 16px;
+      padding: 0;
+      margin-top: 16px;
 
       .sync-result-content {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 12px 16px;
-        border-radius: 8px;
+        border-radius: 50px;
         font-size: 13px;
 
         &.success {
-          background: #dcfce7;
+          background: #f0fdf4;
           color: #166534;
+          border: 1px solid #bbf7d0;
         }
 
         &.error {
           background: #fef2f2;
           color: #dc2626;
+          border: 1px solid #fecaca;
         }
 
         .dismiss-btn {
@@ -1563,27 +1495,27 @@
 
     .filter-tabs {
       display: flex;
-      gap: 8px;
+      gap: 10px;
 
       .filter-tab {
-        padding: 10px 20px;
+        padding: 10px 22px;
         background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
+        border: 1px solid #e0e2e7;
+        border-radius: 50px;
         font-size: 14px;
         font-weight: 500;
-        color: #6b7280;
+        color: #4b5563;
         cursor: pointer;
-        transition: all 0.15s;
+        transition: all 0.2s ease;
 
-        &:hover {
-          background: #f9fafb;
-          border-color: #d1d5db;
+        &:hover:not(.active) {
+          border-color: #c0c4cc;
+          color: #1f2937;
         }
 
         &.active {
-          background: #111;
-          border-color: #111;
+          background: #1e293b;
+          border-color: #1e293b;
           color: white;
         }
       }
@@ -2674,50 +2606,59 @@
     border-top: 1px solid #f3f4f6;
 
     .action-btn {
-      padding: 8px 14px;
-      border-radius: 6px;
+      padding: 8px 18px;
+      border-radius: 50px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s;
-      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      border: 1px solid #e0e2e7;
+      background: white;
+      color: #4b5563;
+
+      &:hover {
+        border-color: #c0c4cc;
+        color: #1f2937;
+      }
 
       &.interested {
-        background: #dcfce7;
-        color: #166534;
-        border-color: #bbf7d0;
+        background: #1e293b;
+        border-color: #1e293b;
+        color: white;
 
         &:hover {
-          background: #bbf7d0;
+          background: #334155;
+          border-color: #334155;
         }
       }
 
       &.not-interested {
-        background: #f3f4f6;
-        color: #6b7280;
+        background: white;
+        color: #4b5563;
 
         &:hover {
-          background: #e5e7eb;
+          border-color: #c0c4cc;
+          color: #1f2937;
         }
       }
 
       &.archive {
         background: white;
-        color: #6b7280;
-        border-color: #e5e7eb;
+        color: #4b5563;
 
         &:hover {
-          background: #f9fafb;
+          border-color: #c0c4cc;
+          color: #1f2937;
         }
       }
 
       &.delete {
         background: white;
         color: #dc2626;
-        border-color: #fecaca;
 
         &:hover {
           background: #fef2f2;
+          border-color: #fca5a5;
         }
       }
     }
