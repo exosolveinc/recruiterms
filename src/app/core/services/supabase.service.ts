@@ -1795,6 +1795,28 @@ export class SupabaseService {
     return data?.content || null;
   }
 
+  async getAdminUpcomingInterviews(): Promise<any[]> {
+    const profile = this._profile.value;
+    if (!profile?.organization_id || profile.role !== 'admin') return [];
+
+    const now = new Date().toISOString();
+
+    const { data, error } = await this.supabase
+      .from('interview_details')
+      .select('id, title, interview_type, scheduled_at, duration_minutes, status, job_title, company_name, candidate_name, application_id')
+      .eq('organization_id', profile.organization_id)
+      .gte('scheduled_at', now)
+      .in('status', ['pending', 'scheduled'])
+      .order('scheduled_at', { ascending: true })
+      .limit(5);
+
+    if (error) {
+      console.warn('Failed to load admin upcoming interviews:', error);
+      return [];
+    }
+    return data || [];
+  }
+
   async getUserRecentActivity(limit = 5): Promise<ActivityLog[]> {
     const user = this._user.value;
     if (!user) return [];
