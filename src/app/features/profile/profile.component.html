@@ -32,10 +32,10 @@
       </button>
       <button
         class="tab-btn"
-        [class.active]="activeTab === 'notifications'"
-        (click)="setTab('notifications')"
+        [class.active]="activeTab === 'candidates'"
+        (click)="setTab('candidates')"
       >
-        Notifications
+        Candidates
       </button>
     </div>
 
@@ -233,79 +233,10 @@
     </div>
 
     <!-- ================================================================== -->
-    <!-- NOTIFICATIONS TAB -->
+    <!-- CANDIDATES TAB -->
     <!-- ================================================================== -->
-    <div class="tab-content" *ngIf="activeTab === 'notifications'">
-      <div class="card notifications-card">
-        <h3 class="card-title">Notification Preferences</h3>
-        <p class="card-subtitle">Choose which notifications you'd like to receive</p>
-
-        <div class="notif-list" *ngIf="notifPrefs">
-          <div class="notif-row">
-            <div class="notif-info">
-              <span class="notif-label">Email notifications for new applications</span>
-              <span class="notif-desc">Get notified when a new application is submitted</span>
-            </div>
-            <label class="toggle-switch">
-              <input
-                type="checkbox"
-                [checked]="notifPrefs.email_new_applications"
-                (change)="toggleNotifPref('email_new_applications')"
-              />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="notif-row">
-            <div class="notif-info">
-              <span class="notif-label">Interview reminders</span>
-              <span class="notif-desc">Receive reminders before scheduled interviews</span>
-            </div>
-            <label class="toggle-switch">
-              <input
-                type="checkbox"
-                [checked]="notifPrefs.interview_reminders"
-                (change)="toggleNotifPref('interview_reminders')"
-              />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="notif-row">
-            <div class="notif-info">
-              <span class="notif-label">Weekly summary digest</span>
-              <span class="notif-desc">A weekly email with your activity summary and stats</span>
-            </div>
-            <label class="toggle-switch">
-              <input
-                type="checkbox"
-                [checked]="notifPrefs.weekly_summary"
-                (change)="toggleNotifPref('weekly_summary')"
-              />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="notif-row">
-            <div class="notif-info">
-              <span class="notif-label">Offer alerts</span>
-              <span class="notif-desc">Get notified when an offer status changes</span>
-            </div>
-            <label class="toggle-switch">
-              <input
-                type="checkbox"
-                [checked]="notifPrefs.offer_alerts"
-                (change)="toggleNotifPref('offer_alerts')"
-              />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="notif-loading" *ngIf="!notifPrefs">
-          <p>Loading notification preferences...</p>
-        </div>
-      </div>
+    <div class="tab-content candidates-tab" *ngIf="activeTab === 'candidates'">
+      <app-candidates [embedded]="true"></app-candidates>
     </div>
   </div>
 
