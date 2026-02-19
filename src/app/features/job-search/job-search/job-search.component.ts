@@ -69,21 +69,6 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   searchLocation = '';
   selectedSource: JobPlatform = 'adzuna';
 
-  // Available job platforms
-  jobPlatforms: { value: JobPlatform; label: string; isAI?: boolean }[] = [
-    { value: 'adzuna', label: 'Adzuna' },
-    { value: 'rapidapi', label: 'JSearch (RapidAPI)' },
-    { value: 'dice', label: 'Dice (AI)', isAI: true },
-    { value: 'linkedin', label: 'LinkedIn (AI)', isAI: true },
-    { value: 'indeed', label: 'Indeed (AI)', isAI: true },
-    { value: 'glassdoor', label: 'Glassdoor (AI)', isAI: true },
-    { value: 'ai-search', label: 'AI Search (All Platforms)', isAI: true },
-    { value: 'all', label: 'All Sources' }
-  ];
-
-  // AI search platforms to include
-  aiSearchPlatforms = ['dice', 'indeed', 'linkedin', 'glassdoor'];
-
   // Preference-based search
   usePreferences = true;
 
@@ -371,12 +356,11 @@ export class JobSearchComponent implements OnInit, OnDestroy {
         };
 
         let result;
-        if (this.selectedSource === 'adzuna') {
+        const platform = Math.random() < 0.5 ? 'adzuna' : 'rapidapi';
+        if (platform === 'adzuna') {
           result = await this.jobFeedService.searchAdzunaJobs(params);
-        } else if (this.selectedSource === 'rapidapi') {
-          result = await this.jobFeedService.searchRapidApiJobs(params);
         } else {
-          result = await this.jobFeedService.searchAllJobs(params);
+          result = await this.jobFeedService.searchRapidApiJobs(params);
         }
 
         for (const job of result.jobs) {
@@ -500,33 +484,14 @@ export class JobSearchComponent implements OnInit, OnDestroy {
     try {
       let result;
 
+      // Randomly pick between adzuna and rapidapi
+      this.selectedSource = Math.random() < 0.5 ? 'adzuna' : 'rapidapi';
       this.searchLoadingText = `Searching ${this.getSourceLabel(this.selectedSource)}...`;
 
       if (this.selectedSource === 'adzuna') {
         result = await this.jobFeedService.searchAdzunaJobs(params);
-      } else if (this.selectedSource === 'rapidapi') {
-        result = await this.jobFeedService.searchRapidApiJobs(params);
-      } else if (this.selectedSource === 'ai-search') {
-        this.searchLoadingText = 'AI searching multiple platforms...';
-        result = await this.jobFeedService.searchWithAI(params, this.aiSearchPlatforms);
-      } else if (['dice', 'linkedin', 'indeed', 'glassdoor', 'ziprecruiter'].includes(this.selectedSource)) {
-        result = await this.jobFeedService.searchWithAI(params, [this.selectedSource]);
-      } else if (this.selectedSource === 'all') {
-        this.searchLoadingText = 'Searching all sources...';
-        const [adzunaResult, aiResult] = await Promise.all([
-          this.jobFeedService.searchAdzunaJobs(params),
-          this.jobFeedService.searchWithAI(params, ['dice', 'indeed', 'linkedin'])
-        ]);
-        const allJobs = [...adzunaResult.jobs, ...aiResult.jobs];
-        const uniqueJobs = this.deduplicateJobs(allJobs);
-        result = {
-          jobs: uniqueJobs,
-          total: adzunaResult.total + aiResult.total,
-          page: 1,
-          totalPages: 1
-        };
       } else {
-        result = await this.jobFeedService.searchAllJobs(params);
+        result = await this.jobFeedService.searchRapidApiJobs(params);
       }
 
       this.searchLoadingText = 'Processing results...';
@@ -597,12 +562,11 @@ export class JobSearchComponent implements OnInit, OnDestroy {
 
     try {
       let result;
+      // Use the same platform that was randomly picked for the initial search
       if (this.selectedSource === 'adzuna') {
         result = await this.jobFeedService.searchAdzunaJobs(params);
-      } else if (this.selectedSource === 'rapidapi') {
-        result = await this.jobFeedService.searchRapidApiJobs(params);
       } else {
-        result = await this.jobFeedService.searchAllJobs(params);
+        result = await this.jobFeedService.searchRapidApiJobs(params);
       }
 
       const newJobs = result.jobs.map(job => ({

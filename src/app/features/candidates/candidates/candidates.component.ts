@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { Candidate, CandidateDocument, CandidatePreferences, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { AppStateService } from '../../../core/services/app-state.service';
+import { VendorEmailService } from '../../../core/services/vendor-email.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 
 // PrimeNG imports
@@ -109,6 +110,15 @@ export class CandidatesComponent implements OnInit {
     totalResumes: 0,
     totalSkills: 0
   };
+
+  // Gmail / Email integration (per-candidate state)
+  private vendorEmailService = inject(VendorEmailService);
+  gmailState: { [candidateId: string]: {
+    accounts: any[];
+    loading: boolean;
+    syncing: boolean;
+    loaded: boolean;
+  } } = {};
 
   constructor(
     private supabase: SupabaseService,
@@ -835,5 +845,91 @@ export class CandidatesComponent implements OnInit {
   async logout() {
     await this.supabase.signOut();
     this.router.navigate(['/auth/login']);
+  }
+
+  onRowExpand(event: any) {
+    const candidate = event.data;
+    if (candidate?.id) {
+      this.loadCandidateGmail(candidate.id);
+    }
+  }
+
+  // ============================================================================
+  // CANDIDATE EMAIL / GMAIL (per-candidate)
+  // ============================================================================
+
+  private getGmailState(candidateId: string) {
+    if (!this.gmailState[candidateId]) {
+      this.gmailState[candidateId] = { accounts: [], loading: false, syncing: false, loaded: false };
+    }
+    return this.gmailState[candidateId];
+  }
+
+  async loadCandidateGmail(candidateId: string) {
+    const state = this.getGmailState(candidateId);
+    if (state.loaded || state.loading) return;
+
+    state.loading = true;
+    try {
+      const accounts = await this.vendorEmailService.getCandidateGmailAccounts(candidateId);
+      state.accounts = accounts;
+      state.loaded = true;
+    } catch (err) {
+      console.error('Failed to load Gmail accounts:', err);
+    } finally {
+      state.loading = false;
+    }
+  }
+
+  async connectCandidateGmail(candidateId: string) {
+    const state = this.getGmailState(candidateId);
+    if (state.accounts.length >= 3) {
+      alert('Maximum of 3 Gmail accounts per candidate. Please disconnect one to add another.');
+      return;
+    }
+
+    try {
+      const { authUrl } = await this.vendorEmailService.getGmailAuthUrl(candidateId);
+      sessionStorage.setItem('gmail_oauth_candidate_id', candidateId);
+      window.location.href = authUrl;
+    } catch (err: any) {
+      console.error('Failed to start Gmail OAuth:', err);
+      alert('Failed to connect Gmail: ' + err.message);
+    }
+  }
+
+  async disconnectGmailAccount(candidateId: string, connectionId: string, email: string) {
+    if (!confirm(`Disconnect ${email}? Synced jobs will be kept.`)) return;
+
+    try {
+      const success = await this.vendorEmailService.disconnectGmailConnection(connectionId);
+      if (success) {
+        const state = this.getGmailState(candidateId);
+        state.accounts = state.accounts.filter((a: any) => a.connection_id !== connectionId);
+      }
+    } catch (err: any) {
+      console.error('Failed to disconnect Gmail:', err);
+      alert('Failed to disconnect: ' + err.message);
+    }
+  }
+
+  async syncGmailAccount(candidateId: string, connectionId: string) {
+    const state = this.getGmailState(candidateId);
+    state.syncing = true;
+
+    try {
+      const result = await this.vendorEmailService.syncGmailConnection(connectionId);
+      if (result.jobsCreated > 0) {
+        console.log(`Synced ${result.emailsParsed} emails, found ${result.jobsCreated} new jobs`);
+      }
+      // Reload accounts
+      state.loaded = false;
+      await this.loadCandidateGmail(candidateId);
+    } catch (err: any) {
+      console.error('Failed to sync emails:', err);
+      alert('Failed to sync emails: ' + err.message);
+    } finally {
+      state.syncing = false;
+    }
   }
 }
