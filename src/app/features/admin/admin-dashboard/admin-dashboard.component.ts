@@ -5,11 +5,8 @@ import { Router } from '@angular/router';
 import { Job, Profile, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
-
-// PrimeNG imports
 import { TableModule, Table } from 'primeng/table';
 import { MultiSelectModule } from 'primeng/multiselect';
-import { TagModule } from 'primeng/tag';
 
 interface AdminApplication {
   id: string;
@@ -40,8 +37,7 @@ interface AdminApplication {
     FormsModule,
     SidebarComponent,
     TableModule,
-    MultiSelectModule,
-    TagModule
+    MultiSelectModule
   ],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
@@ -51,34 +47,46 @@ export class AdminDashboardComponent implements OnInit {
 
   profile: Profile | null = null;
   loading = true;
-
-  // Stats
-  stats = {
-    totalApplications: 0,
-    totalInterviews: 0,
-    totalOffers: 0,
-    avgMatchScore: 0
-  };
+  lastUpdated = new Date();
 
   // Data
   applications: AdminApplication[] = [];
 
-  // Search
+  // Stats
+  stats = { totalApps: 0, interviews: 0, avgMatch: 0, avgSalary: 0 };
+
+  // Pipeline
+  pipeline = { extracted: 0, applied: 0, screening: 0, interviewing: 0, offer: 0, accepted: 0 };
+  pipelineMax = 1;
+
+  // Weekly activity (last 7 days)
+  weeklyActivity: { day: string; count: number }[] = [];
+  weeklyMax = 1;
+
+  // Upcoming interviews
+  upcomingInterviews: any[] = [];
+
+  // Top matches
+  topMatches: AdminApplication[] = [];
+
+  // Table state
   searchTerm = '';
+  selectedStatuses: string[] = [];
 
   // PrimeNG sort state
   sortField = '';
   sortOrder = 0;
 
-  // Filter options for multi-selects
-  recruiterOptions: { label: string; value: string }[] = [];
-  statusOptions: { label: string; value: string }[] = [];
-  platformOptions: { label: string; value: string }[] = [];
-
-  // Selected filter values
-  selectedRecruiters: string[] = [];
-  selectedStatuses: string[] = [];
-  selectedPlatforms: string[] = [];
+  // Status filter options for multiselect
+  statusFilterOptions = [
+    { label: 'Applied', value: 'applied' },
+    { label: 'Extracted', value: 'extracted' },
+    { label: 'Screening', value: 'screening' },
+    { label: 'Interviewing', value: 'interviewing' },
+    { label: 'Offer', value: 'offer' },
+    { label: 'Accepted', value: 'accepted' },
+    { label: 'Rejected', value: 'rejected' }
+  ];
 
   // Job Detail Modal
   showJobModal = false;
@@ -86,10 +94,13 @@ export class AdminDashboardComponent implements OnInit {
   selectedResume: Resume | null = null;
   loadingJobDetails = false;
 
+  // Circumference for SVG rings
+  readonly RING_C = 2 * Math.PI * 17;
+
   constructor(
     private supabase: SupabaseService,
     private router: Router
-  ) { }
+  ) {}
 
   async ngOnInit() {
     await this.checkAdminAccess();
@@ -113,64 +124,85 @@ export class AdminDashboardComponent implements OnInit {
 
   async loadData() {
     try {
-      await this.loadApplications();
-      this.calculateStats();
-      this.buildFilterOptions();
+      const data = await this.supabase.getAdminApplications();
+      this.applications = data;
+      this.computeStats();
+      this.lastUpdated = new Date();
+
+      // Load interviews in parallel
+      try {
+        this.upcomingInterviews = await this.supabase.getAdminUpcomingInterviews();
+      } catch {
+        this.upcomingInterviews = [];
+      }
     } catch (err) {
       console.error('Failed to load admin data:', err);
     }
   }
 
-  async loadApplications() {
-    const data = await this.supabase.getAdminApplications();
-    this.applications = data;
-  }
+  computeStats() {
+    const apps = this.applications;
+    this.stats.totalApps = apps.length;
 
-  calculateStats() {
-    this.stats.totalApplications = this.applications.length;
-    this.stats.totalInterviews = this.applications.filter(a =>
+    this.stats.interviews = apps.filter(a =>
       ['screening', 'interviewing', 'offer', 'accepted'].includes(a.status)
     ).length;
-    this.stats.totalOffers = this.applications.filter(a =>
-      ['offer', 'accepted'].includes(a.status)
-    ).length;
 
-    const scoresWithValue = this.applications.filter(a => a.match_score);
-    this.stats.avgMatchScore = scoresWithValue.length > 0
+    const scoresWithValue = apps.filter(a => a.match_score);
+    this.stats.avgMatch = scoresWithValue.length > 0
       ? Math.round(scoresWithValue.reduce((sum, a) => sum + (a.match_score || 0), 0) / scoresWithValue.length)
       : 0;
-  }
 
-  buildFilterOptions() {
-    // Recruiters
-    const seen = new Set<string>();
-    this.recruiterOptions = [];
-    for (const app of this.applications) {
-      if (!seen.has(app.user_id)) {
-        seen.add(app.user_id);
-        this.recruiterOptions.push({
-          label: app.recruiter_name || app.recruiter_email,
-          value: app.user_id
-        });
-      }
+    const salaryApps = apps.filter(a => a.salary_min || a.salary_max);
+    if (salaryApps.length > 0) {
+      const totalSalary = salaryApps.reduce((sum, a) => {
+        const avg = a.salary_min && a.salary_max ? (a.salary_min + a.salary_max) / 2 :
+                    a.salary_min ? a.salary_min : a.salary_max!;
+        return sum + avg;
+      }, 0);
+      this.stats.avgSalary = Math.round(totalSalary / salaryApps.length);
     }
 
-    // Statuses
-    const statuses = [...new Set(this.applications.map(a => a.status).filter(Boolean))];
-    this.statusOptions = statuses.map(s => ({
-      label: s.charAt(0).toUpperCase() + s.slice(1),
-      value: s
-    }));
+    // Pipeline
+    this.pipeline = { extracted: 0, applied: 0, screening: 0, interviewing: 0, offer: 0, accepted: 0 };
+    for (const app of apps) {
+      const s = app.status as keyof typeof this.pipeline;
+      if (s in this.pipeline) {
+        this.pipeline[s]++;
+      }
+    }
+    this.pipelineMax = Math.max(
+      this.pipeline.extracted, this.pipeline.applied, this.pipeline.screening,
+      this.pipeline.interviewing, this.pipeline.offer, this.pipeline.accepted, 1
+    );
 
-    // Platforms
-    const platforms = [...new Set(
-      this.applications.map(a => a.platform).filter((p): p is string => !!p)
-    )];
-    this.platformOptions = platforms.map(p => ({ label: p, value: p }));
+    // Weekly activity
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    const counts: { day: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      const count = apps.filter(a => {
+        const t = new Date(a.applied_at).getTime();
+        return t >= dayStart.getTime() && t < dayEnd.getTime();
+      }).length;
+      counts.push({ day: dayNames[d.getDay()], count });
+    }
+    this.weeklyActivity = counts;
+    this.weeklyMax = Math.max(...counts.map(c => c.count), 1);
+
+    // Top matches
+    this.topMatches = [...apps]
+      .filter(a => a.match_score)
+      .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
+      .slice(0, 4);
   }
 
   // ============================================================================
-  // TABLE INTERACTION
+  // TABLE (PrimeNG)
   // ============================================================================
 
   onGlobalFilter(event: Event) {
@@ -195,9 +227,9 @@ export class AdminDashboardComponent implements OnInit {
       this.dt.reset();
       // Re-apply active filters after reset
       if (this.searchTerm) this.dt.filterGlobal(this.searchTerm, 'contains');
-      if (this.selectedRecruiters.length) this.dt.filter(this.selectedRecruiters, 'user_id', 'in');
-      if (this.selectedStatuses.length) this.dt.filter(this.selectedStatuses, 'status', 'in');
-      if (this.selectedPlatforms.length) this.dt.filter(this.selectedPlatforms, 'platform', 'in');
+      if (this.selectedStatuses.length > 0) {
+        this.dt.filter(this.selectedStatuses, 'status', 'in');
+      }
     }
   }
 
@@ -206,30 +238,26 @@ export class AdminDashboardComponent implements OnInit {
     return this.sortOrder === 1 ? 'pi-sort-amount-up-alt' : 'pi-sort-amount-down';
   }
 
-  onRecruiterFilterChange() {
-    this.dt.filter(this.selectedRecruiters.length ? this.selectedRecruiters : null, 'user_id', 'in');
-  }
-
   onStatusFilterChange() {
-    this.dt.filter(this.selectedStatuses.length ? this.selectedStatuses : null, 'status', 'in');
-  }
-
-  onPlatformFilterChange() {
-    this.dt.filter(this.selectedPlatforms.length ? this.selectedPlatforms : null, 'platform', 'in');
+    if (this.selectedStatuses.length > 0) {
+      this.dt.filter(this.selectedStatuses, 'status', 'in');
+    } else {
+      this.dt.filter(null, 'status', 'in');
+    }
   }
 
   clearFilters() {
-    this.dt.clear();
+    if (this.dt) {
+      this.dt.clear();
+    }
     this.searchTerm = '';
-    this.selectedRecruiters = [];
     this.selectedStatuses = [];
-    this.selectedPlatforms = [];
     this.sortField = '';
     this.sortOrder = 0;
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.searchTerm || this.selectedRecruiters.length || this.selectedStatuses.length || this.selectedPlatforms.length);
+    return !!(this.searchTerm || this.selectedStatuses.length > 0);
   }
 
   // ============================================================================
@@ -242,7 +270,6 @@ export class AdminDashboardComponent implements OnInit {
 
     try {
       this.selectedJob = await this.supabase.getJob(app.job_id);
-
       if (app.resume_id) {
         this.selectedResume = await this.supabase.getResume(app.resume_id);
       } else {
@@ -262,7 +289,7 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   // ============================================================================
-  // FORMAT HELPERS
+  // HELPERS
   // ============================================================================
 
   formatDate(dateStr: string): string {
@@ -273,38 +300,88 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
+  formatTime(dateStr: string): string {
+    return new Date(dateStr).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
   formatSalary(min: number | null, max: number | null): string {
-    if (!min && !max) return 'Not listed';
+    if (!min && !max) return '—';
     const format = (n: number) => `$${Math.round(n / 1000)}k`;
-    if (min && max) return `${format(min)} - ${format(max)}`;
+    if (min && max) return `${format(min)} – ${format(max)}`;
     if (min) return `${format(min)}+`;
     return `Up to ${format(max!)}`;
   }
 
-  getStatusSeverity(status: string): 'success' | 'info' | 'warning' | 'danger' | 'secondary' | 'contrast' | undefined {
-    const map: Record<string, 'success' | 'info' | 'warning' | 'danger' | 'secondary' | 'contrast'> = {
-      'applied': 'info',
-      'screening': 'warning',
-      'interviewing': 'contrast',
-      'offer': 'success',
-      'accepted': 'success',
-      'rejected': 'danger',
-      'withdrawn': 'secondary'
-    };
-    return map[status] || 'info';
+  formatSalaryShort(value: number): string {
+    if (value >= 1000) return `$${Math.round(value / 1000)}k`;
+    return `$${value}`;
+  }
+
+  getMatchColor(score: number | null): string {
+    if (!score) return '#9CA3AF';
+    if (score >= 80) return '#16A34A';
+    if (score >= 60) return '#D97706';
+    return '#DC2626';
+  }
+
+  getRingOffset(score: number | null): number {
+    if (!score) return this.RING_C;
+    return this.RING_C - (score / 100) * this.RING_C;
   }
 
   getStatusClass(status: string): string {
-    const classes: Record<string, string> = {
-      'applied': 'status-applied',
-      'screening': 'status-screening',
-      'interviewing': 'status-interviewing',
-      'offer': 'status-offer',
-      'accepted': 'status-accepted',
-      'rejected': 'status-rejected',
-      'withdrawn': 'status-withdrawn'
+    const map: Record<string, string> = {
+      applied: 'status-applied',
+      extracted: 'status-extracted',
+      screening: 'status-screening',
+      interviewing: 'status-interview',
+      offer: 'status-offer',
+      accepted: 'status-accepted',
+      rejected: 'status-rejected',
+      withdrawn: 'status-extracted'
     };
-    return classes[status] || 'status-applied';
+    return map[status] || 'status-extracted';
+  }
+
+  getInterviewTypeBadge(type: string): string {
+    const map: Record<string, string> = {
+      phone: 'Phone',
+      video: 'Video',
+      onsite: 'Onsite',
+      technical: 'Technical',
+      behavioral: 'Behavioral',
+      panel: 'Panel',
+      other: 'Interview'
+    };
+    return map[type] || type;
+  }
+
+  getInitials(name: string | null): string {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }
+
+  getPipelinePercent(count: number): number {
+    return Math.max(8, (count / this.pipelineMax) * 100);
+  }
+
+  getBarHeight(count: number): number {
+    return Math.max(4, (count / this.weeklyMax) * 120);
+  }
+
+  getConversionRate(): string {
+    if (this.stats.totalApps === 0) return '0';
+    const accepted = this.pipeline.accepted + this.pipeline.offer;
+    return ((accepted / this.stats.totalApps) * 100).toFixed(1);
   }
 
   getMatchClass(score: number | null): string {
@@ -314,14 +391,8 @@ export class AdminDashboardComponent implements OnInit {
     return 'match-low';
   }
 
-  getInitials(name: string): string {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  trackByIndex(index: number): number {
+    return index;
   }
 
   async logout() {

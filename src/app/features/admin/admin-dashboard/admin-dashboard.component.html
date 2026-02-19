@@ -1,79 +1,212 @@
 <app-sidebar activePage="admin"></app-sidebar>
 <div class="admin-dashboard">
-  <!-- Header -->
-  <div class="page-header">
-    <div>
-      <h1>Dashboard</h1>
-      <p class="page-sub">Overview of your organization's recruitment activity</p>
-    </div>
-  </div>
 
   <!-- Loading -->
   <div class="loading-screen" *ngIf="loading">
     <div class="spinner"></div>
-    <p>Loading admin data...</p>
+    <p>Loading dashboard...</p>
   </div>
 
   <main class="main-content" *ngIf="!loading">
-    <!-- Stats Row -->
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-icon purple">📋</div>
-        <div class="stat-info">
-          <span class="stat-value">{{ stats.totalApplications }}</span>
-          <span class="stat-label">Applications</span>
+
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="page-sub">Overview of your organization's recruitment activity</p>
+      </div>
+      <span class="last-updated">Last updated {{ formatTime(lastUpdated.toISOString()) }}</span>
+    </div>
+
+    <!-- Row 1: Stats / Pipeline / Weekly -->
+    <div class="row-3">
+
+      <!-- Stat Cards -->
+      <div class="card stat-cards-grid">
+        <div class="stat-card">
+          <div class="stat-icon-box blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <div class="stat-text">
+            <span class="stat-value">{{ stats.totalApps }}</span>
+            <span class="stat-label">Total Applications</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-box purple">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div class="stat-text">
+            <span class="stat-value">{{ stats.interviews }}</span>
+            <span class="stat-label">Interviews</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-box green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+            </svg>
+          </div>
+          <div class="stat-text">
+            <span class="stat-value">{{ stats.avgMatch }}%</span>
+            <span class="stat-label">Avg Match Score</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-box amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div class="stat-text">
+            <span class="stat-value">{{ formatSalaryShort(stats.avgSalary) }}</span>
+            <span class="stat-label">Avg Salary</span>
+          </div>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon orange">🎯</div>
-        <div class="stat-info">
-          <span class="stat-value">{{ stats.totalInterviews }}</span>
-          <span class="stat-label">Interviews</span>
+
+      <!-- Pipeline Funnel -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Pipeline</h3>
+        </div>
+        <div class="pipeline-list">
+          <div class="pipeline-row" *ngFor="let stage of [
+            { key: 'extracted', label: 'Extracted', count: pipeline.extracted },
+            { key: 'applied', label: 'Applied', count: pipeline.applied },
+            { key: 'screening', label: 'Screening', count: pipeline.screening },
+            { key: 'interviewing', label: 'Interviewing', count: pipeline.interviewing },
+            { key: 'offer', label: 'Offer', count: pipeline.offer },
+            { key: 'accepted', label: 'Accepted', count: pipeline.accepted }
+          ]">
+            <span class="pipeline-label">{{ stage.label }}</span>
+            <div class="pipeline-bar-track">
+              <div class="pipeline-bar" [class]="'bar-' + stage.key" [style.width.%]="getPipelinePercent(stage.count)"></div>
+            </div>
+            <span class="pipeline-count">{{ stage.count }}</span>
+          </div>
+        </div>
+        <div class="pipeline-footer">
+          <span>Conversion rate</span>
+          <span class="conversion-value">{{ getConversionRate() }}%</span>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon green">🎉</div>
-        <div class="stat-info">
-          <span class="stat-value">{{ stats.totalOffers }}</span>
-          <span class="stat-label">Offers</span>
+
+      <!-- Weekly Activity -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Weekly Applications</h3>
         </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon teal">📊</div>
-        <div class="stat-info">
-          <span class="stat-value">{{ stats.avgMatchScore }}%</span>
-          <span class="stat-label">Avg Match</span>
+        <div class="weekly-chart">
+          <div class="bar-group" *ngFor="let day of weeklyActivity; trackBy: trackByIndex">
+            <span class="bar-count">{{ day.count }}</span>
+            <div class="bar" [style.height.px]="getBarHeight(day.count)"></div>
+            <span class="bar-day">{{ day.day }}</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Applications Table -->
-    <div class="section applications-section">
+    <!-- Row 2: Interviews / Top Matches -->
+    <div class="row-2">
+
+      <!-- Upcoming Interviews -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Upcoming Interviews</h3>
+          <span class="badge-count" *ngIf="upcomingInterviews.length">{{ upcomingInterviews.length }}</span>
+        </div>
+        <div class="interview-list" *ngIf="upcomingInterviews.length > 0">
+          <div class="interview-item" *ngFor="let iv of upcomingInterviews">
+            <div class="iv-avatar">{{ getInitials(iv.company_name) }}</div>
+            <div class="iv-info">
+              <span class="iv-role">{{ iv.job_title || 'Interview' }}</span>
+              <span class="iv-company">{{ iv.company_name }}</span>
+            </div>
+            <div class="iv-meta">
+              <span class="iv-type-badge">{{ getInterviewTypeBadge(iv.interview_type) }}</span>
+              <span class="iv-time">{{ formatDate(iv.scheduled_at) }}, {{ formatTime(iv.scheduled_at) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="empty-card" *ngIf="upcomingInterviews.length === 0">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <p>No upcoming interviews</p>
+        </div>
+      </div>
+
+      <!-- Top Matches -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Top Matches</h3>
+        </div>
+        <div class="top-matches-list" *ngIf="topMatches.length > 0">
+          <div class="match-item" *ngFor="let m of topMatches; let i = index">
+            <span class="match-rank">#{{ i + 1 }}</span>
+            <div class="match-info">
+              <span class="match-title">{{ m.job_title || '—' }}</span>
+              <span class="match-company">{{ m.company_name || '—' }}</span>
+            </div>
+            <div class="match-ring">
+              <svg width="52" height="52" viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="17" fill="none" stroke="#F3F4F6" stroke-width="3"/>
+                <circle cx="22" cy="22" r="17" fill="none"
+                  [attr.stroke]="getMatchColor(m.match_score)" stroke-width="3"
+                  [attr.stroke-dasharray]="RING_C"
+                  [attr.stroke-dashoffset]="getRingOffset(m.match_score)"
+                  stroke-linecap="round" transform="rotate(-90 22 22)"/>
+                <text x="22" y="22" text-anchor="middle" dominant-baseline="central"
+                  [attr.fill]="getMatchColor(m.match_score)" font-size="11" font-weight="700">{{ m.match_score }}%</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="empty-card" *ngIf="topMatches.length === 0">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <p>No match data yet</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Applications Table -->
+    <div class="card table-card">
       <p-table
         #dt
-        *ngIf="applications.length > 0"
         [value]="applications"
         [paginator]="true"
         [rows]="10"
-        [rowsPerPageOptions]="[10, 15, 25, 50]"
+        [rowsPerPageOptions]="[5, 10, 25, 50]"
         [showCurrentPageReport]="true"
         currentPageReportTemplate="Showing {first} to {last} of {totalRecords} applications"
-        [globalFilterFields]="['company_name', 'job_title', 'recruiter_name', 'recruiter_email', 'location', 'platform', 'status']"
+        [globalFilterFields]="['company_name', 'job_title', 'recruiter_name', 'location', 'platform', 'status']"
         dataKey="id"
         [rowHover]="true"
         styleClass="p-datatable-sm admin-table"
         [tableStyle]="{ 'table-layout': 'fixed', 'width': '100%' }"
       >
-        <!-- Caption / Search Bar -->
+        <!-- Caption / Header Bar -->
         <ng-template pTemplate="caption">
           <div class="table-header">
             <div class="table-header-left">
-              <h2>All Applications</h2>
-              <span class="app-count">{{ applications.length }} total</span>
+              <h3>Applications</h3>
+              <span class="badge-count">{{ applications.length }}</span>
             </div>
             <div class="table-header-right">
               <div class="search-box">
-                <i class="pi pi-search"></i>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
                 <input
                   type="text"
                   [(ngModel)]="searchTerm"
@@ -81,12 +214,7 @@
                   placeholder="Search applications..."
                 />
               </div>
-              <button
-                class="clear-filters-btn"
-                (click)="clearFilters()"
-                *ngIf="hasActiveFilters"
-              >
-                <i class="pi pi-filter-slash"></i>
+              <button class="clear-filters-btn" (click)="clearFilters()" *ngIf="hasActiveFilters">
                 Clear
               </button>
             </div>
@@ -102,27 +230,7 @@
                 <i class="pi sort-icon" [ngClass]="getSortIcon('applied_at')"></i>
               </div>
             </th>
-            <th (click)="onSort($event, 'recruiter_name')" class="sortable-col" style="width: 200px">
-              <div class="header-cell">
-                <span>Recruiter</span>
-                <i class="pi sort-icon" [ngClass]="getSortIcon('recruiter_name')"></i>
-                <div class="filter-wrapper" (click)="$event.stopPropagation()">
-                  <i class="pi pi-filter" [class.active]="selectedRecruiters.length > 0"></i>
-                  <span class="filter-count" *ngIf="selectedRecruiters.length > 0">{{ selectedRecruiters.length }}</span>
-                  <p-multiSelect
-                    [options]="recruiterOptions"
-                    [(ngModel)]="selectedRecruiters"
-                    (onChange)="onRecruiterFilterChange()"
-                    [showHeader]="false"
-                    [showToggleAll]="false"
-                    placeholder="Filter"
-                    styleClass="filter-multiselect"
-                    appendTo="body"
-                  ></p-multiSelect>
-                </div>
-              </div>
-            </th>
-            <th (click)="onSort($event, 'company_name')" class="sortable-col" style="width: 130px">
+            <th (click)="onSort($event, 'company_name')" class="sortable-col" style="width: 150px">
               <div class="header-cell">
                 <span>Company</span>
                 <i class="pi sort-icon" [ngClass]="getSortIcon('company_name')"></i>
@@ -135,81 +243,66 @@
               </div>
             </th>
             <th style="width: 140px">Location</th>
-            <th style="width: 110px">Salary</th>
+            <th (click)="onSort($event, 'salary_max')" class="sortable-col" style="width: 120px">
+              <div class="header-cell">
+                <span>Salary</span>
+                <i class="pi sort-icon" [ngClass]="getSortIcon('salary_max')"></i>
+              </div>
+            </th>
             <th (click)="onSort($event, 'match_score')" class="sortable-col" style="width: 90px">
               <div class="header-cell">
                 <span>Match</span>
                 <i class="pi sort-icon" [ngClass]="getSortIcon('match_score')"></i>
               </div>
             </th>
-            <th style="width: 120px">
+            <th style="width: 140px">
               <div class="header-cell">
                 <span>Status</span>
                 <div class="filter-wrapper" (click)="$event.stopPropagation()">
                   <i class="pi pi-filter" [class.active]="selectedStatuses.length > 0"></i>
                   <span class="filter-count" *ngIf="selectedStatuses.length > 0">{{ selectedStatuses.length }}</span>
                   <p-multiSelect
-                    [options]="statusOptions"
+                    [options]="statusFilterOptions"
                     [(ngModel)]="selectedStatuses"
                     (onChange)="onStatusFilterChange()"
                     [showHeader]="false"
                     [showToggleAll]="false"
                     placeholder="Filter"
-                    styleClass="filter-multiselect"
+                    styleClass="status-filter-multiselect"
                     appendTo="body"
                   ></p-multiSelect>
                 </div>
               </div>
             </th>
-            <th style="width: 120px; text-align: center">Actions</th>
           </tr>
         </ng-template>
 
         <!-- Table Body -->
         <ng-template pTemplate="body" let-app>
-          <tr class="app-row" (click)="viewJobDetails(app)">
-            <td class="date-cell">{{ formatDate(app.applied_at) }}</td>
-            <td class="recruiter-cell">
-              <div class="recruiter-mini">
-                <span class="recruiter-mini-avatar">{{ getInitials(app.recruiter_name || app.recruiter_email) }}</span>
-                <div class="recruiter-mini-info">
-                  <span class="recruiter-mini-name">{{ app.recruiter_name || 'No Name' }}</span>
-                  <span class="recruiter-mini-email">{{ app.recruiter_email }}</span>
-                </div>
-              </div>
-            </td>
-            <td class="company-cell">
+          <tr class="table-row" (click)="viewJobDetails(app)">
+            <td class="cell-date">{{ formatDate(app.applied_at) }}</td>
+            <td class="cell-company">
               <span class="company-name">{{ app.company_name || '—' }}</span>
-              <span class="platform-tag" *ngIf="app.platform">{{ app.platform }}</span>
+              <span class="platform-sub" *ngIf="app.platform">{{ app.platform }}</span>
             </td>
-            <td class="position-cell">
-              <span class="job-title">{{ app.job_title || '—' }}</span>
-              <span class="experience-level" *ngIf="app.experience_level">({{ app.experience_level }})</span>
-            </td>
-            <td class="location-cell">
-              <span>{{ app.location || '—' }}</span>
-              <span class="work-type-badge" *ngIf="app.work_type" [class]="app.work_type.toLowerCase()">
-                {{ app.work_type }}
-              </span>
-            </td>
-            <td class="salary-cell">
-              <span class="salary">{{ formatSalary(app.salary_min, app.salary_max) }}</span>
-            </td>
-            <td class="match-cell">
-              <span class="match-score" *ngIf="app.match_score" [class]="getMatchClass(app.match_score)">
-                {{ app.match_score }}%
-              </span>
+            <td class="cell-position">{{ app.job_title || '—' }}</td>
+            <td class="cell-location">{{ app.location || '—' }}</td>
+            <td class="cell-salary">{{ formatSalary(app.salary_min, app.salary_max) }}</td>
+            <td class="cell-match">
+              <svg *ngIf="app.match_score" width="44" height="44" viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="17" fill="none" stroke="#F3F4F6" stroke-width="3"/>
+                <circle cx="22" cy="22" r="17" fill="none"
+                  [attr.stroke]="getMatchColor(app.match_score)" stroke-width="3"
+                  [attr.stroke-dasharray]="RING_C"
+                  [attr.stroke-dashoffset]="getRingOffset(app.match_score)"
+                  stroke-linecap="round" transform="rotate(-90 22 22)"/>
+                <text x="22" y="22" text-anchor="middle" dominant-baseline="central"
+                  [attr.fill]="getMatchColor(app.match_score)" font-size="11" font-weight="700">{{ app.match_score }}%</text>
+              </svg>
               <span *ngIf="!app.match_score" class="no-data">—</span>
             </td>
-            <td class="status-cell">
-              <span class="status-badge" [class]="getStatusClass(app.status)">
-                {{ app.status | titlecase }}
-              </span>
-            </td>
-            <td class="actions-cell">
-              <button class="btn-view" (click)="viewJobDetails(app); $event.stopPropagation()">
-                <i class="pi pi-eye"></i>
-              </button>
+            <td class="cell-status">
+              <span class="status-pill" [class]="getStatusClass(app.status)">{{ app.status | titlecase }}</span>
             </td>
           </tr>
         </ng-template>
@@ -217,18 +310,13 @@
         <!-- Empty Message -->
         <ng-template pTemplate="emptymessage">
           <tr>
-            <td colspan="9" class="empty-table-message">
-              <i class="pi pi-search"></i>
+            <td colspan="7" class="empty-table">
               <p>No applications match your filters.</p>
-              <button class="btn-text" (click)="clearFilters()">Clear Filters</button>
+              <button class="clear-filters-link" (click)="clearFilters()" *ngIf="hasActiveFilters">Clear Filters</button>
             </td>
           </tr>
         </ng-template>
       </p-table>
-
-      <div class="empty-state" *ngIf="applications.length === 0">
-        <p>No applications in your organization yet.</p>
-      </div>
     </div>
   </main>
 
@@ -241,7 +329,6 @@
       </div>
 
       <div class="modal-body" *ngIf="!loadingJobDetails && selectedJob">
-        <!-- Job Header -->
         <div class="job-header-section">
           <h2 class="job-title-large">{{ selectedJob.job_title }}</h2>
           <div class="job-company-large">
@@ -263,11 +350,8 @@
           </div>
         </div>
 
-        <!-- Two Column Layout -->
         <div class="job-details-grid">
-          <!-- Left Column -->
           <div class="job-details-left">
-            <!-- Match Analysis -->
             <div class="detail-section" *ngIf="selectedJob.match_score">
               <h4>Match Analysis</h4>
               <div class="match-display">
@@ -285,72 +369,27 @@
                   </div>
                 </div>
               </div>
-              <div class="recommendations" *ngIf="selectedJob.recommendations?.length">
-                <h5>AI Recommendations</h5>
-                <ul>
-                  <li *ngFor="let rec of selectedJob.recommendations">{{ rec }}</li>
-                </ul>
-              </div>
             </div>
-
-            <!-- Compensation -->
             <div class="detail-section" *ngIf="selectedJob.salary_min || selectedJob.salary_max || selectedJob.salary_raw">
               <h4>Compensation</h4>
               <div class="salary-display">
                 <span class="salary-amount">{{ formatSalary(selectedJob.salary_min, selectedJob.salary_max) }}</span>
                 <span class="salary-period" *ngIf="selectedJob.salary_period">/ {{ selectedJob.salary_period }}</span>
               </div>
-              <div class="compensation-extras">
-                <span class="bonus-badge" *ngIf="selectedJob.has_bonus">+ Bonus</span>
-                <span class="equity-badge" *ngIf="selectedJob.has_equity">+ Equity</span>
-              </div>
               <p class="salary-raw" *ngIf="selectedJob.salary_raw">{{ selectedJob.salary_raw }}</p>
             </div>
-
-            <!-- Required Skills -->
             <div class="detail-section" *ngIf="selectedJob.required_skills?.length">
               <h4>Required Skills</h4>
               <div class="skills-list">
-                <span
-                  class="skill-chip"
-                  *ngFor="let skill of selectedJob.required_skills"
+                <span class="skill-chip" *ngFor="let skill of selectedJob.required_skills"
                   [class.required]="skill.importance === 'Required'"
-                  [class.preferred]="skill.importance === 'Preferred'"
-                >
+                  [class.preferred]="skill.importance === 'Preferred'">
                   {{ skill.skill }}
                   <small *ngIf="skill.importance">{{ skill.importance }}</small>
                   <small *ngIf="skill.years"> · {{ skill.years }}+ yrs</small>
                 </span>
               </div>
             </div>
-
-            <!-- Education & Certifications -->
-            <div class="detail-section" *ngIf="selectedJob.required_education || selectedJob.required_certifications?.length">
-              <h4>Education & Certifications</h4>
-              <p *ngIf="selectedJob.required_education" class="education-text">
-                {{ selectedJob.required_education }}
-              </p>
-              <div class="certifications" *ngIf="selectedJob.required_certifications?.length">
-                <span class="cert-tag" *ngFor="let cert of selectedJob.required_certifications">
-                  {{ cert }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Benefits -->
-            <div class="detail-section" *ngIf="selectedJob.benefits?.length">
-              <h4>Benefits</h4>
-              <div class="benefits-list">
-                <div class="benefit-category" *ngFor="let benefit of selectedJob.benefits">
-                  <span class="benefit-title">{{ benefit.category }}</span>
-                  <ul *ngIf="benefit.items?.length">
-                    <li *ngFor="let item of benefit.items">{{ item }}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <!-- Resume Used -->
             <div class="detail-section" *ngIf="selectedResume">
               <h4>Resume Used</h4>
               <div class="resume-preview">
@@ -358,84 +397,31 @@
                   <span class="resume-name">{{ selectedResume.candidate_name || selectedResume.file_name }}</span>
                   <span class="resume-title" *ngIf="selectedResume.current_title">{{ selectedResume.current_title }}</span>
                 </div>
-                <div class="resume-skills" *ngIf="selectedResume.skills?.length">
-                  <span class="skill-mini" *ngFor="let s of selectedResume.skills.slice(0, 5)">{{ s.name }}</span>
-                </div>
               </div>
             </div>
           </div>
 
-          <!-- Right Column - Full Description -->
           <div class="job-details-right">
-            <!-- Company Info -->
-            <div class="detail-section" *ngIf="selectedJob.company_industry || selectedJob.company_size || selectedJob.company_website">
-              <h4>Company Information</h4>
-              <div class="company-details">
-                <p *ngIf="selectedJob.company_industry">
-                  <strong>Industry:</strong> {{ selectedJob.company_industry }}
-                </p>
-                <p *ngIf="selectedJob.company_size">
-                  <strong>Size:</strong> {{ selectedJob.company_size }}
-                </p>
-                <a *ngIf="selectedJob.company_website" [href]="selectedJob.company_website" target="_blank" class="company-link">
-                  {{ selectedJob.company_website }}
-                </a>
-              </div>
-            </div>
-
-            <!-- Job Summary -->
             <div class="detail-section" *ngIf="selectedJob.description_summary">
               <h4>Summary</h4>
               <p class="description-text">{{ selectedJob.description_summary }}</p>
             </div>
-
-            <!-- Responsibilities -->
             <div class="detail-section" *ngIf="selectedJob.responsibilities?.length">
               <h4>Responsibilities</h4>
               <ul class="responsibilities-list">
                 <li *ngFor="let resp of selectedJob.responsibilities">{{ resp }}</li>
               </ul>
             </div>
-
-            <!-- Qualifications -->
             <div class="detail-section" *ngIf="selectedJob.qualifications?.length">
               <h4>Qualifications</h4>
               <ul class="qualifications-list">
                 <li *ngFor="let qual of selectedJob.qualifications">{{ qual }}</li>
               </ul>
             </div>
-
-            <!-- Full Description -->
             <div class="detail-section" *ngIf="selectedJob.description_full">
               <h4>Full Job Description</h4>
               <div class="full-description">
                 <pre class="description-text-full">{{ selectedJob.description_full }}</pre>
-              </div>
-            </div>
-
-            <!-- Source -->
-            <div class="detail-section source-section">
-              <h4>Source</h4>
-              <div class="source-info">
-                <a *ngIf="selectedJob.source_url && !selectedJob.source_url.startsWith('manual')"
-                   [href]="selectedJob.source_url"
-                   target="_blank"
-                   class="source-link">
-                  View Original Posting
-                </a>
-                <a *ngIf="selectedJob.application_url"
-                   [href]="selectedJob.application_url"
-                   target="_blank"
-                   class="apply-link">
-                  Apply Here
-                </a>
-                <span *ngIf="!selectedJob.source_url || selectedJob.source_url.startsWith('manual')" class="manual-entry">
-                  Manually entered
-                </span>
-                <div class="date-info">
-                  <span *ngIf="selectedJob.posted_date">Posted: {{ formatDate(selectedJob.posted_date) }}</span>
-                  <span>Added: {{ formatDate(selectedJob.created_at) }}</span>
-                </div>
               </div>
             </div>
           </div>
@@ -448,14 +434,7 @@
       </div>
 
       <div class="modal-footer">
-        <a
-          *ngIf="selectedJob?.application_url"
-          [href]="selectedJob!.application_url"
-          target="_blank"
-          class="btn-primary"
-        >
-          Apply Now
-        </a>
+        <a *ngIf="selectedJob?.application_url" [href]="selectedJob!.application_url" target="_blank" class="btn-primary">Apply Now</a>
         <button class="btn-secondary" (click)="closeJobModal()">Close</button>
       </div>
     </div>

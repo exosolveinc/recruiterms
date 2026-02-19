@@ -97,43 +97,23 @@
             </button>
         </div>
 
-        <!-- Extract Bar Inline -->
-        <div class="extract-bar-inline">
-            <div class="extract-bar-top">
-                <div class="form-group-inline platform-select-inline">
-                    <select [(ngModel)]="platform">
-                        <option value="Auto-detect">Auto-detect</option>
-                        <option value="LinkedIn">LinkedIn</option>
-                        <option value="Indeed">Indeed</option>
-                        <option value="Glassdoor">Glassdoor</option>
-                        <option value="Dice">Dice</option>
-                        <option value="ZipRecruiter">ZipRecruiter</option>
-                        <option value="AngelList">AngelList</option>
-                        <option value="Greenhouse">Greenhouse</option>
-                        <option value="Lever">Lever</option>
-                        <option value="Workday">Workday</option>
-                        <option value="Ashby">Ashby</option>
-                        <option value="Company Website">Company Website</option>
-                        <option value="Referral">Referral</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group-inline url-input-inline">
+        <!-- Extract Bar -->
+        <div class="extract-bar">
+            <div class="extract-bar-toggle">
+                <button class="toggle-btn" [class.active]="inputMode === 'url'" (click)="inputMode = 'url'">URL Mode</button>
+                <button class="toggle-btn" [class.active]="inputMode === 'description'" (click)="inputMode = 'description'">Description Mode</button>
+            </div>
+            <div class="extract-bar-input">
+                <div class="extract-input-row" *ngIf="inputMode === 'url'">
                     <input type="url" [ngModel]="jobUrl" (ngModelChange)="onJobUrlChange($event)" placeholder="Paste job URL here..." />
+                    <button class="btn-extract" (click)="extractAndSave()" [disabled]="extracting || !jobUrl">Extract & Analyze</button>
+                </div>
+                <div class="extract-desc-row" *ngIf="inputMode === 'description'">
+                    <textarea [(ngModel)]="jobDescription" placeholder="Paste the full job description here..." rows="1"></textarea>
+                    <button class="btn-extract" (click)="extractAndSave()" [disabled]="extracting || !jobDescription">Extract & Analyze</button>
                 </div>
             </div>
-        </div>
-
-        <div class="extract-bar-desc">
-            <textarea
-                [(ngModel)]="jobDescription"
-                placeholder="Or paste the full job description here..."
-                rows="3"
-            ></textarea>
             <div class="error-message" *ngIf="extractError">{{ extractError }}</div>
-            <button class="btn-extract-gradient" (click)="extractAndSave()" [disabled]="extracting || (!jobDescription && !jobUrl)">
-                Extract & Analyze
-            </button>
         </div>
 
         <!-- Loading Animation -->
@@ -157,14 +137,14 @@
 
         <!-- Status Filter Pills + Search -->
         <div class="filter-search-row">
-            <div class="status-pills">
-                <button
-                    class="status-pill"
-                    *ngFor="let s of statusOptions"
-                    [class.active]="statusFilter === s"
-                    (click)="setStatusFilter(s)"
-                >{{ s }}</button>
-            </div>
+<!--            <div class="status-pills">-->
+<!--                <button-->
+<!--                    class="status-pill"-->
+<!--                    *ngFor="let s of statusOptions"-->
+<!--                    [class.active]="statusFilter === s"-->
+<!--                    (click)="setStatusFilter(s)"-->
+<!--                >{{ s }}</button>-->
+<!--            </div>-->
             <div class="search-filter-group">
                 <div class="search-input-wrapper">
                     <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

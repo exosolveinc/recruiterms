@@ -80,6 +80,22 @@
               <div class="header-cell">
                 <span>Title / Company</span>
                 <i class="pi sort-icon" [ngClass]="getUnifiedSortIcon('title')"></i>
+                <div class="filter-wrapper" (click)="$event.stopPropagation()">
+                  <i class="pi pi-filter" [class.active]="selectedCompanies.length > 0"></i>
+                  <span class="filter-count" *ngIf="selectedCompanies.length > 0">{{ selectedCompanies.length }}</span>
+                  <p-multiSelect
+                    [options]="companyOptions"
+                    [(ngModel)]="selectedCompanies"
+                    (onChange)="onCompanyFilterChange()"
+                    [filter]="true"
+                    filterPlaceHolder="Search companies..."
+                    [showToggleAll]="false"
+                    placeholder="Filter"
+                    styleClass="company-filter-multiselect"
+                    panelStyleClass="company-filter-panel"
+                    appendTo="body"
+                  ></p-multiSelect>
+                </div>
               </div>
             </th>
             <th class="salary-col sortable-col" style="width: 150px">

@@ -14,6 +14,7 @@ import { GmailConnectionStatus, GmailSyncResult, VendorEmailService, VendorJob, 
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 import { SliderModule } from 'primeng/slider';
 import { TableModule, Table } from 'primeng/table';
+import { MultiSelectModule } from 'primeng/multiselect';
 
 interface JobWithMatch extends ExternalJob {
   match_score?: number;
@@ -26,7 +27,7 @@ interface JobWithMatch extends ExternalJob {
 @Component({
   selector: 'app-job-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, SidebarComponent, SliderModule, TableModule],
+  imports: [CommonModule, FormsModule, HttpClientModule, SidebarComponent, SliderModule, TableModule, MultiSelectModule],
   templateUrl: './job-search.component.html',
   styleUrl: './job-search.component.scss'
 })
@@ -163,6 +164,10 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   sourceColumnFilter = 'All';
   availableSources = ['All', 'Adzuna', 'RapidAPI', 'Dice', 'LinkedIn', 'Indeed', 'Glassdoor'];
 
+  // Company column filter
+  companyOptions: { label: string; value: string }[] = [];
+  selectedCompanies: string[] = [];
+
   // Salary column filter
   salaryRange: number[] = [0, 300000];
   salaryFilterActive = false;
@@ -235,6 +240,7 @@ export class JobSearchComponent implements OnInit, OnDestroy {
       this.totalJobs = this.jobs.length;
       this.totalPages = 1;
       this.calculateStats();
+      this.buildCompanyOptions();
 
       // Re-subscribe to pending analyses
       const pending = this.jobs.filter((j: any) => j.analyzing);
@@ -536,6 +542,8 @@ export class JobSearchComponent implements OnInit, OnDestroy {
       this.totalJobs = result.total;
       this.totalPages = result.totalPages;
       this.calculateStats();
+      this.buildCompanyOptions();
+      this.selectedCompanies = [];
 
       // Start passive background analysis
       if (this.selectedResumeId && this.jobs.length > 0) {
@@ -606,6 +614,7 @@ export class JobSearchComponent implements OnInit, OnDestroy {
         analyzed: false
       }));
       this.jobs = [...this.jobs, ...newJobs];
+      this.buildCompanyOptions();
     } catch (err) {
       console.error('Load more error:', err);
     } finally {
@@ -863,6 +872,7 @@ export class JobSearchComponent implements OnInit, OnDestroy {
       this.searchTable.sortOrder = this.tableSortOrder;
       this.searchTable.sortSingle();
     } else {
+      this.tableSortField = '';
       this.searchTable.sortField = '';
       this.searchTable.sortOrder = 0;
       this.searchTable.reset();
@@ -924,6 +934,19 @@ export class JobSearchComponent implements OnInit, OnDestroy {
 
   formatSalaryK(value: number): string {
     return '$' + (value / 1000).toFixed(0) + 'k';
+  }
+
+  private buildCompanyOptions() {
+    const companies = new Set(this.jobs.map(j => j.company).filter(Boolean));
+    this.companyOptions = Array.from(companies).sort().map(c => ({ label: c, value: c }));
+  }
+
+  onCompanyFilterChange() {
+    if (this.selectedCompanies.length > 0) {
+      this.searchTable.filter(this.selectedCompanies, 'company', 'in');
+    } else {
+      this.searchTable.filter('', 'company', 'contains');
+    }
   }
 
   selectJob(job: JobWithMatch) {

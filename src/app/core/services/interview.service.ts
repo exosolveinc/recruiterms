@@ -264,6 +264,47 @@ export class InterviewService {
   }
 
   // ============================================================================
+  // SLACK NOTIFICATIONS
+  // ============================================================================
+
+  /**
+   * Send a Slack notification when an interview is scheduled or rescheduled.
+   * Fire-and-forget: errors are logged but never thrown.
+   */
+  private sendSlackNotification(
+    eventType: 'scheduled' | 'rescheduled',
+    interview: ScheduledInterview,
+    jobTitle?: string,
+    companyName?: string,
+    candidateName?: string
+  ): void {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${environment.supabaseAnonKey}`
+    });
+
+    firstValueFrom(
+      this.http.post(`${this.supabaseFunctionsUrl}/notify-slack-interview`, {
+        event_type: eventType,
+        title: interview.title,
+        interview_type: interview.interview_type,
+        scheduled_at: interview.scheduled_at,
+        duration_minutes: interview.duration_minutes,
+        timezone: interview.timezone,
+        interviewer_name: interview.interviewer_name,
+        meeting_link: interview.meeting_link,
+        location: interview.location,
+        notes: interview.notes,
+        job_title: jobTitle,
+        company_name: companyName,
+        candidate_name: candidateName,
+      }, { headers })
+    ).catch(error => {
+      console.error('Failed to send Slack notification:', error);
+    });
+  }
+
+  // ============================================================================
   // DATABASE OPERATIONS
   // ============================================================================
 
@@ -277,29 +318,38 @@ export class InterviewService {
 
     if (!user) throw new Error('Not authenticated');
 
-    // Get job details for Google Calendar event
+    // Get application details for calendar event and Slack notification
+    const { data: app } = await client
+      .from('user_applications')
+      .select('job_title, company_name, resume_id')
+      .eq('id', request.application_id)
+      .single();
+
+    // Get candidate name from resume if available
+    let candidateName: string | undefined;
+    if (app?.resume_id) {
+      const { data: resume } = await client
+        .from('resumes')
+        .select('candidate_name')
+        .eq('id', app.resume_id)
+        .single();
+      candidateName = resume?.candidate_name || undefined;
+    }
+
+    // Create Google Calendar event if requested
     let googleEventId: string | null = null;
     let googleEventLink: string | null = null;
 
-    if (request.add_to_google_calendar) {
-      // Get application details first
-      const { data: app } = await client
-        .from('user_applications')
-        .select('job_title, company_name')
-        .eq('id', request.application_id)
-        .single();
+    if (request.add_to_google_calendar && app) {
+      const calendarResult = await this.createGoogleCalendarEvent(
+        request,
+        app.job_title || 'Position',
+        app.company_name || 'Company'
+      );
 
-      if (app) {
-        const calendarResult = await this.createGoogleCalendarEvent(
-          request,
-          app.job_title || 'Position',
-          app.company_name || 'Company'
-        );
-
-        if (calendarResult) {
-          googleEventId = calendarResult.eventId;
-          googleEventLink = calendarResult.htmlLink;
-        }
+      if (calendarResult) {
+        googleEventId = calendarResult.eventId;
+        googleEventLink = calendarResult.htmlLink;
       }
     }
 
@@ -341,6 +391,15 @@ export class InterviewService {
       scheduled_at: request.scheduled_at,
       google_calendar: !!googleEventId
     });
+
+    // Send Slack notification (fire-and-forget)
+    this.sendSlackNotification(
+      'scheduled',
+      data as ScheduledInterview,
+      app?.job_title,
+      app?.company_name,
+      candidateName
+    );
 
     return data as ScheduledInterview;
   }
@@ -448,6 +507,34 @@ export class InterviewService {
       .single();
 
     if (error) throw error;
+
+    // Send Slack notification for reschedule (fire-and-forget)
+    if (updates.scheduled_at) {
+      const { data: app } = await client
+        .from('user_applications')
+        .select('job_title, company_name, resume_id')
+        .eq('id', data.application_id)
+        .single();
+
+      let rescheduleCandidateName: string | undefined;
+      if (app?.resume_id) {
+        const { data: resume } = await client
+          .from('resumes')
+          .select('candidate_name')
+          .eq('id', app.resume_id)
+          .single();
+        rescheduleCandidateName = resume?.candidate_name || undefined;
+      }
+
+      this.sendSlackNotification(
+        'rescheduled',
+        data as ScheduledInterview,
+        app?.job_title,
+        app?.company_name,
+        rescheduleCandidateName
+      );
+    }
+
     return data as ScheduledInterview;
   }
 

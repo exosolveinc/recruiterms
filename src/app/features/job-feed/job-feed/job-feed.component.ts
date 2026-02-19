@@ -11,11 +11,12 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 import { SliderModule } from 'primeng/slider';
 import { TableModule, Table } from 'primeng/table';
+import { MultiSelectModule } from 'primeng/multiselect';
 
 @Component({
   selector: 'app-job-feed',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent, SliderModule, TableModule],
+  imports: [CommonModule, FormsModule, SidebarComponent, SliderModule, TableModule, MultiSelectModule],
   templateUrl: './job-feed.component.html',
   styleUrl: './job-feed.component.scss'
 })
@@ -78,6 +79,10 @@ export class JobFeedComponent implements OnInit, OnDestroy {
   salaryRange: number[] = [0, 300000];
   salaryFilterActive = false;
 
+  // Company column filter
+  companyOptions: { label: string; value: string }[] = [];
+  selectedCompanies: string[] = [];
+
   // Skills expand state (tracks which jobs have skills expanded)
   skillsExpandedFor = new Set<string>();
 
@@ -99,6 +104,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
       .subscribe(jobs => {
         this.unifiedJobs = this.applySourceFilter(jobs);
         this.newJobsCount = jobs.filter(j => j.is_new).length;
+        this.buildCompanyOptions();
         this.updateFilteredJobs();
       });
 
@@ -186,6 +192,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     this.platformFilter = 'All';
     this.salaryRange = [0, 300000];
     this.salaryFilterActive = false;
+    this.selectedCompanies = [];
   }
 
   @HostListener('document:click')
@@ -234,6 +241,23 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     this.salaryRange = [0, 300000];
     this.salaryFilterActive = false;
     this.updateFilteredJobs();
+  }
+
+  // Company filter
+  private buildCompanyOptions() {
+    const companies = new Set<string>();
+    this.unifiedJobs.forEach(j => {
+      if (j.company) companies.add(j.company);
+    });
+    this.companyOptions = Array.from(companies).sort().map(c => ({ label: c, value: c }));
+  }
+
+  onCompanyFilterChange() {
+    if (this.selectedCompanies.length > 0) {
+      this.unifiedTable.filter(this.selectedCompanies, 'company', 'in');
+    } else {
+      this.unifiedTable.filter(null, 'company', 'in');
+    }
   }
 
   formatSalaryK(value: number): string {
