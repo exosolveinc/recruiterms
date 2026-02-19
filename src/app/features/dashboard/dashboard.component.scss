@@ -380,10 +380,11 @@
 
   input {
     flex: 1;
-    padding: 9px 12px;
+    padding: 10px 12px;
     border: 1px solid #E5E7EB;
     border-radius: 8px;
     font-size: 13px;
+    font-family: inherit;
     background: white;
     color: #111;
     transition: border-color 0.15s;
@@ -405,14 +406,15 @@
 
   textarea {
     flex: 1;
-    padding: 10px 12px;
+    padding: 9px 12px;
     border: 1px solid #E5E7EB;
     border-radius: 8px;
     font-size: 13px;
+    font-family: inherit;
     background: white;
     color: #111;
     resize: vertical;
-    min-height: 72px;
+    min-height: 40px;
     transition: border-color 0.15s;
 
     &:focus {

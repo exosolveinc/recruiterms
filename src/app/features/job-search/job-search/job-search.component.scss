@@ -1093,9 +1093,9 @@
   .gmail-integration-bar-inline {
     background: white;
     border: 1px solid #eee;
-    border-radius: 16px;
-    padding: 24px;
-    max-width: 900px;
+    border-radius: 12px;
+    padding: 14px 20px;
+    max-width: 70%;
     margin: 0 auto 20px;
 
     .gmail-status {
@@ -1104,31 +1104,40 @@
 
     .gmail-connect {
       display: flex;
-      flex-direction: column;
-      gap: 20px;
+      align-items: center;
+      gap: 12px;
 
       .gmail-connect-row {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
+        flex: 1;
+        min-width: 0;
       }
     }
 
     .gmail-connected {
       display: flex;
-      flex-direction: column;
-      gap: 20px;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
 
       .gmail-connected-row {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .gmail-accounts-section {
+        flex-basis: 100%;
       }
     }
 
     .gmail-icon {
-      width: 48px;
-      height: 48px;
+      width: 36px;
+      height: 36px;
       background: #fafafa;
       border-radius: 50px;
       display: flex;
@@ -1136,6 +1145,11 @@
       justify-content: center;
       flex-shrink: 0;
       position: relative;
+
+      svg {
+        width: 20px;
+        height: 20px;
+      }
 
       &.connected {
         background: #f0fdf4;
@@ -1172,7 +1186,7 @@
 
       .gmail-title {
         display: block;
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 600;
         color: #111;
         flex: 1;
@@ -1248,20 +1262,20 @@
     }
 
     .btn-gmail-sync {
-      width: 100%;
-      padding: 14px;
+      flex-shrink: 0;
+      padding: 10px 24px;
       background: #111;
       border: none;
-      border-radius: 10px;
+      border-radius: 8px;
       color: white;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      min-height: 48px;
+      gap: 8px;
+      white-space: nowrap;
       transition: background 0.15s;
 
       &:hover:not(:disabled) {
@@ -1416,20 +1430,20 @@
     }
 
     .btn-gmail-connect {
-      width: 100%;
-      padding: 14px;
+      flex-shrink: 0;
+      padding: 10px 24px;
       background: #111;
       border: none;
-      border-radius: 10px;
+      border-radius: 8px;
       color: white;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      min-height: 48px;
+      gap: 8px;
+      white-space: nowrap;
       transition: background 0.15s;
 
       &:hover:not(:disabled) {
@@ -1450,7 +1464,7 @@
 
     .gmail-sync-result {
       padding: 0;
-      margin-top: 16px;
+      margin-top: 12px;
 
       .sync-result-content {
         display: flex;

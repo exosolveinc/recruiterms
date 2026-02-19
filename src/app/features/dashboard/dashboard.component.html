@@ -109,7 +109,7 @@
                     <button class="btn-extract" (click)="extractAndSave()" [disabled]="extracting || !jobUrl">Extract & Analyze</button>
                 </div>
                 <div class="extract-desc-row" *ngIf="inputMode === 'description'">
-                    <textarea [(ngModel)]="jobDescription" placeholder="Paste the full job description here..." rows="3"></textarea>
+                    <textarea [(ngModel)]="jobDescription" placeholder="Paste the full job description here..." rows="1"></textarea>
                     <button class="btn-extract" (click)="extractAndSave()" [disabled]="extracting || !jobDescription">Extract & Analyze</button>
                 </div>
             </div>
