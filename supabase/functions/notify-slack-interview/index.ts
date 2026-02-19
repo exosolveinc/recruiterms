@@ -5,8 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/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";
-
 interface SlackNotificationRequest {
   event_type: 'scheduled' | 'rescheduled';
   title: string;
@@ -169,6 +167,11 @@ serve(async (req) => {
   }
 
   try {
+    const slackWebhookUrl = Deno.env.get("SLACK_WEBHOOK_URL");
+    if (!slackWebhookUrl) {
+      throw new Error("SLACK_WEBHOOK_URL secret not configured");
+    }
+
     const data: SlackNotificationRequest = await req.json();
 
     const blocks = buildSlackBlocks(data);
@@ -180,7 +183,7 @@ serve(async (req) => {
         : `New Interview Scheduled: ${data.title}`,
     };
 
-    const response = await fetch(SLACK_WEBHOOK_URL, {
+    const response = await fetch(slackWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(slackPayload),
