@@ -83,6 +83,7 @@ export class DashboardComponent implements OnInit {
   platform = 'Auto-detect';
   jobUrl = '';
   jobDescription = '';
+  inputMode: 'url' | 'description' = 'url';
   extracting = false;
   extractError = '';
 
