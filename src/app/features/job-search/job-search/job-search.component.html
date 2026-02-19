@@ -152,48 +152,41 @@
       <!-- Job Search View -->
       <div class="search-view" *ngIf="activeView === 'search'">
         <div class="search-box">
-          <div class="search-inputs">
-            <div class="input-group">
-              <label>Job Title or Keywords</label>
-              <input
-                type="text"
-                [(ngModel)]="searchQuery"
-                placeholder="e.g. Software Engineer, Data Scientist"
-                (keyup.enter)="searchJobs()"
-              />
-            </div>
-            <div class="input-group">
-              <label>Location</label>
-              <input
-                type="text"
-                [(ngModel)]="searchLocation"
-                placeholder="e.g. New York, Remote"
-                (keyup.enter)="searchJobs()"
-              />
-            </div>
-            <div class="input-group source-select">
-              <label>Source</label>
-              <select [(ngModel)]="selectedSource">
-                <optgroup label="Standard APIs">
-                  <option value="adzuna">Adzuna</option>
-                  <option value="rapidapi">JSearch (RapidAPI)</option>
-                </optgroup>
-                <optgroup label="AI-Powered Search">
-                  <option value="dice">Dice (AI)</option>
-                  <option value="linkedin">LinkedIn (AI)</option>
-                  <option value="indeed">Indeed (AI)</option>
-                  <option value="glassdoor">Glassdoor (AI)</option>
-                  <option value="ai-search">All Platforms (AI)</option>
-                </optgroup>
-                <optgroup label="Combined">
-                  <option value="all">All Sources</option>
-                </optgroup>
-              </select>
-            </div>
+          <div class="search-row">
+            <input
+              type="text"
+              class="search-input keyword"
+              [(ngModel)]="searchQuery"
+              placeholder="Job title or keywords..."
+              (keyup.enter)="searchJobs()"
+            />
+            <input
+              type="text"
+              class="search-input location"
+              [(ngModel)]="searchLocation"
+              placeholder="Location..."
+              (keyup.enter)="searchJobs()"
+            />
+            <select class="search-input source" [(ngModel)]="selectedSource">
+              <optgroup label="Standard APIs">
+                <option value="adzuna">Adzuna</option>
+                <option value="rapidapi">JSearch (RapidAPI)</option>
+              </optgroup>
+              <optgroup label="AI-Powered Search">
+                <option value="dice">Dice (AI)</option>
+                <option value="linkedin">LinkedIn (AI)</option>
+                <option value="indeed">Indeed (AI)</option>
+                <option value="glassdoor">Glassdoor (AI)</option>
+                <option value="ai-search">All Platforms (AI)</option>
+              </optgroup>
+              <optgroup label="Combined">
+                <option value="all">All Sources</option>
+              </optgroup>
+            </select>
+            <button class="btn-search" (click)="searchJobs()" [disabled]="searching || !searchQuery.trim()">
+              Search Jobs
+            </button>
           </div>
-          <button class="btn-search" (click)="searchJobs()" [disabled]="searching || !searchQuery.trim()">
-            Search Jobs
-          </button>
         </div>
 
         <!-- Loading Animation -->
@@ -261,6 +254,22 @@
                     <div class="header-cell">
                       <span>Title / Company</span>
                       <i class="pi sort-icon" [ngClass]="getTableSortIcon('title')"></i>
+                      <div class="filter-wrapper" (click)="$event.stopPropagation()">
+                        <i class="pi pi-filter" [class.active]="selectedCompanies.length > 0"></i>
+                        <span class="filter-count" *ngIf="selectedCompanies.length > 0">{{ selectedCompanies.length }}</span>
+                        <p-multiSelect
+                          [options]="companyOptions"
+                          [(ngModel)]="selectedCompanies"
+                          (onChange)="onCompanyFilterChange()"
+                          [filter]="true"
+                          filterPlaceHolder="Search companies..."
+                          [showToggleAll]="false"
+                          placeholder="Filter"
+                          styleClass="company-filter-multiselect"
+                          panelStyleClass="company-filter-panel"
+                          appendTo="body"
+                        ></p-multiSelect>
+                      </div>
                     </div>
                   </th>
                   <th class="salary-col sortable-col" style="width: 150px">
