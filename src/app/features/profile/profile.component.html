@@ -15,6 +15,13 @@
 
     <!-- Tab Bar -->
     <div class="tab-bar">
+        <button
+                class="tab-btn"
+                [class.active]="activeTab === 'candidates'"
+                (click)="setTab('candidates')"
+        >
+            Candidates
+        </button>
       <button
         class="tab-btn"
         [class.active]="activeTab === 'profile'"
@@ -30,13 +37,7 @@
       >
         Team
       </button>
-      <button
-        class="tab-btn"
-        [class.active]="activeTab === 'candidates'"
-        (click)="setTab('candidates')"
-      >
-        Candidates
-      </button>
+
     </div>
 
     <!-- ================================================================== -->
