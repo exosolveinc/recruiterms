@@ -207,20 +207,43 @@ export class JobSearchComponent implements OnInit, OnDestroy {
   private async loadJobsFromDB() {
     if (!this.selectedResumeId) return;
     try {
-      const dbResults = await this.supabase.getSearchResultsByResume(this.selectedResumeId);
+      // Try resume-specific results first, fall back to other resumes of the same candidate
+      let dbResults = await this.supabase.getSearchResultsByResume(this.selectedResumeId);
+      const isCurrentResume = dbResults.length > 0;
+
+      if (dbResults.length === 0 && this.selectedCandidate) {
+        const candidateResumeIds = this.selectedCandidate.resumes.map(r => r.id);
+        for (const rid of candidateResumeIds) {
+          if (rid === this.selectedResumeId) continue;
+          dbResults = await this.supabase.getSearchResultsByResume(rid);
+          if (dbResults.length > 0) break;
+        }
+      }
+
       if (dbResults.length === 0) return;
 
-      // Reconstruct jobs from stored job_data
+      // Deduplicate by external_job_id (keep newest)
+      const seen = new Set<string>();
+      dbResults = dbResults.filter((r: any) => {
+        if (seen.has(r.external_job_id)) return false;
+        seen.add(r.external_job_id);
+        return true;
+      });
+
+      // Reconstruct jobs — only show match data if results are for the current resume
       this.jobs = dbResults
         .filter((r: any) => r.job_data)
-        .map((r: any) => ({
-          ...r.job_data,
-          match_score: r.status === 'completed' ? r.match_score : undefined,
-          matching_skills: r.status === 'completed' ? (r.matching_skills || []) : undefined,
-          missing_skills: r.status === 'completed' ? (r.missing_skills || []) : undefined,
-          analyzed: r.status === 'completed',
-          analyzing: r.status === 'pending'
-        }));
+        .map((r: any) => {
+          const matchForCurrentResume = isCurrentResume && r.resume_id === this.selectedResumeId;
+          return {
+            ...r.job_data,
+            match_score: matchForCurrentResume && r.status === 'completed' ? r.match_score : undefined,
+            matching_skills: matchForCurrentResume && r.status === 'completed' ? (r.matching_skills || []) : undefined,
+            missing_skills: matchForCurrentResume && r.status === 'completed' ? (r.missing_skills || []) : undefined,
+            analyzed: matchForCurrentResume && r.status === 'completed',
+            analyzing: matchForCurrentResume && r.status === 'pending'
+          };
+        });
 
       this.totalJobs = this.jobs.length;
       this.totalPages = 1;
@@ -432,12 +455,16 @@ export class JobSearchComponent implements OnInit, OnDestroy {
 
   selectResume(resumeId: string) {
     this.appState.selectResume(resumeId);
+    // Clear match scores (they were for the previous resume) but keep jobs visible
     this.jobs.forEach(job => {
       job.match_score = undefined;
       job.matching_skills = undefined;
       job.missing_skills = undefined;
       job.analyzed = false;
+      job.analyzing = false;
     });
+    // Try to load match data for the new resume from DB
+    this.loadJobsFromDB();
   }
 
   getPreferenceBasedQuery(): { query: string; location: string } {

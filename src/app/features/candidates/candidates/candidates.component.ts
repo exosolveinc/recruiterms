@@ -697,7 +697,7 @@ export class CandidatesComponent implements OnInit {
   // RESUME MANAGEMENT
   // ============================================================================
 
-  async onResumeFileSelected(event: Event) {
+  async onResumeFileSelected(event: Event, candidate?: Candidate) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
 
@@ -714,13 +714,22 @@ export class CandidatesComponent implements OnInit {
     try {
       const { url } = await this.supabase.uploadResumeFile(file);
 
-      const resume = await this.supabase.createResume({
+      const resumeData: Partial<Resume> = {
         file_name: file.name,
         file_url: url,
         file_type: file.type,
         extraction_status: 'processing',
         label: this.generateDefaultLabel()
-      });
+      };
+
+      // Pre-populate candidate info so the resume groups correctly
+      if (candidate) {
+        resumeData.candidate_name = candidate.name;
+        resumeData.candidate_email = candidate.email || null;
+        resumeData.candidate_phone = candidate.phone || null;
+      }
+
+      const resume = await this.supabase.createResume(resumeData);
 
       let extractedData: Partial<Resume>;
       try {
@@ -734,13 +743,24 @@ export class CandidatesComponent implements OnInit {
         };
       }
 
+      // Preserve pre-populated candidate info if extraction didn't return them
+      if (candidate) {
+        if (!extractedData.candidate_name) extractedData.candidate_name = candidate.name;
+        if (!extractedData.candidate_email) extractedData.candidate_email = candidate.email || null;
+        if (!extractedData.candidate_phone) extractedData.candidate_phone = candidate.phone || null;
+      }
+
       await this.supabase.updateResume(resume.id, extractedData);
 
-      // Invalidate and refresh candidates
+      // Invalidate and refresh candidates using same path as initial load
       this.appState.invalidateCandidates();
-      const candidates = await this.supabase.getCandidates();
-      this.appState.setCandidates(candidates);
-      this.candidates = candidates;
+      if (this.isAdmin()) {
+        this.candidates = await this.supabase.getAllCandidatesForOrg();
+      } else {
+        const candidates = await this.supabase.getCandidates();
+        this.appState.setCandidates(candidates);
+        this.candidates = candidates;
+      }
       this.calculateStats();
 
     } catch (err: any) {

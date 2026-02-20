@@ -55,6 +55,15 @@ export class DashboardComponent implements OnInit {
     return filtered;
   });
 
+  // Resume multiselect dropdown (when > 3 resumes)
+  readonly resumeDropdownOptions = computed(() => {
+    return this.candidateResumes().map(r => ({
+      label: this.getResumeLabel(r),
+      value: r.id
+    }));
+  });
+  selectedResumeIds: string[] = [];
+
   // Local state that doesn't need to be shared
   uploadingResume = false;
 
@@ -258,6 +267,17 @@ export class DashboardComponent implements OnInit {
     await this.loadApplications();
     await this.loadUpcomingInterviews();
     this.calculateStats();
+
+    // Restore match analysis cache from localStorage
+    this.restoreMatchCache();
+
+    // Sync multiselect with persisted resume selection
+    const resumeId = this.selectedResumeId();
+    if (resumeId) {
+      this.selectedResumeIds = [resumeId];
+      // Re-analyze if apps don't match the selected resume
+      this.ensureMatchScoresForResume(resumeId);
+    }
     this.loading = false;
   }
 
@@ -546,6 +566,21 @@ export class DashboardComponent implements OnInit {
         status: 'extracted',
         application_method: 'Direct'
       });
+
+      // Cache match analysis for selected resume
+      const selectedId = this.selectedResumeId();
+      if (selectedId) {
+        this.matchAnalysisCache.set(`${job.id}_${selectedId}`, {
+          match_score: jobData.match_score,
+          matching_skills: jobData.matching_skills,
+          missing_skills: jobData.missing_skills,
+          recommendations: jobData.recommendations
+        });
+        this.persistMatchCache();
+      }
+
+      // Fire-and-forget: analyze for all other candidate resumes
+      this.analyzeForAllResumes(job);
 
       // Refresh data - invalidate and reload
       this.appState.invalidateApplications();
@@ -912,6 +947,9 @@ export class DashboardComponent implements OnInit {
 
   selectCandidate(candidateId: string) {
     this.appState.selectCandidate(candidateId);
+    // Sync multiselect with the auto-selected resume
+    const resumeId = this.selectedResumeId();
+    this.selectedResumeIds = resumeId ? [resumeId] : [];
   }
 
   getInitials(name: string): string {
@@ -932,7 +970,158 @@ export class DashboardComponent implements OnInit {
   }
 
   selectResume(resumeId: string) {
+    const previousId = this.selectedResumeId();
     this.appState.selectResume(resumeId);
+    this.selectedResumeIds = [resumeId];
+    if (previousId !== resumeId) {
+      this.reanalyzeAllApplications(resumeId);
+    }
+  }
+
+  onResumeMultiSelectChange(event: any) {
+    if (this.selectedResumeIds.length > 0) {
+      const lastSelected = this.selectedResumeIds[this.selectedResumeIds.length - 1];
+      const previousId = this.selectedResumeId();
+      this.appState.selectResume(lastSelected);
+      this.selectedResumeIds = [lastSelected];
+      if (previousId !== lastSelected) {
+        this.reanalyzeAllApplications(lastSelected);
+      }
+    }
+  }
+
+  reanalyzingAll = false;
+  reanalyzingAppIds: Set<string> = new Set();
+  matchAnalysisCache: Map<string, any> = new Map();
+
+  private reanalyzeAllApplications(resumeId: string) {
+    const resume = this.resumes().find(r => r.id === resumeId);
+    if (!resume) return;
+
+    // Only re-analyze applications belonging to the current candidate
+    const candidate = this.selectedCandidate();
+    if (!candidate) return;
+    const candidateResumeIds = new Set(candidate.resumes.map(r => r.id));
+    const apps = this.applications().filter(app => app.resume_id && candidateResumeIds.has(app.resume_id));
+    if (apps.length === 0) return;
+
+    this.reanalyzingAll = true;
+
+    // Fire-and-forget: run in background, update UI progressively
+    const runAnalysis = async () => {
+      try {
+        for (const app of apps) {
+          this.reanalyzingAppIds.add(app.id);
+          try {
+            // Check cache first
+            const cacheKey = `${app.job_id}_${resumeId}`;
+            let aiMatch = this.matchAnalysisCache.get(cacheKey);
+
+            if (!aiMatch) {
+              const job = await this.supabase.getJob(app.job_id);
+              if (!job) {
+                this.reanalyzingAppIds.delete(app.id);
+                continue;
+              }
+              aiMatch = await this.supabase.analyzeMatchWithAI(resume, job);
+              this.matchAnalysisCache.set(cacheKey, aiMatch);
+            }
+
+            // Update DB in background (don't await)
+            this.supabase.updateJob(app.job_id, {
+              match_score: aiMatch.match_score,
+              matching_skills: aiMatch.matching_skills || [],
+              missing_skills: aiMatch.missing_skills || [],
+              recommendations: aiMatch.recommendations || []
+            }).catch((err: any) => console.error('Failed to update job:', err));
+
+            this.supabase.updateApplication(app.id, { resume_id: resumeId })
+              .catch((err: any) => console.error('Failed to update app:', err));
+
+            // Update local state immediately so the table reflects the new score
+            this.appState.updateApplication(app.id, {
+              match_score: aiMatch.match_score,
+              matching_skills: aiMatch.matching_skills || [],
+              missing_skills: aiMatch.missing_skills || [],
+              resume_id: resumeId
+            });
+          } catch (err) {
+            console.error(`Failed to re-analyze app ${app.id}:`, err);
+          } finally {
+            this.reanalyzingAppIds.delete(app.id);
+          }
+        }
+      } finally {
+        this.reanalyzingAll = false;
+        this.reanalyzingAppIds.clear();
+        this.persistMatchCache();
+      }
+    };
+
+    runAnalysis();
+  }
+
+  private ensureMatchScoresForResume(resumeId: string) {
+    const candidate = this.selectedCandidate();
+    if (!candidate) return;
+
+    const candidateResumeIds = new Set(candidate.resumes.map(r => r.id));
+    const candidateApps = this.applications().filter(app =>
+      app.resume_id && candidateResumeIds.has(app.resume_id));
+
+    if (candidateApps.length === 0) return;
+
+    // If any app's resume_id doesn't match the selected resume, scores may be stale
+    const needsReanalysis = candidateApps.some(app => app.resume_id !== resumeId);
+    if (needsReanalysis) {
+      this.reanalyzeAllApplications(resumeId);
+    }
+  }
+
+  private persistMatchCache() {
+    try {
+      const cacheObj: Record<string, any> = {};
+      this.matchAnalysisCache.forEach((value, key) => {
+        cacheObj[key] = value;
+      });
+      localStorage.setItem('matchAnalysisCache', JSON.stringify(cacheObj));
+    } catch (err) {
+      // localStorage might be full, ignore
+    }
+  }
+
+  private restoreMatchCache() {
+    try {
+      const cached = localStorage.getItem('matchAnalysisCache');
+      if (cached) {
+        const cacheObj = JSON.parse(cached);
+        for (const [key, value] of Object.entries(cacheObj)) {
+          this.matchAnalysisCache.set(key, value);
+        }
+      }
+    } catch (err) {
+      // Invalid cache, ignore
+    }
+  }
+
+  private analyzeForAllResumes(job: Job) {
+    const resumes = this.candidateResumes();
+    const selectedId = this.selectedResumeId();
+
+    const run = async () => {
+      for (const resume of resumes) {
+        if (resume.id === selectedId) continue;
+        try {
+          const aiMatch = await this.supabase.analyzeMatchWithAI(resume, job);
+          this.matchAnalysisCache.set(`${job.id}_${resume.id}`, aiMatch);
+        } catch (err) {
+          console.error(`Background analysis for resume ${resume.id} failed:`, err);
+        }
+      }
+      this.persistMatchCache();
+    };
+
+    run();
   }
 
   getAvgMatch(): number {

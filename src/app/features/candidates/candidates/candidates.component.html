@@ -286,7 +286,7 @@
                                                 <label class="add-resume-btn" [class.uploading]="uploading">
                                                     <span *ngIf="!uploading">+ Add Resume</span>
                                                     <span *ngIf="uploading">Uploading...</span>
-                                                    <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event)" hidden [disabled]="uploading" />
+                                                    <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event, candidate)" hidden [disabled]="uploading" />
                                                 </label>
                                             </div>
 

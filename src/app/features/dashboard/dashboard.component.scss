@@ -151,6 +151,15 @@
   flex-shrink: 0;
 }
 
+.reanalyzing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 500;
+}
+
 // Resume Chips (in candidate bar)
 .resume-chips {
   display: flex;
@@ -187,6 +196,79 @@
     height: 6px;
     background: #22c55e;
     border-radius: 50%;
+  }
+}
+
+.resume-chips.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.resume-multiselect-wrapper {
+  ::ng-deep .p-multiselect.resume-multiselect {
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 8px;
+    min-width: 200px;
+    max-width: 280px;
+
+    .p-multiselect-label {
+      color: #111;
+      font-size: 13px;
+      font-weight: 300;
+      padding: 10px 16px;
+
+      &.p-placeholder {
+        color: #111;
+      }
+    }
+
+    .p-multiselect-trigger {
+      color: #999;
+      width: 36px;
+      padding-right: 8px;
+    }
+
+    &:hover, &.p-multiselect-open {
+      background: transparent;
+    }
+  }
+
+  ::ng-deep .p-multiselect-panel {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+
+    .p-multiselect-header {
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      padding: 8px 12px;
+    }
+
+    .p-multiselect-item {
+      color: #ccc;
+      font-size: 13px;
+      padding: 8px 12px;
+
+      &.p-highlight {
+        background: #333;
+        color: white;
+      }
+
+      &:hover {
+        background: #2a2a2a;
+      }
+    }
+
+    .p-checkbox .p-checkbox-box {
+      border-color: #555;
+      background: transparent;
+
+      &.p-highlight {
+        background: #4f46e5;
+        border-color: #4f46e5;
+      }
+    }
   }
 }
 
@@ -1115,6 +1197,23 @@
 .no-match-text {
   font-size: 13px;
   color: #9CA3AF;
+}
+
+.match-reanalyzing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.spinner-match {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #E5E7EB;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 // ============================================================================

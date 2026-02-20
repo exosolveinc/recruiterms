@@ -32,17 +32,38 @@
             </div>
 
             <div class="candidate-bar-right">
-                <!-- Resume Chips -->
-                <div class="resume-chips" *ngIf="selectedCandidate() && candidateResumes().length > 0">
+                <span class="reanalyzing-indicator" *ngIf="reanalyzingAll">
+                    <span class="spinner-tiny"></span> Re-analyzing...
+                </span>
+                <!-- Resume Chips (3 or fewer) -->
+                <div class="resume-chips" *ngIf="selectedCandidate() && candidateResumes().length > 0 && candidateResumes().length <= 3" [class.disabled]="reanalyzingAll">
                     <span
                         class="resume-chip"
                         *ngFor="let resume of candidateResumes()"
                         [class.active]="selectedResumeId() === resume.id"
-                        (click)="selectResume(resume.id)"
+                        (click)="!reanalyzingAll && selectResume(resume.id)"
                     >
                         <span class="dot" *ngIf="resume.is_primary"></span>
                         {{ getResumeLabel(resume) }}
                     </span>
+                </div>
+                <!-- Resume Dropdown (more than 3) -->
+                <div class="resume-multiselect-wrapper" *ngIf="selectedCandidate() && candidateResumes().length > 3">
+                    <p-multiSelect
+                        [options]="resumeDropdownOptions()"
+                        [(ngModel)]="selectedResumeIds"
+                        (onChange)="onResumeMultiSelectChange($event)"
+                        [maxSelectedLabels]="1"
+                        [selectedItemsLabel]="'{0} resumes selected'"
+                        placeholder="Select resumes"
+                        optionLabel="label"
+                        optionValue="value"
+                        [showHeader]="true"
+                        [filter]="false"
+                        [disabled]="reanalyzingAll"
+                        styleClass="resume-multiselect"
+                        appendTo="body"
+                    ></p-multiSelect>
                 </div>
             </div>
         </div>
@@ -218,8 +239,12 @@
                             <span class="salary-text no-salary" *ngIf="!app.salary_min && !app.salary_max">—</span>
                         </td>
                         <td class="match-col">
+                            <!-- Re-analyzing spinner -->
+                            <div class="match-reanalyzing" *ngIf="reanalyzingAppIds.has(app.id)">
+                                <span class="spinner-match"></span>
+                            </div>
                             <!-- SVG Match Ring -->
-                            <div class="match-ring-wrapper" *ngIf="app.match_score">
+                            <div class="match-ring-wrapper" *ngIf="!reanalyzingAppIds.has(app.id) && app.match_score">
                                 <svg width="40" height="40" viewBox="0 0 40 40">
                                     <circle cx="20" cy="20" r="16" fill="none" stroke="#E5E7EB" stroke-width="3"/>
                                     <circle cx="20" cy="20" r="16"
@@ -237,7 +262,7 @@
                                     </text>
                                 </svg>
                             </div>
-                            <span class="no-match-text" *ngIf="!app.match_score">—</span>
+                            <span class="no-match-text" *ngIf="!reanalyzingAppIds.has(app.id) && !app.match_score">—</span>
                         </td>
                         <td class="status-col" (click)="$event.stopPropagation()">
                             <select

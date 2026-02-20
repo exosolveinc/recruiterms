@@ -294,23 +294,15 @@ export class SupabaseService {
 
       if (!name) continue; // Skip resumes without a name
 
-      // Find existing candidate by name + (email OR phone)
+      // Find existing candidate by name match
       let existingCandidate: Candidate | undefined;
       let matchKey: string | undefined;
 
       for (const [key, candidate] of candidateMap.entries()) {
-        const candidateName = candidate.name.toLowerCase();
-        const candidateEmail = candidate.email?.toLowerCase() || '';
-        const candidatePhone = this.normalizePhone(candidate.phone);
-
-        if (candidateName === name) {
-          // Same name - check if email or phone matches
-          if ((email && candidateEmail && email === candidateEmail) ||
-              (phone && candidatePhone && phone === candidatePhone)) {
-            existingCandidate = candidate;
-            matchKey = key;
-            break;
-          }
+        if (candidate.name.toLowerCase() === name) {
+          existingCandidate = candidate;
+          matchKey = key;
+          break;
         }
       }
 
@@ -515,17 +507,10 @@ export class SupabaseService {
       let matchKey: string | undefined;
 
       for (const [key, candidate] of candidateMap.entries()) {
-        const candidateName = candidate.name.toLowerCase();
-        const candidateEmail = candidate.email?.toLowerCase() || '';
-        const candidatePhone = this.normalizePhone(candidate.phone);
-
-        if (candidateName === name) {
-          if ((email && candidateEmail && email === candidateEmail) ||
-              (phone && candidatePhone && phone === candidatePhone)) {
-            existingCandidate = candidate;
-            matchKey = key;
-            break;
-          }
+        if (candidate.name.toLowerCase() === name) {
+          existingCandidate = candidate;
+          matchKey = key;
+          break;
         }
       }
 
@@ -1272,8 +1257,22 @@ export class SupabaseService {
   async getSearchResultsByResume(resumeId: string): Promise<any[]> {
     const { data, error } = await this.supabase
       .from('search_results')
-      .select('external_job_id, match_score, matching_skills, missing_skills, status, job_data, session_id')
+      .select('external_job_id, match_score, matching_skills, missing_skills, status, job_data, session_id, resume_id')
       .eq('resume_id', resumeId);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getSearchResultsForUser(): Promise<any[]> {
+    const user = this._user.value;
+    if (!user) return [];
+
+    const { data, error } = await this.supabase
+      .from('search_results')
+      .select('external_job_id, match_score, matching_skills, missing_skills, status, job_data, session_id, resume_id')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     return data || [];
