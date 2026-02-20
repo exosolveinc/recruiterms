@@ -260,7 +260,18 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   // --- Display Helpers ---
   formatSalaryRange(job: any): string {
-    if (job.salary_text) return job.salary_text;
+    if (job.salary_text) {
+      if (!job.salary_text.toLowerCase().includes('k')) {
+        // Hourly rate — format as (rate)/hr-(rate)/hr
+        const numbers = job.salary_text.match(/[\d,.]+/g);
+        if (numbers && numbers.length >= 2) {
+          return `$${numbers[0]}/hr-$${numbers[1]}/hr`;
+        } else if (numbers && numbers.length === 1) {
+          return `$${numbers[0]}/hr`;
+        }
+      }
+      return job.salary_text;
+    }
     if (job.salary_min && job.salary_max) {
       return `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`;
     }

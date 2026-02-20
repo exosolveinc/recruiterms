@@ -181,7 +181,6 @@
                 <span class="job-title-text">{{ job.title }}</span>
                 <span class="company-text">{{ job.company }}</span>
               </div>
-              <span class="new-badge-inline" *ngIf="job.is_new">NEW</span>
             </td>
             <td class="salary-cell">{{ formatSalaryRange(job) }}</td>
             <td class="location-cell">{{ job.location || '—' }}</td>
