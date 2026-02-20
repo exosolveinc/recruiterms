@@ -946,18 +946,13 @@ export class DashboardComponent implements OnInit {
     this.statusFilter = status;
   }
 
-  // Column sort: 3-state toggle (asc → desc → clear)
+  // Column sort: 2-state toggle (asc ↔ desc), click different column resets to desc
   onSort(field: string): void {
     if (this.sortField === field) {
-      if (this.sortOrder === 1) {
-        this.sortOrder = -1;
-      } else {
-        this.sortField = '';
-        this.sortOrder = 1;
-      }
+      this.sortOrder = this.sortOrder === 1 ? -1 : 1;
     } else {
       this.sortField = field;
-      this.sortOrder = 1;
+      this.sortOrder = -1;
     }
     this.filterSortTrigger.update(v => v + 1);
   }

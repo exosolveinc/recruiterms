@@ -157,25 +157,19 @@ export class JobFeedComponent implements OnInit, OnDestroy {
 
   onUnifiedSort(event: Event, field: string) {
     if (this.unifiedSortField === field) {
-      this.unifiedSortOrder = this.unifiedSortOrder === 1 ? -1 : 0;
+      this.unifiedSortOrder = this.unifiedSortOrder === 1 ? -1 : 1;
     } else {
       this.unifiedSortField = field;
-      this.unifiedSortOrder = 1;
+      this.unifiedSortOrder = -1;
     }
 
-    if (this.unifiedSortOrder !== 0) {
-      this.unifiedTable.sortField = this.unifiedSortField;
-      this.unifiedTable.sortOrder = this.unifiedSortOrder;
-      this.unifiedTable.sortSingle();
-    } else {
-      this.unifiedTable.sortField = '';
-      this.unifiedTable.sortOrder = 0;
-      this.unifiedTable.reset();
-    }
+    this.unifiedTable.sortField = this.unifiedSortField;
+    this.unifiedTable.sortOrder = this.unifiedSortOrder;
+    this.unifiedTable.sortSingle();
   }
 
   getUnifiedSortIcon(field: string): string {
-    if (this.unifiedSortField !== field || this.unifiedSortOrder === 0) return 'pi-sort-alt';
+    if (this.unifiedSortField !== field) return 'pi-sort-alt';
     return this.unifiedSortOrder === 1 ? 'pi-sort-amount-up-alt' : 'pi-sort-amount-down';
   }
 
