@@ -335,6 +335,99 @@ async function fetchRapidApiJobs(
   }
 }
 
+// ─── URL Health Check ────────────────────────────────────────────────────────
+
+const EXPIRED_BODY_PATTERNS = [
+  "no longer available",
+  "position has been filled",
+  "job has expired",
+  "this job has been removed",
+  "this position is no longer",
+  "this job is no longer",
+  "job not found",
+  "listing has expired",
+  "no longer accepting applications",
+  "this job posting has expired",
+];
+
+async function checkExpiredJobUrls(supabase: any, limit = 50): Promise<{ checked: number; expired: number }> {
+  // Fetch API-sourced jobs with URLs, ordered by least-recently checked
+  const { data: jobs, error } = await supabase
+    .from("job_feed")
+    .select("id, url")
+    .not("url", "is", null)
+    .neq("url", "")
+    .eq("source_type", "api")
+    .neq("status", "expired")
+    .order("url_checked_at", { ascending: true, nullsFirst: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("URL check query error:", error);
+    return { checked: 0, expired: 0 };
+  }
+  if (!jobs?.length) return { checked: 0, expired: 0 };
+
+  let checked = 0;
+  let expired = 0;
+
+  for (const job of jobs) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const resp = await fetch(job.url, {
+        method: "GET",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      });
+      clearTimeout(timeout);
+
+      let isExpired = false;
+
+      // Definitive HTTP signals for gone/not-found
+      if (resp.status === 404 || resp.status === 410) {
+        isExpired = true;
+      } else if (resp.ok) {
+        // Check body for expiration language
+        const body = await resp.text();
+        const bodyLower = body.toLowerCase();
+        isExpired = EXPIRED_BODY_PATTERNS.some((pattern) => bodyLower.includes(pattern));
+      }
+
+      if (isExpired) {
+        await supabase
+          .from("job_feed")
+          .update({ status: "expired", url_checked_at: new Date().toISOString() })
+          .eq("id", job.id);
+        expired++;
+      } else {
+        await supabase
+          .from("job_feed")
+          .update({ url_checked_at: new Date().toISOString() })
+          .eq("id", job.id);
+      }
+      checked++;
+    } catch (err: any) {
+      // Network errors (timeout, DNS failure, etc.) — skip, don't mark as expired
+      console.warn(`URL check skipped for job ${job.id} (${job.url}): ${err.message}`);
+      // Still update url_checked_at so we don't get stuck retrying the same job
+      await supabase
+        .from("job_feed")
+        .update({ url_checked_at: new Date().toISOString() })
+        .eq("id", job.id);
+      checked++;
+    }
+  }
+
+  return { checked, expired };
+}
+
 // ─── Analysis ────────────────────────────────────────────────────────────────
 
 async function analyzeJobs(
@@ -694,6 +787,47 @@ serve(async (req) => {
           }
         }
 
+        // ─── Trigger Gmail sync for active connections ──────────────
+        try {
+          const { data: gmailConnections } = await supabase
+            .from("gmail_connections")
+            .select("id")
+            .eq("user_id", uid)
+            .eq("is_active", true);
+
+          if (gmailConnections?.length) {
+            console.log(`Found ${gmailConnections.length} active Gmail connection(s) for user ${uid}, triggering sync...`);
+            for (const conn of gmailConnections) {
+              try {
+                const syncResp = await fetch(`${supabaseUrl}/functions/v1/gmail-sync`, {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${supabaseServiceKey}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    cronMode: true,
+                    userId: uid,
+                    connectionId: conn.id,
+                    syncType: "incremental",
+                    maxEmails: 25,
+                  }),
+                });
+                const syncResult = await syncResp.json();
+                if (syncResp.ok) {
+                  console.log(`Gmail sync for connection ${conn.id}: ${syncResult.jobsCreated || 0} new jobs`);
+                } else {
+                  console.error(`Gmail sync failed for connection ${conn.id}:`, syncResult.error);
+                }
+              } catch (connSyncErr) {
+                console.error(`Gmail sync error for connection ${conn.id}:`, connSyncErr);
+              }
+            }
+          }
+        } catch (gmailSyncErr) {
+          console.error("Error triggering Gmail sync:", gmailSyncErr);
+        }
+
         // Pull vendor email jobs into job_feed
         try {
           const { data: emailJobs } = await supabase
@@ -812,6 +946,16 @@ serve(async (req) => {
       // Delay between candidates in batch mode
       if (fetchAll && candidateRows.length > 1) {
         await delay(500);
+      }
+    }
+
+    // ─── Check for expired job URLs ─────────────────────────────────
+    if (!analyze_only) {
+      try {
+        const urlCheckResult = await checkExpiredJobUrls(supabase);
+        console.log(`URL health check: ${urlCheckResult.checked} checked, ${urlCheckResult.expired} expired`);
+      } catch (err) {
+        console.error("URL health check error:", err);
       }
     }
 

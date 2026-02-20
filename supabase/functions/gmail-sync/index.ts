@@ -178,17 +178,22 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    const { syncType = "manual", maxEmails = 50, syncAll = false, candidateId = null, connectionId: requestConnectionId = null } = await req.json().catch(() => ({}));
+    const { syncType = "manual", maxEmails = 50, syncAll = false, candidateId = null, connectionId: requestConnectionId = null, cronMode = false, userId: bodyUserId = null } = await req.json().catch(() => ({}));
 
-    // Get user from auth token
+    // Determine user identity
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    if (authError || !user) {
-      throw new Error("Invalid authorization token");
+    if (cronMode && bodyUserId) {
+      // Called from cron with service role key — trust the userId from body
+      userId = bodyUserId;
+    } else {
+      // Normal user-initiated sync — validate JWT
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !user) {
+        throw new Error("Invalid authorization token");
+      }
+      userId = user.id;
     }
-
-    userId = user.id;
 
     let connection;
     let connError;
@@ -199,7 +204,7 @@ serve(async (req) => {
         .from("gmail_connections")
         .select("*")
         .eq("id", requestConnectionId)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("is_active", true)
         .single();
       connection = result.data;
@@ -209,7 +214,7 @@ serve(async (req) => {
       let connectionQuery = supabase
         .from("gmail_connections")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("is_active", true);
 
       if (candidateId) {
@@ -234,7 +239,7 @@ serve(async (req) => {
       .from("gmail_sync_logs")
       .insert({
         gmail_connection_id: connection.id,
-        user_id: user.id,
+        user_id: userId,
         candidate_id: candidateId || connection.candidate_id,
         sync_type: syncType,
         status: "running",
@@ -366,7 +371,7 @@ serve(async (req) => {
           // Mark as processed but not a job email
           await supabase.from("gmail_processed_emails").insert({
             gmail_connection_id: connection.id,
-            user_id: user.id,
+            user_id: userId,
             candidate_id: candidateId || connection.candidate_id,
             gmail_message_id: message.id,
             gmail_thread_id: message.threadId,
@@ -448,7 +453,7 @@ Return ONLY the JSON object.`;
           // Not a valid job email
           await supabase.from("gmail_processed_emails").insert({
             gmail_connection_id: connection.id,
-            user_id: user.id,
+            user_id: userId,
             candidate_id: candidateId || connection.candidate_id,
             gmail_message_id: message.id,
             gmail_thread_id: message.threadId,
@@ -468,7 +473,7 @@ Return ONLY the JSON object.`;
           const { data: existingVendor } = await supabase
             .from("vendors")
             .select("id")
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .eq("company_name", parsedData.vendor_company)
             .single();
 
@@ -478,7 +483,7 @@ Return ONLY the JSON object.`;
             const { data: newVendor } = await supabase
               .from("vendors")
               .insert({
-                user_id: user.id,
+                user_id: userId,
                 company_name: parsedData.vendor_company,
                 emails_received: 1,
                 jobs_posted: 1,
@@ -509,7 +514,7 @@ Return ONLY the JSON object.`;
               .from("vendor_contacts")
               .insert({
                 vendor_id: vendorId,
-                user_id: user.id,
+                user_id: userId,
                 name: parsedData.recruiter_name || "Unknown",
                 email: parsedData.recruiter_email,
                 phone: parsedData.recruiter_phone,
@@ -530,7 +535,7 @@ Return ONLY the JSON object.`;
         const { data: savedJob, error: saveError } = await supabase
           .from("vendor_job_emails")
           .insert({
-            user_id: user.id,
+            user_id: userId,
             candidate_id: candidateId || connection.candidate_id,
             gmail_connection_id: connection.id,
             vendor_id: vendorId,
@@ -574,7 +579,7 @@ Return ONLY the JSON object.`;
         // Mark email as processed
         await supabase.from("gmail_processed_emails").insert({
           gmail_connection_id: connection.id,
-          user_id: user.id,
+          user_id: userId,
           candidate_id: candidateId || connection.candidate_id,
           gmail_message_id: message.id,
           gmail_thread_id: message.threadId,

@@ -44,6 +44,7 @@ export class JobFeedDbService implements OnDestroy {
         .from('job_feed')
         .select('*')
         .eq('candidate_id', candidateId)
+        .neq('status', 'expired')
         .order('match_score', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
@@ -94,8 +95,16 @@ export class JobFeedDbService implements OnDestroy {
           filter: `candidate_id=eq.${candidateId}`,
         },
         (payload: any) => {
-          const updatedJob = this.mapToUnifiedJob(payload.new);
+          const row = payload.new;
           const current = this.jobsSubject.value;
+
+          // Remove expired jobs from the feed
+          if (row.status === 'expired') {
+            this.jobsSubject.next(current.filter((j) => j.id !== row.id));
+            return;
+          }
+
+          const updatedJob = this.mapToUnifiedJob(row);
           const updated = current.map((j) =>
             j.id === updatedJob.id ? updatedJob : j
           );
