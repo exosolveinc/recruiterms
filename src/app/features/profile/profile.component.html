@@ -29,14 +29,6 @@
       >
         Profile
       </button>
-      <button
-        *ngIf="profile.role === 'admin'"
-        class="tab-btn"
-        [class.active]="activeTab === 'team'"
-        (click)="setTab('team')"
-      >
-        Team
-      </button>
 
     </div>
 
@@ -147,13 +139,9 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- ================================================================== -->
-    <!-- TEAM TAB -->
-    <!-- ================================================================== -->
-    <div class="tab-content" *ngIf="activeTab === 'team' && profile.role === 'admin'">
-      <div class="card team-card">
+      <!-- Team Members Section (admin only) -->
+      <div class="card team-card" *ngIf="profile.role === 'admin'" style="margin-top: 20px;">
         <div class="team-header">
           <div class="team-title-row">
             <h3 class="card-title">Team Members</h3>

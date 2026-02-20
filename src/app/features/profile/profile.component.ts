@@ -34,7 +34,7 @@ interface NewUserForm {
   styleUrls: ['./profile.component.scss']
 })
 export class ProfileComponent implements OnInit {
-  activeTab: 'profile' | 'team' | 'candidates' | 'notifications' = 'candidates';
+  activeTab: 'profile' | 'candidates' | 'notifications' = 'candidates';
 
   profile: Profile | null = null;
   loading = true;
@@ -120,7 +120,7 @@ export class ProfileComponent implements OnInit {
   // TABS
   // ============================================================================
 
-  setTab(tab: 'profile' | 'team' | 'candidates' | 'notifications') {
+  setTab(tab: 'profile' | 'candidates' | 'notifications') {
     this.activeTab = tab;
   }
 
