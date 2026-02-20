@@ -60,6 +60,7 @@
                     dataKey="id"
                     [rowHover]="true"
                     [expandedRowKeys]="expandedRows"
+                    (onRowExpand)="onRowExpand($event)"
                     styleClass="p-datatable-sm candidates-table"
                     [tableStyle]="{ 'table-layout': 'fixed', 'width': '100%' }"
                 >
@@ -213,7 +214,7 @@
                             <td colspan="7">
                                 <div class="expand-content">
                                     <div class="expand-grid">
-                                        <!-- LEFT COLUMN: Preferences + Resumes stacked -->
+                                        <!-- LEFT COLUMN: Preferences + Resumes + Gmail stacked -->
                                         <div class="expand-left">
                                             <!-- Preferences & Experience -->
                                             <div class="expand-section">
@@ -287,6 +288,45 @@
                                                     <span *ngIf="uploading">Uploading...</span>
                                                     <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event)" hidden [disabled]="uploading" />
                                                 </label>
+                                            </div>
+
+                                            <!-- Gmail / Email -->
+                                            <div class="expand-section">
+                                                <h4><i class="pi pi-envelope"></i> Email Integration</h4>
+                                                <div class="gmail-loading" *ngIf="gmailState[candidate.id]?.loading">
+                                                    <span class="spinner-tiny"></span> Loading...
+                                                </div>
+                                                <ng-container *ngIf="!gmailState[candidate.id]?.loading">
+                                                    <!-- Connected accounts -->
+                                                    <div class="gmail-accounts-list" *ngIf="gmailState[candidate.id]?.accounts?.length">
+                                                        <div class="gmail-account" *ngFor="let account of gmailState[candidate.id].accounts">
+                                                            <span class="gmail-connected">
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                                                                    <path d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6ZM20 6L12 11L4 6H20ZM20 18H4V8L12 13L20 8V18Z" fill="currentColor"/>
+                                                                </svg>
+                                                                {{ account.google_email }}
+                                                            </span>
+                                                            <button class="btn-gmail-sync" (click)="syncGmailAccount(candidate.id, account.connection_id); $event.stopPropagation()" [disabled]="gmailState[candidate.id]?.syncing" title="Sync">
+                                                                <svg *ngIf="!gmailState[candidate.id]?.syncing" width="12" height="12" viewBox="0 0 24 24" fill="none">
+                                                                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12C4.01 16.42 7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12C6 8.69 8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z" fill="currentColor"/>
+                                                                </svg>
+                                                                <span *ngIf="gmailState[candidate.id]?.syncing" class="spinner-tiny"></span>
+                                                            </button>
+                                                            <button class="btn-gmail-disconnect" (click)="disconnectGmailAccount(candidate.id, account.connection_id, account.google_email); $event.stopPropagation()" title="Disconnect">
+                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                                                    <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Connect button -->
+                                                    <button class="btn-gmail-connect" (click)="connectCandidateGmail(candidate.id); $event.stopPropagation()" *ngIf="!gmailState[candidate.id]?.accounts?.length || gmailState[candidate.id].accounts.length < 3">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                            <path d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6ZM20 6L12 11L4 6H20ZM20 18H4V8L12 13L20 8V18Z" fill="#EA4335"/>
+                                                        </svg>
+                                                        {{ gmailState[candidate.id]?.accounts?.length ? '+ Add Gmail' : 'Connect Gmail' }}
+                                                    </button>
+                                                </ng-container>
                                             </div>
                                         </div>
 

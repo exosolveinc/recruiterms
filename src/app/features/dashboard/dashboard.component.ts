@@ -1,12 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, effect, ElementRef, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, ElementRef, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Job, Resume, UserApplicationView } from '../../core/models';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { InterviewService, ScheduledInterview } from '../../core/services/interview.service';
 import { AppStateService } from '../../core/services/app-state.service';
-import { VendorEmailService } from '../../core/services/vendor-email.service';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 import { InterviewModalComponent } from '../../shared/interview-modal/interview-modal.component';
 import { TableModule } from 'primeng/table';
@@ -23,7 +22,6 @@ import { MultiSelectModule } from 'primeng/multiselect';
 export class DashboardComponent implements OnInit {
   // Inject services
   private appState = inject(AppStateService);
-  private vendorEmailService = inject(VendorEmailService);
   private el = inject(ElementRef);
 
   // Use signals from AppStateService
@@ -37,25 +35,6 @@ export class DashboardComponent implements OnInit {
   readonly candidateStats = this.appState.candidateStats;
   readonly selectedCandidateId = this.appState.selectedCandidateId;
   readonly selectedResumeId = this.appState.selectedResumeId;
-
-  // Email signals from AppStateService
-  readonly candidateGmailStatus = this.appState.candidateGmailStatus;
-  readonly candidateGmailAccounts = this.appState.candidateGmailAccounts;
-  readonly candidateEmailStats = this.appState.candidateEmailStats;
-  readonly candidateVendorJobs = this.appState.candidateVendorJobs;
-  readonly candidateEmailsLoading = this.appState.candidateEmailsLoading;
-  readonly candidateEmailsSyncing = this.appState.candidateEmailsSyncing;
-  readonly candidateGmailConnected = this.appState.candidateGmailConnected;
-  readonly candidateGmailCount = this.appState.candidateGmailCount;
-  readonly canAddMoreGmail = this.appState.canAddMoreGmail;
-
-  // Effect to load email data when candidate changes
-  private candidateEmailEffect = effect(() => {
-    const candidateId = this.selectedCandidateId();
-    if (candidateId) {
-      this.loadCandidateEmailData(candidateId);
-    }
-  });
 
   // Computed filtered applications with enhanced search
   readonly filteredApplications = computed(() => {
@@ -1048,177 +1027,6 @@ export class DashboardComponent implements OnInit {
     return this.candidateStats().avgMatch;
   }
 
-  // ============================================================================
-  // CANDIDATE EMAIL METHODS
-  // ============================================================================
-
-  /**
-   * Load email data for a candidate (Gmail accounts, stats, vendor jobs)
-   */
-  async loadCandidateEmailData(candidateId: string) {
-    // Clear previous email state
-    this.appState.clearCandidateEmailState();
-    this.appState.setCandidateEmailsLoading(true);
-
-    try {
-      // Load Gmail connection status and all accounts for this candidate
-      const [gmailStatus, gmailAccounts] = await Promise.all([
-        this.vendorEmailService.getCandidateGmailStatus(candidateId),
-        this.vendorEmailService.getCandidateGmailAccounts(candidateId)
-      ]);
-
-      this.appState.setCandidateGmailStatus(gmailStatus);
-      this.appState.setCandidateGmailAccounts(gmailAccounts);
-
-      // If connected, load email stats and vendor jobs
-      if (gmailStatus.connected) {
-        const [emailStats, vendorJobs] = await Promise.all([
-          this.vendorEmailService.getCandidateEmailStats(candidateId),
-          this.vendorEmailService.getCandidateVendorJobs(candidateId, { limit: 20 })
-        ]);
-
-        this.appState.setCandidateEmailStats(emailStats);
-        this.appState.setCandidateVendorJobs(vendorJobs);
-      }
-    } catch (err) {
-      console.error('Failed to load candidate email data:', err);
-    } finally {
-      this.appState.setCandidateEmailsLoading(false);
-    }
-  }
-
-  /**
-   * Connect Gmail for the selected candidate
-   */
-  async connectCandidateGmail() {
-    const candidateId = this.selectedCandidateId();
-    if (!candidateId) {
-      alert('Please select a candidate first');
-      return;
-    }
-
-    // Check if candidate can add more Gmail accounts (max 3)
-    if (!this.canAddMoreGmail()) {
-      alert('Maximum of 3 Gmail accounts per candidate. Please disconnect one to add another.');
-      return;
-    }
-
-    try {
-      // Get OAuth URL with candidateId
-      const { authUrl } = await this.vendorEmailService.getGmailAuthUrl(candidateId);
-
-      // Store candidateId in sessionStorage for callback
-      sessionStorage.setItem('gmail_oauth_candidate_id', candidateId);
-
-      // Redirect to Google OAuth
-      window.location.href = authUrl;
-    } catch (err: any) {
-      console.error('Failed to start Gmail OAuth:', err);
-      alert('Failed to connect Gmail: ' + err.message);
-    }
-  }
-
-  /**
-   * Disconnect a specific Gmail account by connection ID
-   */
-  async disconnectGmailAccount(connectionId: string, email: string) {
-    if (!confirm(`Disconnect ${email}? Synced jobs will be kept.`)) return;
-
-    try {
-      const success = await this.vendorEmailService.disconnectGmailConnection(connectionId);
-      if (success) {
-        // Remove from local state
-        this.appState.removeCandidateGmailAccount(connectionId);
-
-        // Reload email data if no more accounts
-        const candidateId = this.selectedCandidateId();
-        if (candidateId) {
-          await this.loadCandidateEmailData(candidateId);
-        }
-      }
-    } catch (err: any) {
-      console.error('Failed to disconnect Gmail:', err);
-      alert('Failed to disconnect: ' + err.message);
-    }
-  }
-
-  /**
-   * Disconnect Gmail for the selected candidate (legacy - disconnects all)
-   */
-  async disconnectCandidateGmail() {
-    const candidateId = this.selectedCandidateId();
-    if (!candidateId) return;
-
-    if (!confirm('Disconnect Gmail for this candidate? Synced jobs will be kept.')) return;
-
-    try {
-      await this.vendorEmailService.disconnectCandidateGmail(candidateId);
-      this.appState.clearCandidateEmailState();
-    } catch (err: any) {
-      console.error('Failed to disconnect Gmail:', err);
-      alert('Failed to disconnect: ' + err.message);
-    }
-  }
-
-  /**
-   * Sync emails for a specific Gmail connection
-   */
-  async syncGmailAccount(connectionId: string) {
-    this.appState.setCandidateEmailsSyncing(true);
-
-    try {
-      const result = await this.vendorEmailService.syncGmailConnection(connectionId);
-
-      // Reload email data after sync
-      const candidateId = this.selectedCandidateId();
-      if (candidateId) {
-        await this.loadCandidateEmailData(candidateId);
-      }
-
-      if (result.jobsCreated > 0) {
-        console.log(`Synced ${result.emailsParsed} emails, found ${result.jobsCreated} new jobs`);
-      }
-    } catch (err: any) {
-      console.error('Failed to sync emails:', err);
-      alert('Failed to sync emails: ' + err.message);
-    } finally {
-      this.appState.setCandidateEmailsSyncing(false);
-    }
-  }
-
-  /**
-   * Sync emails for the selected candidate (all accounts)
-   */
-  async syncCandidateEmails() {
-    const candidateId = this.selectedCandidateId();
-    if (!candidateId) return;
-
-    this.appState.setCandidateEmailsSyncing(true);
-
-    try {
-      const result = await this.vendorEmailService.syncCandidateEmails(candidateId);
-
-      // Reload email data after sync
-      await this.loadCandidateEmailData(candidateId);
-
-      // Show result
-      if (result.jobsCreated > 0) {
-        console.log(`Synced ${result.emailsParsed} emails, found ${result.jobsCreated} new jobs`);
-      }
-    } catch (err: any) {
-      console.error('Failed to sync emails:', err);
-      alert('Failed to sync emails: ' + err.message);
-    } finally {
-      this.appState.setCandidateEmailsSyncing(false);
-    }
-  }
-
-  /**
-   * Get new job opportunities count for display
-   */
-  getCandidateNewJobs(): number {
-    return this.candidateEmailStats()?.new_jobs ?? 0;
-  }
 
   getCompanyColor(companyName: string | null): string {
     const colors = [

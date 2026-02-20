@@ -167,22 +167,7 @@
               placeholder="Location..."
               (keyup.enter)="searchJobs()"
             />
-            <select class="search-input source" [(ngModel)]="selectedSource">
-              <optgroup label="Standard APIs">
-                <option value="adzuna">Adzuna</option>
-                <option value="rapidapi">JSearch (RapidAPI)</option>
-              </optgroup>
-              <optgroup label="AI-Powered Search">
-                <option value="dice">Dice (AI)</option>
-                <option value="linkedin">LinkedIn (AI)</option>
-                <option value="indeed">Indeed (AI)</option>
-                <option value="glassdoor">Glassdoor (AI)</option>
-                <option value="ai-search">All Platforms (AI)</option>
-              </optgroup>
-              <optgroup label="Combined">
-                <option value="all">All Sources</option>
-              </optgroup>
-            </select>
+            <!-- Platform is auto-selected randomly between Adzuna and RapidAPI -->
             <button class="btn-search" (click)="searchJobs()" [disabled]="searching || !searchQuery.trim()">
               Search Jobs
             </button>
