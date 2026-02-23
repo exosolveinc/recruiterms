@@ -166,11 +166,37 @@
                                 ></p-multiSelect>
                             </div>
                         </th>
-                        <th class="salary-col">
+                        <th class="salary-col header-with-filter">
                             <span class="sortable-header" (click)="onSort('salary_min')">
                                 SALARY
                                 <i class="sort-icon" [ngClass]="getSortIconClass('salary_min')"></i>
                             </span>
+                            <div class="filter-wrapper salary-filter-wrapper">
+                                <i class="pi pi-filter" [class.active]="salaryFilterActive" (click)="toggleSalaryFilter($event)"></i>
+                                <div class="salary-filter-dropdown" *ngIf="showSalaryFilter" (click)="$event.stopPropagation()">
+                                    <div class="salary-filter-content">
+                                        <div class="salary-range-header">
+                                            <span class="salary-range-label">{{ formatSalaryK(salaryRange[0]) }} - {{ formatSalaryK(salaryRange[1]) }}</span>
+                                            <button *ngIf="salaryFilterActive" class="clear-salary-btn" (click)="clearSalaryFilter(); $event.stopPropagation()">
+                                                <i class="pi pi-times"></i>
+                                            </button>
+                                        </div>
+                                        <p-slider
+                                            [(ngModel)]="salaryRange"
+                                            [range]="true"
+                                            [min]="0"
+                                            [max]="300000"
+                                            [step]="10000"
+                                            (onChange)="onSalaryFilterChange()"
+                                            styleClass="salary-slider"
+                                        ></p-slider>
+                                        <div class="salary-range-labels">
+                                            <span>$0</span>
+                                            <span>$300k+</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </th>
                         <th class="match-col">
                             <span class="sortable-header" (click)="onSort('match_score')">

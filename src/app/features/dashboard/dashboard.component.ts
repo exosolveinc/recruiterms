@@ -11,11 +11,12 @@ import { InterviewModalComponent } from '../../shared/interview-modal/interview-
 import { TableModule } from 'primeng/table';
 import { RippleModule } from 'primeng/ripple';
 import { MultiSelectModule } from 'primeng/multiselect';
+import { SliderModule } from 'primeng/slider';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent, InterviewModalComponent, TableModule, RippleModule, MultiSelectModule],
+  imports: [CommonModule, FormsModule, SidebarComponent, InterviewModalComponent, TableModule, RippleModule, MultiSelectModule, SliderModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -113,6 +114,11 @@ export class DashboardComponent implements OnInit {
   selectedPlatforms: string[] = [];
   selectedCompanies: string[] = [];
 
+  // Salary range filter
+  salaryRange: number[] = [0, 300000];
+  salaryFilterActive = false;
+  showSalaryFilter = false;
+
   // Signal to trigger computed re-evaluation when sort/filter plain properties change
   private filterSortTrigger = signal(0);
 
@@ -160,6 +166,15 @@ export class DashboardComponent implements OnInit {
     // Column filter: platform multi-select
     if (this.selectedPlatforms.length > 0) {
       apps = apps.filter(a => a.platform && this.selectedPlatforms.includes(a.platform));
+    }
+
+    // Column filter: salary range
+    if (this.salaryFilterActive) {
+      apps = apps.filter(a => {
+        const salary = a.salary_max ?? a.salary_min;
+        if (salary === null || salary === undefined) return this.salaryRange[0] === 0;
+        return salary >= this.salaryRange[0] && salary <= this.salaryRange[1];
+      });
     }
 
     // Sort
@@ -271,6 +286,7 @@ export class DashboardComponent implements OnInit {
   @HostListener('document:click')
   onDocumentClick() {
     this.closeResumeDropdown();
+    this.showSalaryFilter = false;
   }
 
   constructor(
@@ -1175,6 +1191,7 @@ export class DashboardComponent implements OnInit {
     return this.selectedStatuses.length > 0 ||
       this.selectedPlatforms.length > 0 ||
       this.selectedCompanies.length > 0 ||
+      this.salaryFilterActive ||
       this.sortField !== '';
   }
 
@@ -1182,9 +1199,32 @@ export class DashboardComponent implements OnInit {
     this.selectedStatuses = [];
     this.selectedPlatforms = [];
     this.selectedCompanies = [];
+    this.salaryRange = [0, 300000];
+    this.salaryFilterActive = false;
     this.sortField = '';
     this.sortOrder = 1;
     this.filterSortTrigger.update(v => v + 1);
+  }
+
+  // Salary filter
+  toggleSalaryFilter(event: Event): void {
+    event.stopPropagation();
+    this.showSalaryFilter = !this.showSalaryFilter;
+  }
+
+  onSalaryFilterChange(): void {
+    this.salaryFilterActive = true;
+    this.filterSortTrigger.update(v => v + 1);
+  }
+
+  clearSalaryFilter(): void {
+    this.salaryRange = [0, 300000];
+    this.salaryFilterActive = false;
+    this.filterSortTrigger.update(v => v + 1);
+  }
+
+  formatSalaryK(value: number): string {
+    return '$' + (value / 1000).toFixed(0) + 'k';
   }
 
   onColumnFilterChange(): void {
