@@ -1613,6 +1613,7 @@
   padding: 0 10px 10px;
 
   &.solo { grid-template-columns: 1fr; }
+  &.two-col { grid-template-columns: 1fr 1fr; }
 }
 
 .dd-quick-btn {
@@ -1837,6 +1838,84 @@
 
   &:hover:not(:disabled) { background: #333; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// Resume switch list inside dropdown
+.dd-resume-list {
+  padding-bottom: 4px;
+
+  .dd-resume-list-header {
+    padding: 8px 14px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9CA3AF;
+  }
+}
+
+.dd-resume-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+
+  &:hover:not(.active) {
+    background: #F9FAFB;
+  }
+
+  &.active {
+    background: #F0FDF4;
+  }
+}
+
+.dd-resume-radio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #D1D5DB;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.15s;
+
+  &.selected {
+    border-color: #16A34A;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #16A34A;
+    }
+  }
+}
+
+.dd-resume-item-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dd-resume-active-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: #16A34A;
+  background: #DCFCE7;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 // Suggestion items

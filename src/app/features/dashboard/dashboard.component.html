@@ -342,7 +342,7 @@
                                     </div>
 
                                     <!-- Quick Actions Row -->
-                                    <div class="dd-quick-actions" *ngIf="getResumeForApp(app) as resume">
+                                    <div class="dd-quick-actions two-col" *ngIf="getResumeForApp(app) as resume">
                                         <button class="dd-quick-btn" (click)="viewResume(resume); $event.stopPropagation()" title="View">
                                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -358,27 +358,22 @@
                                             </svg>
                                             <span>Download</span>
                                         </button>
-                                        <label class="dd-quick-btn" title="{{ app.resume_id ? 'Change' : 'Upload' }}">
-                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                                <polyline points="17,8 12,3 7,8"/>
-                                                <line x1="12" y1="3" x2="12" y2="15"/>
-                                            </svg>
-                                            <span>{{ app.resume_id ? 'Change' : 'Upload' }}</span>
-                                            <input type="file" accept=".pdf,.docx" (change)="onReuploadResume($event, app)" hidden />
-                                        </label>
                                     </div>
-                                    <!-- Upload only (no resume attached) -->
-                                    <div class="dd-quick-actions solo" *ngIf="!getResumeForApp(app)">
-                                        <label class="dd-quick-btn accent">
-                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                                <polyline points="17,8 12,3 7,8"/>
-                                                <line x1="12" y1="3" x2="12" y2="15"/>
-                                            </svg>
-                                            <span>Upload Resume</span>
-                                            <input type="file" accept=".pdf,.docx" (change)="onReuploadResume($event, app)" hidden />
-                                        </label>
+
+                                    <!-- Switch Resume List (when multiple resumes exist) -->
+                                    <div class="dd-resume-list" *ngIf="candidateResumes().length > 1">
+                                        <div class="dd-divider"></div>
+                                        <div class="dd-resume-list-header">Switch Resume</div>
+                                        <div
+                                            class="dd-resume-item"
+                                            *ngFor="let resume of candidateResumes()"
+                                            [class.active]="app.resume_id === resume.id"
+                                            (click)="switchResumeForApp(app, resume); $event.stopPropagation()"
+                                        >
+                                            <span class="dd-resume-radio" [class.selected]="app.resume_id === resume.id"></span>
+                                            <span class="dd-resume-item-name">{{ getResumeLabel(resume) }}</span>
+                                            <span class="dd-resume-active-tag" *ngIf="app.resume_id === resume.id">active</span>
+                                        </div>
                                     </div>
 
                                     <!-- Divider -->

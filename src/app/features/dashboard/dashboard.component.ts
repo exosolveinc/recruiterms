@@ -1590,6 +1590,28 @@ export class DashboardComponent implements OnInit {
     return this.openDropdownSections.has(sectionId);
   }
 
+  async switchResumeForApp(app: UserApplicationView, resume: Resume) {
+    if (app.resume_id === resume.id) return;
+
+    this.reanalyzingAppId = app.id;
+    try {
+      await this.supabase.updateApplication(app.id, { resume_id: resume.id });
+
+      this.appState.invalidateApplications();
+      await this.loadApplications();
+
+      this.resumeCache.delete(app.resume_id!);
+
+      await this.reanalyzeApplicationWithResume(app, resume);
+    } catch (err: any) {
+      console.error('Failed to switch resume:', err);
+      alert('Failed to switch resume: ' + err.message);
+    } finally {
+      this.reanalyzingAppId = null;
+      this.openResumeDropdownId = null;
+    }
+  }
+
   // Load analysis when section is opened (if not already loaded)
   loadAnalysisIfNeeded(app: UserApplicationView) {
     if (!app.match_score && !app.matching_skills?.length && app.resume_id) {
