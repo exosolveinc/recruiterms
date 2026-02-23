@@ -1455,66 +1455,53 @@ table {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  backdrop-filter: blur(2px);
 }
 
 .modal {
   background: white;
-  border: 1px solid #eee;
-  border-radius: 12px;
+  border-radius: 16px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12);
 }
 
 .candidate-modal {
-  max-width: 720px;
+  max-width: 680px;
 }
 
-.modal-header {
+// ============================================================================
+// MODAL HEADER V2
+// ============================================================================
+
+.modal-header-v2 {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  padding: 20px 24px;
-  border-bottom: 1px solid #eee;
-
-  .modal-header-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #111;
-    margin: 0;
-  }
-
-  .modal-header-sub {
-    font-size: 13px;
-    color: #888;
-    font-weight: 400;
-  }
+  gap: 14px;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid #f0f0f0;
 
   .close-btn {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border: none;
     background: transparent;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
-    color: #999;
+    font-size: 13px;
+    color: #bbb;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    margin-left: auto;
 
     &:hover {
       background: #f5f5f5;
@@ -1523,24 +1510,80 @@ table {
   }
 }
 
-.modal-body {
-  padding: 20px 24px;
+.modal-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #111;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
-.modal-footer {
+.modal-header-info {
+  flex: 1;
+  min-width: 0;
+
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #111;
+    margin: 0;
+    line-height: 1.3;
+  }
+}
+
+.modal-header-meta {
   display: flex;
-  gap: 12px;
-  padding: 14px 24px;
-  border-top: 1px solid #eee;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  font-size: 13px;
+  color: #888;
+  margin-top: 2px;
+
+  .meta-sep::before {
+    content: '·';
+    margin: 0 6px;
+    color: #ccc;
+  }
+}
+
+.modal-header-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  font-size: 12px;
+  margin-top: 4px;
+
+  a {
+    color: #666;
+    text-decoration: none;
+    &:hover { color: #111; text-decoration: underline; }
+  }
+
+  .contact-sep::before {
+    content: '·';
+    margin: 0 6px;
+    color: #ddd;
+  }
+}
+
+.modal-body {
+  padding: 20px 24px 24px;
 }
 
 .btn-secondary,
 .btn-primary {
-  padding: 12px 20px;
+  padding: 10px 18px;
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -1549,273 +1592,253 @@ table {
   background: white;
   border: 1px solid #eee;
   color: #666;
-
-  &:hover {
-    background: #f5f5f5;
-  }
+  &:hover { background: #f5f5f5; }
 }
 
 .btn-primary {
   background: #111;
   border: none;
   color: white;
-
-  &:hover {
-    background: #333;
-  }
+  &:hover { background: #333; }
 }
 
 // ============================================================================
-// CANDIDATE MODAL CONTENT
+// MODAL TABS V2 (underline style)
 // ============================================================================
 
-.candidate-meta-bar {
+.modal-tabs-v2 {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 0;
+  border-bottom: 1px solid #eee;
   margin-bottom: 20px;
 }
 
-.meta-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  background: #f5f5f5;
-  border-radius: 6px;
-  font-size: 12px;
-  color: #555;
+.tab-btn-v2 {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: -1px;
 
-  i { font-size: 11px; color: #999; }
+  &:hover { color: #555; }
 
-  &.meta-link {
-    text-decoration: none;
-    cursor: pointer;
-    &:hover { background: #eee; }
-  }
-}
-
-.resumes-overview {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.resume-details-panel {
-  padding: 16px;
-  background: #fafafa;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.detail-section {
-  h4 {
-    font-size: 14px;
-    font-weight: 600;
+  &.active {
     color: #111;
-    margin: 0 0 16px;
+    border-bottom-color: #111;
+  }
+
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 5px;
+    margin-left: 5px;
+    background: #eee;
+    color: #666;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  &.active .tab-count {
+    background: #111;
+    color: white;
   }
 }
+
+// ============================================================================
+// RESUME CARDS V2
+// ============================================================================
 
 .resume-selector {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.resume-card {
-  padding: 14px 16px;
-  background: #fafafa;
+.resume-card-v2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
   border: 1.5px solid #eee;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.15s;
+  background: white;
 
   &:hover {
     border-color: #ccc;
+    .rc-actions { opacity: 1; }
   }
 
   &.selected {
     border-color: #111;
-    background: white;
+    background: #fafafa;
   }
 }
 
-.resume-card-header {
+.rc-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 10px;
+  min-width: 0;
 }
 
-.resume-card-info {
+.rc-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  i { font-size: 13px; color: #999; }
+
+  &.primary {
+    background: #FEF9C3;
+    i { color: #CA8A04; }
+  }
+}
+
+.rc-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-
-  .resume-card-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: #111;
-  }
-
-  .resume-card-date {
-    font-size: 12px;
-    color: #999;
-  }
+  min-width: 0;
 }
 
-.resume-card-actions {
+.rc-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-meta {
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-right {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.btn-action {
-  padding: 6px 12px;
-  background: white;
-  border: 1px solid #e2e8f0;
+.rc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #888;
+}
+
+.rc-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.rc-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
   border-radius: 6px;
-  font-size: 12px;
   cursor: pointer;
-  color: #666;
-  transition: all 0.15s;
+  color: #999;
+  transition: all 0.1s;
+
+  i { font-size: 12px; }
 
   &:hover {
-    background: #f5f5f5;
+    background: #f0f0f0;
+    color: #333;
+  }
+
+  &.danger:hover {
+    background: #fef2f2;
+    color: #dc2626;
   }
 }
 
-.resume-details {
+// ============================================================================
+// RESUME DETAILS PANEL
+// ============================================================================
+
+.resume-details-panel {
+  margin-top: 16px;
+  padding: 16px 18px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+
+.rdp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rdp-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rdp-text {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.rdp-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-.resume-detail-row {
-  .label {
-    display: block;
-    font-size: 11px;
-    color: #999;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  p {
-    font-size: 14px;
-    color: #666;
-    line-height: 1.6;
-    margin: 0;
-  }
+.rdp-edu, .rdp-work {
+  margin-bottom: 6px;
+  &:last-child { margin-bottom: 0; }
 }
 
-.education-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  .edu-item {
-    .degree {
-      display: block;
-      font-size: 14px;
-      font-weight: 500;
-      color: #111;
-    }
-
-    .institution {
-      font-size: 13px;
-      color: #666;
-    }
-  }
-}
-
-.work-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  .work-item {
-    padding-bottom: 12px;
-    border-bottom: 1px solid #eee;
-
-    &:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-
-    .work-title {
-      display: block;
-      font-size: 14px;
-      font-weight: 500;
-      color: #111;
-    }
-
-    .work-company {
-      display: block;
-      font-size: 13px;
-      color: #666;
-    }
-
-    .work-dates {
-      display: block;
-      font-size: 12px;
-      color: #999;
-      margin-top: 4px;
-    }
-  }
-}
-
-// ============================================================================
-// MODAL TABS
-// ============================================================================
-
-.modal-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 24px;
-  padding: 4px;
-  background: #f5f5f5;
-  border-radius: 10px;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 10px 16px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
+.rdp-edu-degree, .rdp-work-title {
+  display: block;
+  font-size: 13px;
   font-weight: 500;
-  color: #666;
-  cursor: pointer;
-  transition: all 0.15s;
-  position: relative;
-
-  &:hover {
-    color: #111;
-  }
-
-  &.active {
-    background: white;
-    color: #111;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
+  color: #222;
 }
 
-.tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
-  margin-left: 6px;
-  background: #111;
-  color: white;
-  border-radius: 9px;
-  font-size: 11px;
-  font-weight: 600;
+.rdp-edu-inst, .rdp-work-co {
+  display: block;
+  font-size: 12px;
+  color: #888;
 }
 
 .tab-content {

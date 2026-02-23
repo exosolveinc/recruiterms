@@ -362,13 +362,24 @@
     <!-- Candidate Detail Modal -->
     <div class="modal-overlay" *ngIf="showCandidateModal" (click)="closeCandidateModal()">
         <div class="modal candidate-modal" (click)="$event.stopPropagation()">
-            <div class="modal-header">
+            <!-- Header with avatar -->
+            <div class="modal-header-v2">
+                <div class="modal-avatar" *ngIf="selectedCandidate">
+                    {{ selectedCandidate.name?.charAt(0) || '?' }}
+                </div>
                 <div class="modal-header-info">
                     <h3>{{ selectedCandidate?.name }}</h3>
-                    <span class="modal-header-sub" *ngIf="selectedCandidate?.current_title">
-                        {{ selectedCandidate?.current_title }}
-                        <span *ngIf="selectedCandidate?.current_company"> at {{ selectedCandidate?.current_company }}</span>
-                    </span>
+                    <div class="modal-header-meta">
+                        <span *ngIf="selectedCandidate?.current_title">{{ selectedCandidate?.current_title }}</span>
+                        <span *ngIf="selectedCandidate?.current_company" class="meta-sep">{{ selectedCandidate?.current_company }}</span>
+                        <span *ngIf="selectedCandidate?.location" class="meta-sep">{{ selectedCandidate?.location }}</span>
+                        <span *ngIf="selectedCandidate?.years_of_experience" class="meta-sep">{{ selectedCandidate?.years_of_experience }} yrs</span>
+                    </div>
+                    <div class="modal-header-contact">
+                        <a *ngIf="selectedCandidate?.email" [href]="'mailto:' + selectedCandidate?.email">{{ selectedCandidate?.email }}</a>
+                        <span *ngIf="selectedCandidate?.phone" class="contact-sep">{{ selectedCandidate?.phone }}</span>
+                        <a *ngIf="selectedCandidate?.linkedin" [href]="selectedCandidate?.linkedin" target="_blank" class="contact-sep">LinkedIn</a>
+                    </div>
                 </div>
                 <button class="close-btn" (click)="closeCandidateModal()">
                     <i class="pi pi-times"></i>
@@ -376,94 +387,67 @@
             </div>
 
             <div class="modal-body" *ngIf="selectedCandidate">
-                <!-- Candidate Meta Bar -->
-                <div class="candidate-meta-bar">
-                    <span class="meta-chip" *ngIf="selectedCandidate.location">
-                        <i class="pi pi-map-marker"></i> {{ selectedCandidate.location }}
-                    </span>
-                    <span class="meta-chip" *ngIf="selectedCandidate.years_of_experience">
-                        <i class="pi pi-clock"></i> {{ selectedCandidate.years_of_experience }} yrs experience
-                    </span>
-                    <span class="meta-chip" *ngIf="selectedCandidate.experience_level">
-                        {{ selectedCandidate.experience_level }}
-                    </span>
-                    <span class="meta-chip" *ngIf="selectedCandidate.email">
-                        <i class="pi pi-envelope"></i> {{ selectedCandidate.email }}
-                    </span>
-                    <span class="meta-chip" *ngIf="selectedCandidate.phone">
-                        <i class="pi pi-phone"></i> {{ selectedCandidate.phone }}
-                    </span>
-                    <a class="meta-chip meta-link" *ngIf="selectedCandidate.linkedin" [href]="selectedCandidate.linkedin" target="_blank">
-                        <i class="pi pi-linkedin"></i> LinkedIn
-                    </a>
-                </div>
-
                 <!-- Tab Navigation -->
-                <div class="modal-tabs">
-                    <button class="tab-btn" [class.active]="activeTab === 'overview'" (click)="setActiveTab('overview')">
-                        Resumes
+                <div class="modal-tabs-v2">
+                    <button class="tab-btn-v2" [class.active]="activeTab === 'overview'" (click)="setActiveTab('overview')">
+                        Resumes <span class="tab-count" *ngIf="selectedCandidate.resumes?.length">{{ selectedCandidate.resumes.length }}</span>
                     </button>
-                    <button class="tab-btn" [class.active]="activeTab === 'preferences'" (click)="setActiveTab('preferences')">
+                    <button class="tab-btn-v2" [class.active]="activeTab === 'preferences'" (click)="setActiveTab('preferences')">
                         Preferences
                     </button>
-                    <button class="tab-btn" [class.active]="activeTab === 'documents'" (click)="setActiveTab('documents')">
-                        Documents
-                        <span class="tab-badge" *ngIf="candidateDocuments.length">{{ candidateDocuments.length }}</span>
+                    <button class="tab-btn-v2" [class.active]="activeTab === 'documents'" (click)="setActiveTab('documents')">
+                        Documents <span class="tab-count" *ngIf="candidateDocuments.length">{{ candidateDocuments.length }}</span>
                     </button>
                 </div>
 
                 <!-- Tab Content: Resumes -->
                 <div class="tab-content" *ngIf="activeTab === 'overview'">
-                    <div class="resumes-overview">
-                        <div class="resume-selector">
-                            <div class="resume-card" *ngFor="let resume of selectedCandidate.resumes" [class.selected]="selectedResume?.id === resume.id" [class.primary]="resume.is_primary" (click)="selectResume(resume)">
-                                <div class="resume-card-header">
-                                    <div class="resume-card-info">
-                                        <span class="resume-card-display-name">{{ getResumeDisplayName(resume) }}</span>
-                                        <span class="resume-card-name">{{ resume.file_name }}</span>
-                                        <span class="resume-card-date">Uploaded {{ formatDate(resume.created_at) }}</span>
-                                    </div>
-                                    <div class="resume-card-badges">
-                                        <span class="extraction-status" [ngClass]="getStatusClass(resume.extraction_status)">
-                                            <span class="status-dot"></span>
-                                            {{ getStatusText(resume.extraction_status) }}
-                                        </span>
-                                        <span class="primary-badge-sm" *ngIf="resume.is_primary"><i class="pi pi-star-fill"></i> Primary</span>
-                                    </div>
+                    <div class="resume-selector">
+                        <div class="resume-card-v2" *ngFor="let resume of selectedCandidate.resumes" [class.selected]="selectedResume?.id === resume.id" (click)="selectResume(resume)">
+                            <div class="rc-left">
+                                <div class="rc-icon" [class.primary]="resume.is_primary">
+                                    <i class="pi" [ngClass]="resume.is_primary ? 'pi-star-fill' : 'pi-file'"></i>
                                 </div>
-                                <div class="resume-card-actions">
-                                    <button class="btn-action" (click)="openResumeFile(resume); $event.stopPropagation()"><i class="pi pi-external-link"></i> Open</button>
-                                    <button class="btn-action" (click)="downloadResume(resume); $event.stopPropagation()"><i class="pi pi-download"></i> Download</button>
-                                    <button class="btn-action" (click)="goToAnalyzer(resume); $event.stopPropagation()"><i class="pi pi-chart-bar"></i> Analyze</button>
-                                    <button class="btn-action" (click)="setResumePrimary(resume); $event.stopPropagation()" *ngIf="!resume.is_primary"><i class="pi pi-star"></i> Primary</button>
-                                    <button class="btn-action delete" (click)="confirmDeleteResume(resume); $event.stopPropagation()"><i class="pi pi-trash"></i></button>
+                                <div class="rc-info">
+                                    <span class="rc-name">{{ getResumeDisplayName(resume) }}</span>
+                                    <span class="rc-meta">{{ resume.file_name }} · {{ formatDate(resume.created_at) }}</span>
+                                </div>
+                            </div>
+                            <div class="rc-right">
+                                <span class="rc-status" [ngClass]="getStatusClass(resume.extraction_status)">
+                                    <span class="status-dot"></span>
+                                    {{ getStatusText(resume.extraction_status) }}
+                                </span>
+                                <div class="rc-actions">
+                                    <button class="rc-btn" (click)="openResumeFile(resume); $event.stopPropagation()" title="Open"><i class="pi pi-external-link"></i></button>
+                                    <button class="rc-btn" (click)="downloadResume(resume); $event.stopPropagation()" title="Download"><i class="pi pi-download"></i></button>
+                                    <button class="rc-btn" (click)="goToAnalyzer(resume); $event.stopPropagation()" title="Analyze"><i class="pi pi-chart-bar"></i></button>
+                                    <button class="rc-btn" (click)="setResumePrimary(resume); $event.stopPropagation()" *ngIf="!resume.is_primary" title="Set Primary"><i class="pi pi-star"></i></button>
+                                    <button class="rc-btn danger" (click)="confirmDeleteResume(resume); $event.stopPropagation()" title="Delete"><i class="pi pi-trash"></i></button>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Resume Details (shown when a resume is selected) -->
-                        <div class="resume-details-panel" *ngIf="selectedResume">
-                            <div class="resume-detail-row" *ngIf="selectedResume.professional_summary">
-                                <span class="label">Summary</span>
-                                <p>{{ selectedResume.professional_summary }}</p>
-                            </div>
-                            <div class="resume-detail-row" *ngIf="selectedResume.education?.length">
-                                <span class="label">Education</span>
-                                <div class="education-list">
-                                    <div class="edu-item" *ngFor="let edu of selectedResume.education">
-                                        <span class="degree">{{ edu.degree }}</span>
-                                        <span class="institution">{{ edu.institution }} <span *ngIf="edu.year">· {{ edu.year }}</span></span>
-                                    </div>
+                    <!-- Resume Details (shown when a resume is selected) -->
+                    <div class="resume-details-panel" *ngIf="selectedResume">
+                        <div class="rdp-section" *ngIf="selectedResume.professional_summary">
+                            <span class="rdp-label">Summary</span>
+                            <p class="rdp-text">{{ selectedResume.professional_summary }}</p>
+                        </div>
+                        <div class="rdp-columns">
+                            <div class="rdp-section" *ngIf="selectedResume.education?.length">
+                                <span class="rdp-label">Education</span>
+                                <div class="rdp-edu" *ngFor="let edu of selectedResume.education">
+                                    <span class="rdp-edu-degree">{{ edu.degree }}</span>
+                                    <span class="rdp-edu-inst">{{ edu.institution }}<span *ngIf="edu.year"> · {{ edu.year }}</span></span>
                                 </div>
                             </div>
-                            <div class="resume-detail-row" *ngIf="selectedResume.work_history?.length">
-                                <span class="label">Work History</span>
-                                <div class="work-list">
-                                    <div class="work-item" *ngFor="let work of selectedResume.work_history.slice(0, 3)">
-                                        <span class="work-title">{{ work.title }}</span>
-                                        <span class="work-company">{{ work.company }}</span>
-                                        <span class="work-dates">{{ work.start }} - {{ work.end || 'Present' }}</span>
-                                    </div>
+                            <div class="rdp-section" *ngIf="selectedResume.work_history?.length">
+                                <span class="rdp-label">Work History</span>
+                                <div class="rdp-work" *ngFor="let work of selectedResume.work_history.slice(0, 3)">
+                                    <span class="rdp-work-title">{{ work.title }}</span>
+                                    <span class="rdp-work-co">{{ work.company }} · {{ work.start }} – {{ work.end || 'Present' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -486,7 +470,6 @@
                         </div>
 
                         <div class="preferences-grid-compact">
-                            <!-- Job Titles -->
                             <div class="pref-row full-width">
                                 <label class="pref-label">Target Roles</label>
                                 <div class="tag-input-container" *ngIf="editingPreferences">
@@ -501,7 +484,6 @@
                                 </div>
                             </div>
 
-                            <!-- Locations + Relocate -->
                             <div class="pref-row full-width">
                                 <label class="pref-label">
                                     Locations
@@ -523,7 +505,6 @@
                                 </div>
                             </div>
 
-                            <!-- Work Type + Salary side by side -->
                             <div class="pref-row">
                                 <label class="pref-label">Work Type</label>
                                 <div class="checkbox-group" [class.disabled]="!editingPreferences">
@@ -554,14 +535,12 @@
                                 </div>
                             </div>
 
-                            <!-- Work Authorization -->
                             <div class="pref-row">
                                 <label class="pref-label">Work Authorization</label>
                                 <input *ngIf="editingPreferences" type="text" [(ngModel)]="editedPreferences.work_authorization" placeholder="e.g., US Citizen, H1B" class="pref-input" />
                                 <span class="pref-value" *ngIf="!editingPreferences">{{ editedPreferences.work_authorization || '—' }}</span>
                             </div>
 
-                            <!-- Notice Period -->
                             <div class="pref-row">
                                 <label class="pref-label">Notice Period</label>
                                 <div class="notice-input" *ngIf="editingPreferences">
@@ -571,7 +550,6 @@
                                 <span class="pref-value" *ngIf="!editingPreferences">{{ editedPreferences.notice_period_days ? editedPreferences.notice_period_days + ' days' : '—' }}</span>
                             </div>
 
-                            <!-- Notes -->
                             <div class="pref-row full-width">
                                 <label class="pref-label">Notes</label>
                                 <textarea *ngIf="editingPreferences" [(ngModel)]="editedPreferences.notes" placeholder="Additional notes..." class="pref-textarea" rows="2"></textarea>
@@ -584,7 +562,6 @@
                 <!-- Tab Content: Documents -->
                 <div class="tab-content" *ngIf="activeTab === 'documents'">
                     <div class="documents-section">
-                        <!-- Upload Form -->
                         <div class="upload-document-form">
                             <div class="upload-form-grid">
                                 <div class="form-row">
@@ -614,7 +591,6 @@
                             <p class="upload-hint">PDF, JPG, PNG, DOC — Max 10MB</p>
                         </div>
 
-                        <!-- Documents List -->
                         <div class="documents-list" *ngIf="!loadingDocuments">
                             <div class="no-documents" *ngIf="candidateDocuments.length === 0">
                                 <p>No documents uploaded yet.</p>
@@ -641,10 +617,6 @@
                         <div class="loading-docs" *ngIf="loadingDocuments">Loading documents...</div>
                     </div>
                 </div>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn-secondary" (click)="closeCandidateModal()">Close</button>
             </div>
         </div>
     </div>
