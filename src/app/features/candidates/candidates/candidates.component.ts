@@ -104,6 +104,9 @@ export class CandidatesComponent implements OnInit {
   skillsExpandedMap: { [candidateId: string]: boolean } = {};
   skillsVisibleCount = 12;
 
+  // Resumes expand state per candidate
+  resumesExpandedMap: { [candidateId: string]: boolean } = {};
+
   // Stats
   stats = {
     totalCandidates: 0,
@@ -682,6 +685,21 @@ export class CandidatesComponent implements OnInit {
 
   isSkillsExpanded(candidateId: string): boolean {
     return !!this.skillsExpandedMap[candidateId];
+  }
+
+  getVisibleResumes(candidate: Candidate): Resume[] {
+    if (this.resumesExpandedMap[candidate.id]) {
+      return candidate.resumes || [];
+    }
+    return (candidate.resumes || []).slice(0, 2);
+  }
+
+  toggleResumesExpanded(candidateId: string) {
+    this.resumesExpandedMap[candidateId] = !this.resumesExpandedMap[candidateId];
+  }
+
+  isResumesExpanded(candidateId: string): boolean {
+    return !!this.resumesExpandedMap[candidateId];
   }
 
   getExperienceBadgeClass(level: string | null): string {

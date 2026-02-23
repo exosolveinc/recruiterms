@@ -89,11 +89,7 @@
 
         <!-- Loading Animation -->
         <div class="loading-card" *ngIf="extracting">
-            <div class="loader">
-                <div class="loader-ring"></div>
-                <div class="loader-ring"></div>
-                <div class="loader-ring"></div>
-            </div>
+            <div class="loader"></div>
             <div class="loading-title">Analyzing job match</div>
             <div class="loading-step-text">{{ loadingSteps[currentLoadingStep] }}</div>
             <div class="loading-dots">

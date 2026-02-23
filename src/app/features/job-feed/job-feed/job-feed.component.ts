@@ -58,6 +58,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     if (candidateId) {
       this.jobFeedDbService.loadJobsForCandidate(candidateId);
       this.loadFeedInsight(candidateId);
+      this.loadExistingApplications();
     }
   });
 
@@ -106,6 +107,7 @@ export class JobFeedComponent implements OnInit, OnDestroy {
         this.newJobsCount = jobs.filter(j => j.is_new).length;
         this.buildCompanyOptions();
         this.updateFilteredJobs();
+        this.markAppliedJobs();
       });
 
     this.jobFeedDbService.loading$
@@ -346,6 +348,49 @@ export class JobFeedComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Track which jobs have been saved as applications
+  savedJobIds = new Set<string>();
+  savingJobId: string | null = null;
+  private appliedJobLookup = new Set<string>();
+
+  async saveAsApplication(job: UnifiedJob) {
+    if (!this.selectedResumeId || this.savingJobId === job.id) return;
+
+    this.savingJobId = job.id;
+    try {
+      const jobData = {
+        source_url: job.url || '',
+        platform: job.source_platform,
+        job_title: job.title,
+        company_name: job.company,
+        location: job.location || '',
+        description_full: job.description || '',
+        salary_min: job.salary_min,
+        salary_max: job.salary_max,
+        employment_type: job.employment_type || '',
+        match_score: job.match_score,
+        matching_skills: job.matching_skills,
+        missing_skills: job.missing_skills,
+        status: 'new' as const,
+        extraction_status: 'completed' as const
+      };
+
+      const savedJob = await this.supabase.createJob(jobData);
+      await this.supabase.createApplication({
+        job_id: savedJob.id,
+        resume_id: this.selectedResumeId,
+        status: 'extracted'
+      });
+
+      this.savedJobIds.add(job.id);
+    } catch (err: any) {
+      console.error('Save as application error:', err);
+      alert('Failed to save: ' + (err.message || 'Unknown error'));
+    } finally {
+      this.savingJobId = null;
+    }
+  }
+
   selectResume(resumeId: string) {
     this.appState.selectResume(resumeId);
     if (this.selectedCandidateId) {
@@ -363,6 +408,41 @@ export class JobFeedComponent implements OnInit, OnDestroy {
       // Silently fail
     } finally {
       this.insightLoading.set(false);
+    }
+  }
+
+  private async loadExistingApplications() {
+    this.savedJobIds.clear();
+    this.appliedJobLookup.clear();
+
+    const candidate = this.selectedCandidate;
+    if (!candidate?.resumes?.length) return;
+
+    const resumeIds = candidate.resumes.map(r => r.id);
+    try {
+      const jobs = await this.supabase.getAppliedJobUrls(resumeIds);
+      for (const job of jobs) {
+        if (job.source_url) {
+          this.appliedJobLookup.add(job.source_url);
+        }
+        if (job.job_title && job.company_name) {
+          this.appliedJobLookup.add(`${job.job_title}|${job.company_name}`);
+        }
+      }
+      this.markAppliedJobs();
+    } catch (err) {
+      console.error('Error loading existing applications:', err);
+    }
+  }
+
+  private markAppliedJobs() {
+    if (this.appliedJobLookup.size === 0) return;
+    for (const job of this.unifiedJobs) {
+      if (job.url && this.appliedJobLookup.has(job.url)) {
+        this.savedJobIds.add(job.id);
+      } else if (job.title && job.company && this.appliedJobLookup.has(`${job.title}|${job.company}`)) {
+        this.savedJobIds.add(job.id);
+      }
     }
   }
 

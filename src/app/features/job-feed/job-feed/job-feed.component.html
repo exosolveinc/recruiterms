@@ -240,6 +240,18 @@
                     <button class="btn-apply" *ngIf="job.url" (click)="openJobUrl(job.url)">
                       Apply Now &rarr;
                     </button>
+                    <button
+                      class="btn-outlined"
+                      *ngIf="selectedResumeId && !savedJobIds.has(job.id)"
+                      (click)="saveAsApplication(job)"
+                      [disabled]="savingJobId === job.id"
+                    >
+                      <span *ngIf="savingJobId !== job.id">Mark as Applied</span>
+                      <span *ngIf="savingJobId === job.id">Saving...</span>
+                    </button>
+                    <button class="btn-outlined saved" *ngIf="savedJobIds.has(job.id)" disabled>
+                      Applied
+                    </button>
                     <button class="btn-outlined" *ngIf="job.url" (click)="openJobUrl(job.url)">
                       View Full Post
                     </button>

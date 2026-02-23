@@ -214,7 +214,7 @@
                             <td colspan="7">
                                 <div class="expand-content">
                                     <div class="expand-grid">
-                                        <!-- LEFT COLUMN: Preferences + Resumes + Gmail stacked -->
+                                        <!-- LEFT COLUMN: Preferences + Gmail stacked -->
                                         <div class="expand-left">
                                             <!-- Preferences & Experience -->
                                             <div class="expand-section">
@@ -244,50 +244,6 @@
                                                     </span>
                                                 </div>
                                                 <div class="no-skills" *ngIf="!candidate.experience_level && !candidate.preferences">No preferences set</div>
-                                            </div>
-
-                                            <!-- Resumes -->
-                                            <div class="expand-section">
-                                                <h4><i class="pi pi-file"></i> Resumes ({{ candidate.resume_count }})</h4>
-                                                <div class="resume-list">
-                                                    <div class="resume-item" *ngFor="let resume of candidate.resumes" [class.primary]="resume.is_primary">
-                                                        <div class="resume-info">
-                                                            <div class="resume-name-row">
-                                                                <span class="resume-display-name">{{ getResumeDisplayName(resume) }}</span>
-                                                                <span class="resume-name">{{ resume.file_name }}</span>
-                                                            </div>
-                                                            <div class="resume-meta">
-                                                                <span class="extraction-status" [ngClass]="getStatusClass(resume.extraction_status)">
-                                                                    <span class="status-dot"></span>
-                                                                    {{ getStatusText(resume.extraction_status) }}
-                                                                </span>
-                                                                <span class="resume-date">{{ formatDate(resume.created_at) }}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div class="resume-actions">
-                                                            <button class="btn-sm" (click)="openResumeFile(resume)" title="Open">
-                                                                <i class="pi pi-external-link"></i>
-                                                            </button>
-                                                            <button class="btn-sm" (click)="downloadResume(resume)" title="Download">
-                                                                <i class="pi pi-download"></i>
-                                                            </button>
-                                                            <button class="btn-sm resume-action-btn analyze" (click)="goToAnalyzer(resume)" title="Analyze">
-                                                                <i class="pi pi-chart-bar"></i>
-                                                            </button>
-                                                            <button class="btn-sm resume-action-btn primary" (click)="setResumePrimary(resume); $event.stopPropagation()" title="Set as Primary" *ngIf="!resume.is_primary">
-                                                                <i class="pi pi-star"></i>
-                                                            </button>
-                                                            <button class="btn-sm resume-action-btn delete" (click)="confirmDeleteResume(resume); $event.stopPropagation()" title="Delete">
-                                                                <i class="pi pi-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <label class="add-resume-btn" [class.uploading]="uploading">
-                                                    <span *ngIf="!uploading">+ Add Resume</span>
-                                                    <span *ngIf="uploading">Uploading...</span>
-                                                    <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event, candidate)" hidden [disabled]="uploading" />
-                                                </label>
                                             </div>
 
                                             <!-- Gmail / Email -->
@@ -330,50 +286,56 @@
                                             </div>
                                         </div>
 
-                                        <!-- RIGHT COLUMN: Skills -->
+                                        <!-- RIGHT COLUMN: Resumes -->
                                         <div class="expand-right">
-                                            <div class="expand-section skills-section">
-                                                <div class="skills-header">
-                                                    <h4><i class="pi pi-tags"></i> Top Skills ({{ candidate.skills?.length || 0 }})</h4>
-                                                    <div class="skills-legend">
-                                                        <span class="legend-item expert"><span class="legend-dot"></span> Expert</span>
-                                                        <span class="legend-item advanced"><span class="legend-dot"></span> Advanced</span>
-                                                        <span class="legend-item intermediate"><span class="legend-dot"></span> Intermediate</span>
+                                            <div class="expand-section">
+                                                <h4><i class="pi pi-file"></i> Resumes ({{ candidate.resume_count }})</h4>
+                                                <div class="resume-list">
+                                                    <div class="resume-item" *ngFor="let resume of getVisibleResumes(candidate)" [class.primary]="resume.is_primary">
+                                                        <div class="resume-info">
+                                                            <div class="resume-name-row">
+                                                                <span class="resume-display-name">{{ getResumeDisplayName(resume) }}</span>
+                                                                <span class="resume-name">{{ resume.file_name }}</span>
+                                                            </div>
+                                                            <div class="resume-meta">
+                                                                <span class="extraction-status" [ngClass]="getStatusClass(resume.extraction_status)">
+                                                                    <span class="status-dot"></span>
+                                                                    {{ getStatusText(resume.extraction_status) }}
+                                                                </span>
+                                                                <span class="resume-date">{{ formatDate(resume.created_at) }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="resume-actions">
+                                                            <button class="btn-sm" (click)="openResumeFile(resume)" title="Open">
+                                                                <i class="pi pi-external-link"></i>
+                                                            </button>
+                                                            <button class="btn-sm" (click)="downloadResume(resume)" title="Download">
+                                                                <i class="pi pi-download"></i>
+                                                            </button>
+                                                            <button class="btn-sm resume-action-btn analyze" (click)="goToAnalyzer(resume)" title="Analyze">
+                                                                <i class="pi pi-chart-bar"></i>
+                                                            </button>
+                                                            <button class="btn-sm resume-action-btn primary" (click)="setResumePrimary(resume); $event.stopPropagation()" title="Set as Primary" *ngIf="!resume.is_primary">
+                                                                <i class="pi pi-star"></i>
+                                                            </button>
+                                                            <button class="btn-sm resume-action-btn delete" (click)="confirmDeleteResume(resume); $event.stopPropagation()" title="Delete">
+                                                                <i class="pi pi-trash"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-
-                                                <ng-container *ngIf="candidate.skills?.length; else noSkillsTpl">
-                                                    <!-- Expert -->
-                                                    <div class="skill-group" *ngIf="getSkillsByProficiency(candidate, 'expert').length">
-                                                        <div class="skill-group-label expert">EXPERT ({{ getSkillsByProficiency(candidate, 'expert').length }})</div>
-                                                        <div class="skill-group-tags">
-                                                            <span class="skill-chip expert" *ngFor="let skill of getVisibleSkillsByProficiency(candidate, 'expert')">{{ skill.name }}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Advanced -->
-                                                    <div class="skill-group" *ngIf="getVisibleSkillsByProficiency(candidate, 'advanced').length">
-                                                        <div class="skill-group-label advanced">ADVANCED ({{ getSkillsByProficiency(candidate, 'advanced').length }})</div>
-                                                        <div class="skill-group-tags">
-                                                            <span class="skill-chip advanced" *ngFor="let skill of getVisibleSkillsByProficiency(candidate, 'advanced')">{{ skill.name }}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Intermediate -->
-                                                    <div class="skill-group" *ngIf="getVisibleSkillsByProficiency(candidate, 'intermediate').length">
-                                                        <div class="skill-group-label intermediate">INTERMEDIATE ({{ getSkillsByProficiency(candidate, 'intermediate').length }})</div>
-                                                        <div class="skill-group-tags">
-                                                            <span class="skill-chip intermediate" *ngFor="let skill of getVisibleSkillsByProficiency(candidate, 'intermediate')">{{ skill.name }}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <button class="btn-show-all-skills" (click)="toggleSkillsExpanded(candidate.id)" *ngIf="candidate.skills.length > skillsVisibleCount">
-                                                        {{ isSkillsExpanded(candidate.id) ? 'Show less' : 'Show all ' + candidate.skills.length + ' skills' }}
-                                                    </button>
-                                                </ng-container>
-                                                <ng-template #noSkillsTpl>
-                                                    <div class="no-skills">No skills extracted</div>
-                                                </ng-template>
+                                                <button
+                                                    class="btn-show-all-skills"
+                                                    (click)="toggleResumesExpanded(candidate.id)"
+                                                    *ngIf="candidate.resumes?.length > 2"
+                                                >
+                                                    {{ isResumesExpanded(candidate.id) ? 'Show less' : 'Load more (' + (candidate.resumes.length - 2) + ')' }}
+                                                </button>
+                                                <label class="add-resume-btn" [class.uploading]="uploading">
+                                                    <span *ngIf="!uploading">+ Add Resume</span>
+                                                    <span *ngIf="uploading">Uploading...</span>
+                                                    <input type="file" accept=".pdf,.docx" (change)="onResumeFileSelected($event, candidate)" hidden [disabled]="uploading" />
+                                                </label>
                                             </div>
                                         </div>
                                     </div>

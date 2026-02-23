@@ -558,34 +558,13 @@
 }
 
 .loader {
-  width: 48px;
-  height: 48px;
-  position: relative;
-  margin-bottom: 20px;
-}
-
-.loader-ring {
-  position: absolute;
-  inset: 0;
-  border: 2px solid #E5E7EB;
+  width: 36px;
+  height: 36px;
+  border: 3px solid #E5E7EB;
+  border-top-color: #000;
   border-radius: 50%;
-
-  &:nth-child(1) {
-    border-top-color: #3B82F6;
-    animation: spin 1s linear infinite;
-  }
-
-  &:nth-child(2) {
-    inset: 6px;
-    border-right-color: #22C55E;
-    animation: spin 1.5s linear infinite reverse;
-  }
-
-  &:nth-child(3) {
-    inset: 12px;
-    border-bottom-color: #F59E0B;
-    animation: spin 2s linear infinite;
-  }
+  animation: spin 0.7s linear infinite;
+  margin-bottom: 20px;
 }
 
 .loading-title {

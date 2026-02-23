@@ -657,6 +657,28 @@ export class SupabaseService {
     });
   }
 
+  async getAppliedJobUrls(resumeIds: string[]): Promise<{ source_url: string; job_title: string; company_name: string }[]> {
+    if (!resumeIds.length) return [];
+
+    const { data: applications, error: appError } = await this.supabase
+      .from('job_applications')
+      .select('job_id')
+      .in('resume_id', resumeIds);
+
+    if (appError) throw appError;
+    if (!applications?.length) return [];
+
+    const jobIds = [...new Set(applications.map((a: any) => a.job_id))];
+
+    const { data: jobs, error: jobError } = await this.supabase
+      .from('jobs')
+      .select('source_url, job_title, company_name')
+      .in('id', jobIds);
+
+    if (jobError) throw jobError;
+    return (jobs || []) as { source_url: string; job_title: string; company_name: string }[];
+  }
+
   async getJobs(status?: string): Promise<Job[]> {
     let query = this.supabase
       .from('jobs')
