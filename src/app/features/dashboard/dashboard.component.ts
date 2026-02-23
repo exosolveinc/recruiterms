@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, ElementRef, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, ElementRef, signal, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Job, Resume, UserApplicationView } from '../../core/models';
@@ -267,6 +267,11 @@ export class DashboardComponent implements OnInit {
   // Interviews for expanded application
   expandedAppInterviews: ScheduledInterview[] = [];
   loadingAppInterviews = false;
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.closeResumeDropdown();
+  }
 
   constructor(
     private supabase: SupabaseService,
