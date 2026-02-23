@@ -111,6 +111,7 @@ export class DashboardComponent implements OnInit {
   // Column filter values
   selectedStatuses: string[] = [];
   selectedPlatforms: string[] = [];
+  selectedCompanies: string[] = [];
 
   // Signal to trigger computed re-evaluation when sort/filter plain properties change
   private filterSortTrigger = signal(0);
@@ -128,6 +129,13 @@ export class DashboardComponent implements OnInit {
     return platforms.map(p => ({ label: p, value: p }));
   });
 
+  readonly companyOptions = computed(() => {
+    const apps = this.applications();
+    const companies = [...new Set(apps.map(a => a.company_name).filter(Boolean))] as string[];
+    companies.sort((a, b) => a.localeCompare(b));
+    return companies.map(c => ({ label: c, value: c }));
+  });
+
   // Filtered applications with status filter, column filters, and sort applied
   readonly statusFilteredApplications = computed(() => {
     // Read trigger signal to re-evaluate when sort/filter changes
@@ -142,6 +150,11 @@ export class DashboardComponent implements OnInit {
     // Column filter: status multi-select
     if (this.selectedStatuses.length > 0) {
       apps = apps.filter(a => this.selectedStatuses.includes(a.status));
+    }
+
+    // Column filter: company multi-select
+    if (this.selectedCompanies.length > 0) {
+      apps = apps.filter(a => a.company_name && this.selectedCompanies.includes(a.company_name));
     }
 
     // Column filter: platform multi-select
@@ -1156,12 +1169,14 @@ export class DashboardComponent implements OnInit {
   hasActiveFilters(): boolean {
     return this.selectedStatuses.length > 0 ||
       this.selectedPlatforms.length > 0 ||
+      this.selectedCompanies.length > 0 ||
       this.sortField !== '';
   }
 
   clearAllFilters(): void {
     this.selectedStatuses = [];
     this.selectedPlatforms = [];
+    this.selectedCompanies = [];
     this.sortField = '';
     this.sortOrder = 1;
     this.filterSortTrigger.update(v => v + 1);

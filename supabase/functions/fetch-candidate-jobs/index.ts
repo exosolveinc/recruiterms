@@ -117,6 +117,41 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
+ * Filter fetched jobs by candidate preferences.
+ * Only removes jobs that explicitly conflict — jobs with missing data pass through.
+ */
+function filterJobsByPreferences(
+  jobs: NormalizedJob[],
+  prefs: CandidatePreferences
+): NormalizedJob[] {
+  let filtered = jobs;
+
+  // Filter by salary: exclude jobs whose max salary is known and below candidate's minimum
+  if (prefs.salary_expectation_min && prefs.salary_expectation_min > 0) {
+    filtered = filtered.filter((job) => {
+      // Keep jobs with no salary info
+      if (!job.salary_min && !job.salary_max) return true;
+      // If job has a max salary, it must meet the candidate's minimum
+      if (job.salary_max) return job.salary_max >= prefs.salary_expectation_min!;
+      // If job only has a min salary, keep it (range is open-ended)
+      return true;
+    });
+  }
+
+  // Filter by work type: exclude jobs whose work_arrangement is known and not preferred
+  if (prefs.preferred_work_type?.length > 0) {
+    const prefTypes = new Set(prefs.preferred_work_type.map((t) => t.toLowerCase()));
+    filtered = filtered.filter((job) => {
+      // Keep jobs with no/unknown work arrangement
+      if (!job.work_arrangement || job.work_arrangement === "unknown") return true;
+      return prefTypes.has(job.work_arrangement.toLowerCase());
+    });
+  }
+
+  return filtered;
+}
+
+/**
  * Generate a candidate_id exactly the same way the frontend does.
  * Frontend: btoa(`${name}-${email || phone || resume.id}`).replace(/[^a-zA-Z0-9]/g, '').slice(0, 20)
  */
@@ -886,11 +921,18 @@ serve(async (req) => {
           console.error("Error fetching email jobs:", err);
         }
 
+        // Filter jobs by candidate preferences (salary, work type)
+        const preFilterCount = allJobs.length;
+        const filteredJobs = filterJobsByPreferences(allJobs, prefs);
+        if (filteredJobs.length < preFilterCount) {
+          console.log(`Preference filter: ${preFilterCount} → ${filteredJobs.length} jobs (removed ${preFilterCount - filteredJobs.length})`);
+        }
+
         // Upsert jobs into job_feed
-        if (allJobs.length > 0) {
+        if (filteredJobs.length > 0) {
           // Batch upsert in chunks of 50
-          for (let i = 0; i < allJobs.length; i += 50) {
-            const batch = allJobs.slice(i, i + 50);
+          for (let i = 0; i < filteredJobs.length; i += 50) {
+            const batch = filteredJobs.slice(i, i + 50);
             const { error: upsertError, count } = await supabase
               .from("job_feed")
               .upsert(

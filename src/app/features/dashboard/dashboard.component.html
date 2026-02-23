@@ -145,11 +145,26 @@
                 <ng-template pTemplate="header">
                     <tr>
                         <th class="expand-col"></th>
-                        <th class="company-col">
+                        <th class="company-col header-with-filter">
                             <span class="sortable-header" (click)="onSort('company_name')">
                                 COMPANY
                                 <i class="sort-icon" [ngClass]="getSortIconClass('company_name')"></i>
                             </span>
+                            <div class="filter-wrapper">
+                                <i class="pi pi-filter" [class.active]="selectedCompanies.length > 0"></i>
+                                <span class="filter-count" *ngIf="selectedCompanies.length > 0">{{ selectedCompanies.length }}</span>
+                                <p-multiSelect
+                                    [options]="companyOptions()"
+                                    [(ngModel)]="selectedCompanies"
+                                    (ngModelChange)="onColumnFilterChange()"
+                                    [showHeader]="false"
+                                    [showToggleAll]="false"
+                                    [filter]="true"
+                                    filterPlaceHolder="Search companies..."
+                                    styleClass="p-compact-multiselect"
+                                    appendTo="body"
+                                ></p-multiSelect>
+                            </div>
                         </th>
                         <th class="salary-col">
                             <span class="sortable-header" (click)="onSort('salary_min')">
