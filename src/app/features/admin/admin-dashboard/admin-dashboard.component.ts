@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Job, Profile, Resume } from '../../../core/models';
 import { SupabaseService } from '../../../core/services/supabase.service';
+import { AdminDashboardService } from './admin-dashboard.service';
 import { SidebarComponent } from '../../../shared/sidebar/sidebar.component';
 import { TableModule, Table } from 'primeng/table';
 import { MultiSelectModule } from 'primeng/multiselect';
@@ -99,13 +100,25 @@ export class AdminDashboardComponent implements OnInit {
 
   constructor(
     private supabase: SupabaseService,
-    private router: Router
+    private router: Router,
+    private adminDashboardService: AdminDashboardService
   ) {}
 
   async ngOnInit() {
     await this.checkAdminAccess();
-    await this.loadData();
-    this.loading = false;
+
+    // Use cached data if available for instant render
+    const cached = this.adminDashboardService.cached;
+    if (cached) {
+      this.applications = cached.applications;
+      this.upcomingInterviews = cached.upcomingInterviews;
+      this.lastUpdated = cached.lastUpdated;
+      this.computeStats();
+      this.loading = false;
+    } else {
+      await this.loadData();
+      this.loading = false;
+    }
   }
 
   async checkAdminAccess() {
@@ -122,22 +135,22 @@ export class AdminDashboardComponent implements OnInit {
     this.profile = profile;
   }
 
-  async loadData() {
+  async loadData(forceRefresh = false) {
     try {
-      const data = await this.supabase.getAdminApplications();
-      this.applications = data;
+      const data = await this.adminDashboardService.loadData(forceRefresh);
+      this.applications = data.applications;
+      this.upcomingInterviews = data.upcomingInterviews;
+      this.lastUpdated = data.lastUpdated;
       this.computeStats();
-      this.lastUpdated = new Date();
-
-      // Load interviews in parallel
-      try {
-        this.upcomingInterviews = await this.supabase.getAdminUpcomingInterviews();
-      } catch {
-        this.upcomingInterviews = [];
-      }
     } catch (err) {
       console.error('Failed to load admin data:', err);
     }
+  }
+
+  async refreshData() {
+    this.loading = true;
+    await this.loadData(true);
+    this.loading = false;
   }
 
   computeStats() {
