@@ -1473,15 +1473,21 @@ table {
 }
 
 .candidate-modal {
-  max-width: 900px;
+  max-width: 720px;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px 24px;
   border-bottom: 1px solid #eee;
+
+  .modal-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
 
   h3 {
     font-size: 18px;
@@ -1490,33 +1496,41 @@ table {
     margin: 0;
   }
 
+  .modal-header-sub {
+    font-size: 13px;
+    color: #888;
+    font-weight: 400;
+  }
+
   .close-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid #eee;
-    background: white;
-    border-radius: 8px;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 18px;
-    color: #666;
+    font-size: 14px;
+    color: #999;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 
     &:hover {
       background: #f5f5f5;
+      color: #111;
     }
   }
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 20px 24px;
 }
 
 .modal-footer {
   display: flex;
   gap: 12px;
-  padding: 20px 24px;
+  padding: 14px 24px;
   border-top: 1px solid #eee;
   justify-content: flex-end;
 }
@@ -1555,52 +1569,45 @@ table {
 // CANDIDATE MODAL CONTENT
 // ============================================================================
 
-.candidate-header-section {
-  margin-bottom: 24px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #eee;
+.candidate-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
 
-  h2 {
-    font-size: 24px;
-    font-weight: 700;
-    color: #111;
-    margin: 0 0 8px;
-  }
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #555;
 
-  .title-company {
-    font-size: 16px;
-    color: #666;
-    margin: 0 0 12px;
-  }
+  i { font-size: 11px; color: #999; }
 
-  .candidate-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    font-size: 14px;
-    color: #666;
-
-    .level-badge {
-      padding: 4px 10px;
-      background: #f5f5f5;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
-    }
+  &.meta-link {
+    text-decoration: none;
+    cursor: pointer;
+    &:hover { background: #eee; }
   }
 }
 
-.candidate-details-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
-}
-
-.details-left,
-.details-right {
+.resumes-overview {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+}
+
+.resume-details-panel {
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .detail-section {
@@ -1612,83 +1619,6 @@ table {
   }
 }
 
-.contact-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  .contact-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-
-    .label {
-      font-size: 11px;
-      color: #999;
-      text-transform: uppercase;
-    }
-
-    a {
-      color: #2563eb;
-      text-decoration: none;
-      font-size: 14px;
-
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-  }
-}
-
-.skills-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  .skill-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: #f5f5f5;
-    border-radius: 6px;
-
-    .skill-name {
-      font-size: 13px;
-      color: #111;
-    }
-
-    .skill-proficiency {
-      font-size: 10px;
-      color: #666;
-      padding: 2px 6px;
-      background: white;
-      border-radius: 4px;
-    }
-
-    &.proficiency-expert {
-      background: #F0FDF4;
-      border: 1px solid #D1FAE5;
-      .skill-name { color: #15803D; }
-      .skill-proficiency { background: #D1FAE5; color: #15803D; }
-    }
-
-    &.proficiency-advanced {
-      background: #F9FAFB;
-      border: 1px solid #E5E7EB;
-      .skill-name { color: #374151; }
-      .skill-proficiency { background: #E5E7EB; color: #374151; }
-    }
-
-    &.proficiency-intermediate {
-      background: #FFFBEB;
-      border: 1px solid #FDE68A;
-      .skill-name { color: #92400E; }
-      .skill-proficiency { background: #FDE68A; color: #92400E; }
-    }
-  }
-}
-
 .resume-selector {
   display: flex;
   flex-direction: column;
@@ -1696,15 +1626,15 @@ table {
 }
 
 .resume-card {
-  padding: 16px;
-  background: #f8fafc;
-  border: 2px solid transparent;
+  padding: 14px 16px;
+  background: #fafafa;
+  border: 1.5px solid #eee;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.15s;
 
   &:hover {
-    background: #f1f5f9;
+    border-color: #ccc;
   }
 
   &.selected {
@@ -1717,11 +1647,7 @@ table {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
-
-  .resume-icon {
-    font-size: 24px;
-  }
+  margin-bottom: 10px;
 }
 
 .resume-card-info {
@@ -1917,16 +1843,9 @@ table {
 
 .preferences-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  margin-bottom: 24px;
-
-  h4 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #111;
-    margin: 0;
-  }
+  margin-bottom: 16px;
 }
 
 .preferences-actions {
@@ -1981,43 +1900,68 @@ table {
   }
 }
 
-.preferences-grid {
+.preferences-grid-compact {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 16px;
 }
 
-.pref-section {
+.pref-row {
   &.full-width {
-    grid-column: 1 / -1;
-  }
-
-  &.salary-section {
-    grid-column: 1 / -1;
-  }
-
-  &.boolean-options {
     grid-column: 1 / -1;
   }
 }
 
 .pref-label {
-  display: block;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: #666;
+  color: #888;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+.inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #666;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    width: 13px;
+    height: 13px;
+    cursor: pointer;
+  }
+}
+
+.inline-badge {
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #16a34a;
+}
+
+.pref-value {
+  font-size: 14px;
+  color: #333;
 }
 
 .pref-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
   color: #111;
 
   &:focus {
@@ -2026,16 +1970,16 @@ table {
   }
 
   &::placeholder {
-    color: #999;
+    color: #bbb;
   }
 }
 
 .pref-select {
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
   color: #111;
   cursor: pointer;
 
@@ -2047,11 +1991,11 @@ table {
 
 .pref-textarea {
   width: 100%;
-  padding: 12px;
+  padding: 8px 10px;
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
   color: #111;
   resize: vertical;
 
@@ -2064,17 +2008,17 @@ table {
 .tags-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  min-height: 36px;
+  gap: 6px;
+  min-height: 28px;
 }
 
 .pref-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 5px;
+  padding: 4px 10px;
   background: #f5f5f5;
-  border-radius: 6px;
+  border-radius: 5px;
   font-size: 13px;
   color: #333;
 }
@@ -2083,12 +2027,12 @@ table {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   background: #ddd;
   border: none;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 11px;
   color: #666;
   cursor: pointer;
 
@@ -2101,7 +2045,7 @@ table {
 .checkbox-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
 
   &.disabled {
     opacity: 0.7;
@@ -2111,91 +2055,56 @@ table {
 .checkbox-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
 
   input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     cursor: pointer;
   }
 }
 
 .checkbox-label {
-  font-size: 14px;
+  font-size: 13px;
   color: #333;
 }
 
 .salary-inputs {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .salary-input {
-  width: 120px !important;
+  width: 100px !important;
 }
 
 .salary-separator {
-  color: #666;
-  font-size: 14px;
+  color: #999;
+  font-size: 13px;
 }
 
 .salary-display {
   font-size: 14px;
-  color: #111;
+  color: #333;
 }
 
 .notice-input {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 
   span {
-    color: #666;
-    font-size: 14px;
+    color: #888;
+    font-size: 13px;
   }
-}
-
-.boolean-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.bool-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.bool-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #333;
-  cursor: pointer;
-
-  input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-  }
-}
-
-.travel-percent {
-  width: 60px;
-  padding: 6px 8px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 13px;
 }
 
 .notes-display {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
-  line-height: 1.6;
+  line-height: 1.5;
   margin: 0;
 }
 
@@ -2216,24 +2125,18 @@ table {
 }
 
 .upload-document-form {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px;
-
-  h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #111;
-    margin: 0 0 16px;
-  }
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .upload-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .form-row {
@@ -2248,18 +2151,18 @@ table {
   label {
     font-size: 11px;
     font-weight: 500;
-    color: #666;
+    color: #888;
     text-transform: uppercase;
   }
 }
 
 .doc-select,
 .doc-input {
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
   color: #111;
 
   &:focus {
@@ -2269,15 +2172,15 @@ table {
 }
 
 .upload-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  padding: 14px;
+  gap: 6px;
+  padding: 8px 16px;
   background: #111;
-  border-radius: 8px;
+  border-radius: 6px;
   color: white;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
@@ -2293,10 +2196,11 @@ table {
 }
 
 .upload-hint {
-  font-size: 12px;
-  color: #999;
-  margin: 12px 0 0;
-  text-align: center;
+  font-size: 11px;
+  color: #bbb;
+  margin: 8px 0 0;
+  display: inline;
+  margin-left: 10px;
 }
 
 .documents-list {
@@ -2335,16 +2239,16 @@ table {
 
 .document-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  padding: 16px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
   transition: all 0.15s;
 
   &:hover {
-    border-color: #cbd5e1;
+    border-color: #ccc;
   }
 
   &.expired {
@@ -2356,11 +2260,6 @@ table {
     border-color: #fde68a;
     background: #fffbeb;
   }
-}
-
-.doc-icon {
-  font-size: 28px;
-  flex-shrink: 0;
 }
 
 .doc-info {
@@ -2389,63 +2288,15 @@ table {
   color: #999;
 }
 
-.doc-expiry {
-  margin-top: 6px;
-}
-
-.expiry-label {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #f5f5f5;
-  color: #666;
-
-  &.expired {
-    background: #fecaca;
-    color: #dc2626;
-  }
-
-  &.warning {
-    background: #fde68a;
-    color: #d97706;
-  }
-}
-
-.doc-notes {
-  font-size: 12px;
-  color: #999;
-  margin-top: 6px;
-  font-style: italic;
+.doc-expiry-inline {
+  &.expired { color: #dc2626; }
+  &.warning { color: #d97706; }
 }
 
 .doc-actions {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
-}
-
-.doc-action-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    background: #f5f5f5;
-    border-color: #cbd5e1;
-  }
-
-  &.delete:hover {
-    background: #fef2f2;
-    border-color: #fecaca;
-  }
 }
 
 // ============================================================================
