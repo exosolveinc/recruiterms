@@ -409,6 +409,7 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   async logout() {
+    this.adminDashboardService.clearCache();
     await this.supabase.signOut();
     this.router.navigate(['/auth/login']);
   }
